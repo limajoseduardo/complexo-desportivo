@@ -89,7 +89,7 @@ export function ProfileViewModule({
   const [formData, setFormData] = useState<UserProfile>({ ...user });
   const [saving, setSaving] = useState(false);
   const [accessLoading, setAccessLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'treino' | 'termos'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'termos'>('geral');
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [plan, setPlan] = useState<any | null>(null);
@@ -329,7 +329,6 @@ export function ProfileViewModule({
           { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
           { id: 'saude',      label: 'Saúde & Metas',    icon: <Heart size={15}/> },
           { id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> },
-          ...(user.role === 'utente' ? [{ id: 'treino', label: 'Treino', icon: <Dumbbell size={15}/> }] : []),
           ...(user.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
@@ -600,45 +599,6 @@ export function ProfileViewModule({
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* TAB: Treino */}
-      {activeTab === 'treino' && (
-        <div className="space-y-6 animate-in fade-in">
-          {!plan ? (
-            <div className="bg-white rounded-[3rem] p-12 text-center border-2 border-slate-50 shadow-sm">
-              <Dumbbell size={48} className="mx-auto mb-4 text-slate-200"/>
-              <h3 className="font-black text-[#004D71] uppercase text-lg mb-2">Sem Plano Ativo</h3>
-              <p className="text-xs text-slate-400 max-w-xs mx-auto">Este utente ainda não tem um plano de treino prescrito.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50">
-              <div className="flex justify-between items-center mb-8 border-b-2 border-slate-50 pb-4">
-                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
-                  <Trophy size={16} className="text-[#F7B500]"/> Plano Prescrito
-                </h3>
-              </div>
-              <div className="space-y-4">
-                {plan.exercicios?.map((ex: any, idx: number) => (
-                  <div key={idx} className="bg-slate-50 rounded-[2rem] p-5 border border-slate-100 flex items-center gap-5 hover:bg-white hover:shadow-lg transition-all">
-                    <div className="w-12 h-12 bg-[#004D71] text-[#F7B500] rounded-2xl flex items-center justify-center font-black text-lg shrink-0 shadow-sm">{idx + 1}</div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-black text-[#004D71] uppercase text-xs mb-2 truncate">{ex.exercicioId}</h4>
-                      <div className="flex gap-2">
-                        {[['Séries', ex.series], ['Reps', ex.reps], ['Descanso', ex.descanso]].map(([l, v]) => (
-                          <div key={l} className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-                            <span className="text-[7px] font-black text-slate-400 block uppercase">{l}</span>
-                            <span className="text-[10px] font-black text-[#004D71]">{v}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
