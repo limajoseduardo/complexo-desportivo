@@ -353,15 +353,22 @@ export function ProfileViewModule({
                 value={formData.email} disabled={true} onChange={() => {}} />
 
               {/* Data Nascimento + Idade */}
-              <div className="space-y-1">
-                <FormInput label="Data de Nascimento" icon={<Calendar size={14}/>} type="date"
-                  value={formData.data_nasc || ''} disabled={!isEditing}
-                  onChange={v => set('data_nasc', v)} />
-                {age !== null && (
-                  <p className="text-[10px] font-black text-[#F7B500] uppercase ml-2 flex items-center gap-1">
-                    <Clock size={11}/> {age} anos {isMinor && '· Menor de 16 anos'}
-                  </p>
-                )}
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <FormInput label="Data de Nascimento" icon={<Calendar size={14}/>} type="date"
+                    value={formData.data_nasc || ''} disabled={!isEditing}
+                    onChange={v => set('data_nasc', v)} />
+                </div>
+                <div className={`shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center shadow-sm border-2 mb-0.5 ${age === null ? 'bg-slate-50 border-slate-100' : isMinor ? 'bg-orange-50 border-orange-200' : 'bg-[#004D71]/5 border-[#004D71]/10'}`}>
+                  {age !== null ? (
+                    <>
+                      <span className={`text-xl font-black leading-none ${isMinor ? 'text-orange-500' : 'text-[#004D71]'}`}>{age}</span>
+                      <span className={`text-[8px] font-black uppercase tracking-widest ${isMinor ? 'text-orange-400' : 'text-slate-400'}`}>anos</span>
+                    </>
+                  ) : (
+                    <span className="text-[8px] font-black text-slate-300 uppercase text-center leading-tight">Idade</span>
+                  )}
+                </div>
               </div>
 
               {/* CC + Validade */}
