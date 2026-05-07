@@ -3,37 +3,71 @@ export type UserRole = 'admin' | 'professor' | 'staff' | 'utente' | 'chefia';
 export interface UserProfile {
   id: string;
   nome: string;
-  n?: string; // name alias used in some parts
+  n?: string;
   email: string;
   role: UserRole;
   cargo: string;
   img: string;
-  z?: string | null; // current zone
+  z?: string | null;
   location?: string;
   isInside?: boolean;
-  phone?: string;
+
+  // Identificação
+  data_nasc?: string;       // YYYY-MM-DD
+  cc?: string;              // Cartão de Cidadão
+  cc_validade?: string;     // Validade CC (YYYY-MM-DD)
   nif?: string;
-  cc?: string;
-  data_nasc?: string;
+  num_utente?: string;      // Número de utente / SNS
+
+  // Contactos
+  telefone?: string;        // Telefone fixo
+  telemovel?: string;       // Telemóvel
+  phone?: string;           // legacy alias
+
+  // Morada
   endereco?: string;
   cod_postal?: string;
   localidade?: string;
-  profissao?: string;
-  password?: string;
-  iban?: string;
-  contacto_emergencia?: string;
+
+  // Emergência
   nome_emergencia?: string;
+  contacto_emergencia?: string;
+
+  // Cartão Municipal
+  cartao_municipal?: string;
+  municipio_cartao?: string;
+
+  // Menores (idade < 16)
+  encarregado_email?: string;
+  encarregado_nome?: string;
+  encarregado_cc?: string;
+  modalidades_autorizadas?: string[];
+
+  // Termos aceites
+  termo_imagens?: boolean;
+  termo_imagens_data?: string;
+  termo_responsabilidade?: boolean;
+  termo_responsabilidade_data?: string;
+
+  // Saúde
   restricoes_medicas?: string;
   alergias?: string;
   objetivos?: string;
   modalidade?: string;
-  idade?: string;
+  iban?: string;
+
+  // Staff / Professor
+  profissao?: string;
   formacao?: string;
   experiencia?: string;
   cedula?: string;
   lema?: string;
   cv_edu?: string;
   cv_exp?: string;
+
+  // Sistema
+  password?: string;
+  idade?: string;
   updatedAt?: string;
   createdAt?: string;
   lastLogin?: string;
@@ -50,7 +84,7 @@ export interface AccessLog {
   checkOut?: any;
   durationMinutes?: number;
   zone: string;
-  date: string; // YYYY-MM-DD
+  date: string;
 }
 
 export interface Exercicio {
@@ -113,10 +147,10 @@ export interface OperationalLog {
 export interface Aula {
   id: string;
   modalidade: string;
-  categoria?: string; // e.g. 'Escola de Natação', 'Piscina', 'Ginásio'
-  diaSemana: number; // 1 (Mon) - 7 (Sun)
-  horaInicio: string; // HH:mm
-  horaFim: string; // HH:mm
+  categoria?: string;
+  diaSemana: number;
+  horaInicio: string;
+  horaFim: string;
   professor?: string;
   professor2?: string;
   vagas?: number;
