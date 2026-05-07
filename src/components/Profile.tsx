@@ -89,7 +89,7 @@ export function ProfileViewModule({
   const [formData, setFormData] = useState<UserProfile>({ ...user });
   const [saving, setSaving] = useState(false);
   const [accessLoading, setAccessLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'treino'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'treino' | 'termos'>('geral');
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [plan, setPlan] = useState<any | null>(null);
@@ -329,7 +329,8 @@ export function ProfileViewModule({
           { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
           { id: 'saude',      label: 'Saúde & Metas',    icon: <Heart size={15}/> },
           { id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> },
-          ...(user.role === 'utente' ? [{ id: 'treino', label: 'Treino', icon: <Dumbbell size={15}/> }] : [])
+          ...(user.role === 'utente' ? [{ id: 'treino', label: 'Treino', icon: <Dumbbell size={15}/> }] : []),
+          ...(user.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 rounded-[2rem] text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
@@ -454,39 +455,6 @@ export function ProfileViewModule({
             </div>
           )}
 
-          {/* Termos de Responsabilidade */}
-          {formData.role === 'utente' && (
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
-              <SectionTitle icon={<FileText size={16}/>} label="Termos de Responsabilidade" />
-              {!isEditing && !termsOk && (
-                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2">
-                  <AlertCircle size={14}/> Clique em Editar para aceitar os termos obrigatórios
-                </p>
-              )}
-              <div className="space-y-4">
-                <TermoCheckbox
-                  label="Autorização de Utilização de Imagens"
-                  text={TERMO_IMAGENS}
-                  checked={!!formData.termo_imagens}
-                  disabled={!isEditing || !!user.termo_imagens}
-                  onChange={v => {
-                    set('termo_imagens', v);
-                    if (v) set('termo_imagens_data', new Date().toISOString());
-                  }}
-                />
-                <TermoCheckbox
-                  label="Termo de Responsabilidade — Lei n.º 5/2007"
-                  text={TERMO_RESPONSABILIDADE}
-                  checked={!!formData.termo_responsabilidade}
-                  disabled={!isEditing || !!user.termo_responsabilidade}
-                  onChange={v => {
-                    set('termo_responsabilidade', v);
-                    if (v) set('termo_responsabilidade_data', new Date().toISOString());
-                  }}
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -578,9 +546,6 @@ export function ProfileViewModule({
               <FormInput label="Modalidade Atual" icon={<Trophy size={14}/>}
                 value={formData.modalidade || ''} disabled={!isEditing}
                 onChange={v => set('modalidade', v)} />
-              <FormInput label="IBAN (Pagamentos)" icon={<FileText size={14}/>}
-                value={formData.iban || ''} disabled={!isEditing}
-                onChange={v => set('iban', v)} />
               <FormInput label="Alergias" icon={<AlertCircle size={14}/>}
                 value={formData.alergias || ''} disabled={!isEditing}
                 onChange={v => set('alergias', v)} multiline />
@@ -674,6 +639,53 @@ export function ProfileViewModule({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: Termos */}
+      {activeTab === 'termos' && formData.role === 'utente' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+            <SectionTitle icon={<FileText size={16}/>} label="Termos de Responsabilidade" />
+            {!isEditing && !termsOk && (
+              <div className="flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
+                <AlertCircle size={18} className="text-red-500 shrink-0"/>
+                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">
+                  Clique em Editar para aceitar os termos obrigatórios
+                </p>
+              </div>
+            )}
+            {termsOk && (
+              <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <CheckSquare size={18} className="text-emerald-500 shrink-0"/>
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                  Todos os termos aceites
+                </p>
+              </div>
+            )}
+            <div className="space-y-4">
+              <TermoCheckbox
+                label="Autorização de Utilização de Imagens"
+                text={TERMO_IMAGENS}
+                checked={!!formData.termo_imagens}
+                disabled={!isEditing || !!user.termo_imagens}
+                onChange={v => {
+                  set('termo_imagens', v);
+                  if (v) set('termo_imagens_data', new Date().toISOString());
+                }}
+              />
+              <TermoCheckbox
+                label="Termo de Responsabilidade — Lei n.º 5/2007"
+                text={TERMO_RESPONSABILIDADE}
+                checked={!!formData.termo_responsabilidade}
+                disabled={!isEditing || !!user.termo_responsabilidade}
+                onChange={v => {
+                  set('termo_responsabilidade', v);
+                  if (v) set('termo_responsabilidade_data', new Date().toISOString());
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
