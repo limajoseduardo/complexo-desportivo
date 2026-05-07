@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dumbbell, Waves, Sun, Flame, Users2, BarChart3, Bell, 
+import {
+  Dumbbell, Waves, Sun, Flame, Users2, BarChart3, Bell,
   Cake, AlertTriangle, Droplets, MapPin, Search, ChevronRight, X,
-  Scale, Activity, Target, UtensilsCrossed, Plus, Check
+  Scale, Activity, Target, UtensilsCrossed, Plus, Check,
+  Cloud, CloudRain, CloudSnow, Wind, Thermometer
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, BarChart, Bar, Cell 
@@ -268,7 +270,38 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
   );
 });
 
+const WEATHER_CODES: Record<number, { label: string; icon: React.ReactNode }> = {
+  0:  { label: 'Sol',          icon: <Sun size={18} className="text-yellow-400"/> },
+  1:  { label: 'Mostly Clear', icon: <Sun size={18} className="text-yellow-300"/> },
+  2:  { label: 'Nublado',      icon: <Cloud size={18} className="text-slate-400"/> },
+  3:  { label: 'Nublado',      icon: <Cloud size={18} className="text-slate-500"/> },
+  45: { label: 'Névoa',        icon: <Wind size={18} className="text-slate-400"/> },
+  48: { label: 'Névoa',        icon: <Wind size={18} className="text-slate-400"/> },
+  51: { label: 'Chuvisco',     icon: <CloudRain size={18} className="text-blue-400"/> },
+  53: { label: 'Chuvisco',     icon: <CloudRain size={18} className="text-blue-400"/> },
+  61: { label: 'Chuva',        icon: <CloudRain size={18} className="text-blue-500"/> },
+  63: { label: 'Chuva',        icon: <CloudRain size={18} className="text-blue-600"/> },
+  71: { label: 'Neve',         icon: <CloudSnow size={18} className="text-sky-300"/> },
+  80: { label: 'Aguaceiros',   icon: <CloudRain size={18} className="text-blue-500"/> },
+  95: { label: 'Trovoada',     icon: <CloudRain size={18} className="text-purple-500"/> },
+};
+const getWeather = (code: number) =>
+  WEATHER_CODES[code] ?? { label: '---', icon: <Thermometer size={18} className="text-slate-400"/> };
+
+const MODALITIES = [
+  { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={14}/>,    dest: 'Piscina Coberta' },
+  { id: 'gym',      label: 'Ginásio',           icon: <Dumbbell size={14}/>, dest: 'Ginásio' },
+  { id: 'fit',      label: 'Aulas Fitness',     icon: <Activity size={14}/>, dest: 'Aulas Fitness' },
+  { id: 'sauna',    label: 'Sauna',             icon: <Flame size={14}/>,    dest: 'Sauna' },
+  { id: 'pool_out', label: 'Piscina Exterior',  icon: <Sun size={14}/>,      dest: 'Piscina Exterior' },
+];
+
 export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
+  const [time, setTime] = useState(new Date());
+  const [weather, setWeather] = useState<{ temp: number; code: number } | null>(null);
+  const [selectedDest, setSelectedDest] = useState<string | null>(null);
+  const [showQR, setShowQR] = useState(false);
+
   const [metrics, setMetrics] = useState<any[]>([]);
   const [activeMetric, setActiveMetric] = useState<'peso' | 'glicemia' | null>(null);
   const [historyType, setHistoryType] = useState<'peso' | 'glicemia' | null>(null);
@@ -276,20 +309,25 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.69&longitude=-8.14&current=temperature_2m,weathercode&timezone=Europe/Lisbon')
+      .then(r => r.json())
+      .then(d => setWeather({ temp: Math.round(d.current.temperature_2m), code: d.current.weathercode }))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/saude`;
-    const q = query(
-      collection(db, path),
-      where('userId', '==', user.id),
-      limit(100)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const sorted = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+    const q = query(collection(db, path), where('userId', '==', user.id), limit(100));
+    const unsub = onSnapshot(q, snap => {
+      const sorted = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         .sort((a: any, b: any) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       setMetrics(sorted);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
-    });
+    }, error => handleFirestoreError(error, OperationType.GET, path));
     return () => unsub();
   }, [user.id]);
 
@@ -298,216 +336,245 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
     setLoading(true);
     try {
       await addDoc(collection(db, `artifacts/${APP_ID}/public/data/saude`), {
-        userId: user.id,
-        type: type,
-        value: parseFloat(val.replace(',', '.')),
-        timestamp: Timestamp.now(),
-        unit: type === 'peso' ? 'kg' : 'mg/dL'
+        userId: user.id, type, value: parseFloat(val.replace(',', '.')),
+        timestamp: Timestamp.now(), unit: type === 'peso' ? 'kg' : 'mg/dL'
       });
-      setVal('');
-      setActiveMetric(null);
-    } catch (e: any) {
-      alert(`Erro ao guardar: ${e?.message || 'Tente novamente'}`);
-    } finally {
-      setLoading(false);
-    }
+      setVal(''); setActiveMetric(null);
+    } catch (e: any) { alert(`Erro: ${e?.message}`); } finally { setLoading(false); }
   };
 
   const currentWeight = metrics.find(m => m.type === 'peso')?.value || '--';
   const currentGly = metrics.find(m => m.type === 'glicemia')?.value || '--';
 
-  const getChartData = (type: 'peso' | 'glicemia') => {
-    return metrics
-      .filter(m => m.type === type)
-      .slice(0, 10)
-      .reverse()
-      .map(m => ({
-        d: m.timestamp?.toDate().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }),
-        m: m.value
-      }));
-  };
+  const getChartData = (type: 'peso' | 'glicemia') =>
+    metrics.filter(m => m.type === type).slice(0, 10).reverse().map(m => ({
+      d: m.timestamp?.toDate().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }),
+      m: m.value
+    }));
 
-  const activeData = activeMetric ? getChartData(activeMetric) : [];
+  const qrValue = selectedDest
+    ? JSON.stringify({ id: user.id, dest: selectedDest })
+    : JSON.stringify({ id: user.id });
+
+  const w = weather ? getWeather(weather.code) : null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 text-left px-2 mb-24">
-      {/* Header com Missão */}
-      <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border-2 border-slate-100 relative overflow-hidden">
-        <div className="flex items-center gap-3 mb-4">
-           <div className="p-3 bg-[#F7B500] text-[#004D71] rounded-2xl">
-              <Target size={24}/>
-           </div>
-           <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Missão de Hoje</p>
-              <h3 className="text-lg font-black text-[#004D71] uppercase leading-tight">Superar os Meus Limites</h3>
-           </div>
+    <div className="space-y-5 animate-in fade-in duration-500 text-left px-2 mb-24">
+
+      {/* ── Barra Hora + Meteorologia ── */}
+      <div className="bg-[#004D71] rounded-[2rem] px-6 py-4 flex items-center justify-between shadow-lg">
+        <div>
+          <p className="text-[9px] font-black text-[#F7B500]/70 uppercase tracking-widest">Complexo Vila de Rei</p>
+          <p className="text-xs font-black text-white/70 uppercase mt-0.5">{time.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' })}</p>
         </div>
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-           <p className="text-xs font-medium text-slate-500 leading-relaxed italic">"Não importa quão devagar vá, desde que não pare. O sucesso é a soma de pequenos esforços repetidos dia após dia."</p>
+        <div className="flex items-center gap-4">
+          {w && weather && (
+            <div className="flex items-center gap-2 bg-white/10 rounded-2xl px-3 py-2">
+              {w.icon}
+              <span className="text-base font-black text-white">{weather.temp}°</span>
+              <span className="text-[9px] font-bold text-white/60 uppercase hidden sm:block">{w.label}</span>
+            </div>
+          )}
+          <p className="text-2xl font-black text-[#F7B500] tabular-nums font-mono">{time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
         </div>
       </div>
 
-      {/* Registo Diário Rapid */}
-      <div className="grid grid-cols-2 gap-3">
-         <button onClick={() => setActiveMetric(prev => prev === 'peso' ? null : 'peso')} className={`p-6 rounded-[2.5rem] border-4 transition-all text-left group relative shadow-md ${activeMetric === 'peso' ? 'bg-[#004D71] border-[#F7B500] text-white' : 'bg-white border-[#004D71]/5 text-[#004D71]'}`}>
-            <div className="flex items-center justify-between mb-4">
-               <div className={`p-3 rounded-2xl transition-colors ${activeMetric === 'peso' ? 'bg-white/10 text-[#F7B500]' : 'bg-blue-50 text-[#004D71]'}`}>
-                  <Scale size={20}/>
-               </div>
-               {activeMetric === 'peso' && <div className="w-2 h-2 bg-[#F7B500] rounded-full animate-ping" />}
-            </div>
-            <p className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 ${activeMetric === 'peso' ? 'text-[#F7B500]/60' : 'text-slate-400'}`}>Peso Atual</p>
-            <p className="text-2xl font-black">{currentWeight}<span className="text-xs opacity-40 ml-1">kg</span></p>
-         </button>
- 
-         <button onClick={() => setActiveMetric(prev => prev === 'glicemia' ? null : 'glicemia')} className={`p-6 rounded-[2.5rem] border-4 transition-all text-left group relative shadow-md ${activeMetric === 'glicemia' ? 'bg-red-500 border-red-200 text-white' : 'bg-white border-[#004D71]/5 text-[#004D71]'}`}>
-            <div className="flex items-center justify-between mb-4">
-               <div className={`p-3 rounded-2xl transition-colors ${activeMetric === 'glicemia' ? 'bg-white/10 text-white' : 'bg-red-50 text-red-500'}`}>
-                  <Activity size={20}/>
-               </div>
-               {activeMetric === 'glicemia' && <div className="w-2 h-2 bg-white rounded-full animate-ping" />}
-            </div>
-            <p className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 ${activeMetric === 'glicemia' ? 'text-white/60' : 'text-slate-400'}`}>Glicemia</p>
-            <p className="text-2xl font-black">{currentGly}<span className="text-xs opacity-40 ml-1 font-mono">mg/dL</span></p>
-         </button>
+      {/* ── Cartão de Sócio ── */}
+      <div className="bg-gradient-to-br from-[#004D71] to-[#003a56] rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden">
+        {/* decoração */}
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
+        <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full bg-[#F7B500]/10 blur-xl" />
+
+        {/* cabeçalho do cartão */}
+        <div className="flex items-center justify-between mb-5 relative">
+          <div>
+            <p className="text-[8px] font-black text-[#F7B500]/70 uppercase tracking-widest">Complexo Desportivo</p>
+            <p className="text-sm font-black text-white uppercase tracking-tight">Vila de Rei</p>
+          </div>
+          <div className="bg-[#F7B500] rounded-xl px-3 py-1">
+            <p className="text-[8px] font-black text-[#004D71] uppercase tracking-widest">Sócio Activo</p>
+          </div>
+        </div>
+
+        {/* corpo do cartão */}
+        <div className="flex items-center gap-5 relative">
+          {/* foto */}
+          <div className="shrink-0">
+            <AvatarImage
+              src={user.img}
+              alt={user.n || user.nome}
+              className="w-20 h-20 rounded-2xl border-4 border-white/20 shadow-xl object-cover"
+            />
+          </div>
+
+          {/* dados */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-black text-white uppercase leading-tight truncate">{user.n || user.nome}</h3>
+            <p className="text-[10px] font-bold text-[#F7B500] uppercase tracking-widest mt-1">{user.cargo || 'Utente'}</p>
+            {user.data_nasc && (
+              <p className="text-[9px] font-bold text-white/50 uppercase mt-0.5">
+                {new Date().getFullYear() - new Date(user.data_nasc).getFullYear()} anos
+              </p>
+            )}
+            {user.num_utente && (
+              <p className="text-[9px] font-bold text-white/40 uppercase mt-1 font-mono">Nº {user.num_utente}</p>
+            )}
+            {selectedDest && (
+              <div className="mt-2 bg-[#F7B500]/20 rounded-xl px-3 py-1.5 w-fit">
+                <p className="text-[9px] font-black text-[#F7B500] uppercase tracking-widest">→ {selectedDest}</p>
+              </div>
+            )}
+          </div>
+
+          {/* QR button */}
+          <button
+            onClick={() => setShowQR(true)}
+            className="shrink-0 bg-white rounded-2xl p-2 shadow-lg active:scale-95 transition-transform"
+            title="Ver QR Code"
+          >
+            <QRCodeSVG value={qrValue} size={64} bgColor="#ffffff" fgColor="#004D71" level="M" />
+          </button>
+        </div>
       </div>
 
-      {/* Evolução de Saúde */}
+      {/* ── Seletor de Destino ── */}
       <div className="space-y-3">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-1">Histórico & Evolução</p>
-        <div className="grid grid-cols-2 gap-3">
-          <button 
-            onClick={() => setHistoryType('peso')}
-            className="flex-1 bg-white text-[#004D71] p-4 rounded-[2rem] border-2 border-[#004D71]/5 flex items-center gap-3 group active:scale-95 transition-all shadow-sm"
-          >
-             <div className="p-2.5 bg-blue-50 text-[#004D71] rounded-xl group-hover:bg-[#004D71] group-hover:text-[#F7B500] transition-colors">
-                <Scale size={18}/>
-             </div>
-             <p className="text-[9px] font-black uppercase tracking-wider leading-none text-left">Gráfico de<br/>Peso</p>
-          </button>
-
-          <button 
-            onClick={() => setHistoryType('glicemia')}
-            className="flex-1 bg-white text-[#004D71] p-4 rounded-[2rem] border-2 border-[#004D71]/5 flex items-center gap-3 group active:scale-95 transition-all shadow-sm"
-          >
-             <div className="p-2.5 bg-red-50 text-red-500 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors">
-                <Activity size={18}/>
-             </div>
-             <p className="text-[9px] font-black uppercase tracking-wider leading-none text-left">Gráfico de<br/>Glicemia</p>
-          </button>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Para onde vou hoje?</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {MODALITIES.map(m => (
+            <button
+              key={m.id}
+              onClick={() => setSelectedDest(prev => prev === m.dest ? null : m.dest)}
+              className={`flex items-center gap-2 px-4 py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-wide transition-all active:scale-95 ${
+                selectedDest === m.dest
+                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-lg'
+                  : 'bg-white border-slate-100 text-slate-500 hover:border-[#004D71]/20'
+              }`}
+            >
+              {m.icon} {m.label}
+            </button>
+          ))}
         </div>
+        {selectedDest && (
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">
+            QR atualizado com destino: <span className="text-[#004D71]">{selectedDest}</span>
+          </p>
+        )}
       </div>
 
-      {historyType && (
-        <div className="fixed inset-0 z-[10000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
-           <div className="bg-white w-full max-w-lg rounded-[3rem] p-8 shadow-2xl relative">
-              <button 
-                onClick={() => setHistoryType(null)}
-                className="absolute top-6 right-6 p-4 bg-slate-50 text-slate-400 rounded-full active:scale-90"
-              >
-                <X size={24}/>
-              </button>
-
-              <div className="mb-10 text-center">
-                 <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 ${historyType === 'peso' ? 'bg-[#F7B500]/10 text-[#F7B500]' : 'bg-red-50 text-red-500'}`}>
-                    {historyType === 'peso' ? <Scale size={32} /> : <Activity size={32} />}
-                 </div>
-                 <h3 className="text-xl font-black text-[#004D71] uppercase">Histórico de {historyType === 'peso' ? 'Peso' : 'Glicemia'}</h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Evolução dos últimos 10 registos</p>
-              </div>
-
-              <div className="h-[250px] w-full mb-6">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={getChartData(historyType)}>
-                    <defs>
-                      <linearGradient id="colorHistory" x1="0" y1="0" x2="0" y2="1">
-                         <stop offset="5%" stopColor={historyType === 'peso' ? '#004D71' : '#ef4444'} stopOpacity={0.3}/>
-                         <stop offset="95%" stopColor={historyType === 'peso' ? '#004D71' : '#ef4444'} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
-                    <YAxis hide domain={['auto', 'auto']} />
-                    <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold'}} />
-                    <Area type="monotone" dataKey="m" stroke={historyType === 'peso' ? '#004D71' : '#ef4444'} strokeWidth={5} fillOpacity={1} fill="url(#colorHistory)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-2">
-                 <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Mínimo</p>
-                    <p className={`text-lg font-black ${historyType === 'peso' ? 'text-[#004D71]' : 'text-red-600'}`}>
-                      {getChartData(historyType).length > 0 ? Math.min(...getChartData(historyType).map(d => d.m)) : '--'} 
-                      <small className="text-[10px] opacity-40 uppercase ml-1">{historyType === 'peso' ? 'kg' : 'mg/dL'}</small>
-                    </p>
-                 </div>
-                 <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Máximo</p>
-                    <p className={`text-lg font-black ${historyType === 'peso' ? 'text-orange-600' : 'text-red-700'}`}>
-                      {getChartData(historyType).length > 0 ? Math.max(...getChartData(historyType).map(d => d.m)) : '--'} 
-                      <small className="text-[10px] opacity-40 uppercase ml-1">{historyType === 'peso' ? 'kg' : 'mg/dL'}</small>
-                    </p>
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
-
-      {activeMetric && (
-        <div className="animate-in slide-in-from-top-4 duration-300 space-y-4">
-          <div className="bg-white rounded-[2.8rem] p-8 shadow-xl border-4 border-slate-50">
-             <div className="flex justify-between items-center mb-8">
-                <div>
-                   <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest">Evolução: {activeMetric}</h3>
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Registos dos últimos dias</p>
-                </div>
-                <button onClick={() => setActiveMetric(null)} className="p-3 bg-slate-50 text-slate-300 rounded-2xl transition-all"><X size={18}/></button>
-             </div>
-             
-             <div className="h-[220px] w-full mb-8">
-               <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={activeData}>
-                   <defs>
-                     <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={activeMetric === 'peso' ? '#004D71' : '#ef4444'} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={activeMetric === 'peso' ? '#004D71' : '#ef4444'} stopOpacity={0}/>
-                     </linearGradient>
-                   </defs>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                   <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 8, fontWeight: 'bold', fill: '#94a3b8'}} />
-                   <YAxis hide domain={['auto', 'auto']} />
-                   <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold'}} />
-                   <Area type="monotone" dataKey="m" stroke={activeMetric === 'peso' ? '#004D71' : '#ef4444'} strokeWidth={4} fillOpacity={1} fill="url(#colorVal)" />
-                 </AreaChart>
-               </ResponsiveContainer>
-             </div>
-
-             <div className="pt-8 border-t-2 border-slate-50">
-                <p className="text-[10px] font-black text-[#004D71] uppercase mb-4 tracking-widest">Novo Registo Agora</p>
-                <div className="flex gap-2">
-                   <input 
-                     type="number" 
-                     placeholder="Valor..."
-                     value={val}
-                     onChange={e => setVal(e.target.value)}
-                     onKeyDown={e => e.key === 'Enter' && handleSave(activeMetric!)}
-                     className="flex-1 bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-lg text-[#004D71] outline-none focus:border-[#F7B500]/20 transition-all"
-                   />
-                   <button 
-                     onClick={() => handleSave(activeMetric)}
-                     disabled={loading || !val}
-                     className="bg-[#004D71] text-[#F7B500] px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
-                   >
-                     {loading ? '...' : 'Salvar'}
-                   </button>
-                </div>
-             </div>
+      {/* ── Modal QR Code Grande ── */}
+      {showQR && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in" onClick={() => setShowQR(false)}>
+          <div className="bg-white rounded-[3rem] p-8 shadow-2xl flex flex-col items-center gap-6 max-w-xs w-full" onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Código de Entrada</p>
+              <h3 className="text-lg font-black text-[#004D71] uppercase mt-1">{user.n || user.nome}</h3>
+              {selectedDest && <p className="text-xs font-bold text-[#F7B500] uppercase mt-0.5">→ {selectedDest}</p>}
+            </div>
+            <div className="p-4 bg-white rounded-3xl shadow-inner border-4 border-slate-50">
+              <QRCodeSVG value={qrValue} size={220} bgColor="#ffffff" fgColor="#004D71" level="M" />
+            </div>
+            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest text-center">Apresente este código na entrada</p>
+            <button onClick={() => setShowQR(false)} className="w-full bg-[#004D71] text-[#F7B500] py-4 rounded-2xl font-black uppercase text-xs">Fechar</button>
           </div>
         </div>
       )}
 
-      {/* Atalhos Rápidos Removidos conforme pedido */}
+      {/* ── Saúde ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => setActiveMetric(prev => prev === 'peso' ? null : 'peso')} className={`p-6 rounded-[2.5rem] border-4 transition-all text-left shadow-md ${activeMetric === 'peso' ? 'bg-[#004D71] border-[#F7B500] text-white' : 'bg-white border-[#004D71]/5 text-[#004D71]'}`}>
+          <div className={`p-3 rounded-2xl mb-4 w-fit ${activeMetric === 'peso' ? 'bg-white/10 text-[#F7B500]' : 'bg-blue-50 text-[#004D71]'}`}><Scale size={20}/></div>
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${activeMetric === 'peso' ? 'text-[#F7B500]/60' : 'text-slate-400'}`}>Peso</p>
+          <p className="text-2xl font-black">{currentWeight}<span className="text-xs opacity-40 ml-1">kg</span></p>
+        </button>
+        <button onClick={() => setActiveMetric(prev => prev === 'glicemia' ? null : 'glicemia')} className={`p-6 rounded-[2.5rem] border-4 transition-all text-left shadow-md ${activeMetric === 'glicemia' ? 'bg-red-500 border-red-200 text-white' : 'bg-white border-[#004D71]/5 text-[#004D71]'}`}>
+          <div className={`p-3 rounded-2xl mb-4 w-fit ${activeMetric === 'glicemia' ? 'bg-white/10 text-white' : 'bg-red-50 text-red-500'}`}><Activity size={20}/></div>
+          <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${activeMetric === 'glicemia' ? 'text-white/60' : 'text-slate-400'}`}>Glicemia</p>
+          <p className="text-2xl font-black">{currentGly}<span className="text-xs opacity-40 ml-1 font-mono">mg/dL</span></p>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => setHistoryType('peso')} className="bg-white text-[#004D71] p-4 rounded-[2rem] border-2 border-[#004D71]/5 flex items-center gap-3 active:scale-95 transition-all shadow-sm">
+          <div className="p-2.5 bg-blue-50 text-[#004D71] rounded-xl"><Scale size={18}/></div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-left">Gráfico<br/>de Peso</p>
+        </button>
+        <button onClick={() => setHistoryType('glicemia')} className="bg-white text-[#004D71] p-4 rounded-[2rem] border-2 border-[#004D71]/5 flex items-center gap-3 active:scale-95 transition-all shadow-sm">
+          <div className="p-2.5 bg-red-50 text-red-500 rounded-xl"><Activity size={18}/></div>
+          <p className="text-[9px] font-black uppercase tracking-wider text-left">Gráfico<br/>de Glicemia</p>
+        </button>
+      </div>
+
+      {historyType && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-[3rem] p-8 shadow-2xl relative">
+            <button onClick={() => setHistoryType(null)} className="absolute top-6 right-6 p-4 bg-slate-50 text-slate-400 rounded-full active:scale-90"><X size={24}/></button>
+            <div className="mb-8 text-center">
+              <h3 className="text-xl font-black text-[#004D71] uppercase">Histórico de {historyType === 'peso' ? 'Peso' : 'Glicemia'}</h3>
+            </div>
+            <div className="h-[250px] w-full mb-6">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={getChartData(historyType)}>
+                  <defs>
+                    <linearGradient id="colorHistory" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={historyType === 'peso' ? '#004D71' : '#ef4444'} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={historyType === 'peso' ? '#004D71' : '#ef4444'} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} />
+                  <YAxis hide domain={['auto', 'auto']} />
+                  <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold'}} />
+                  <Area type="monotone" dataKey="m" stroke={historyType === 'peso' ? '#004D71' : '#ef4444'} strokeWidth={5} fillOpacity={1} fill="url(#colorHistory)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
+                <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Mínimo</p>
+                <p className={`text-lg font-black ${historyType === 'peso' ? 'text-[#004D71]' : 'text-red-600'}`}>
+                  {getChartData(historyType).length > 0 ? Math.min(...getChartData(historyType).map(d => d.m)) : '--'}
+                  <small className="text-[10px] opacity-40 ml-1">{historyType === 'peso' ? 'kg' : 'mg/dL'}</small>
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
+                <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Máximo</p>
+                <p className={`text-lg font-black ${historyType === 'peso' ? 'text-orange-600' : 'text-red-700'}`}>
+                  {getChartData(historyType).length > 0 ? Math.max(...getChartData(historyType).map(d => d.m)) : '--'}
+                  <small className="text-[10px] opacity-40 ml-1">{historyType === 'peso' ? 'kg' : 'mg/dL'}</small>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeMetric && (
+        <div className="animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-white rounded-[2.8rem] p-8 shadow-xl border-4 border-slate-50">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xs font-black text-[#004D71] uppercase">Novo Registo — {activeMetric}</h3>
+              <button onClick={() => setActiveMetric(null)} className="p-3 bg-slate-50 text-slate-300 rounded-2xl"><X size={18}/></button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="number" placeholder="Valor..."
+                value={val} onChange={e => setVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSave(activeMetric!)}
+                className="flex-1 bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-lg text-[#004D71] outline-none"
+              />
+              <button
+                onClick={() => handleSave(activeMetric)}
+                disabled={loading || !val}
+                className="bg-[#004D71] text-[#F7B500] px-8 rounded-2xl font-black text-[10px] uppercase shadow-xl active:scale-95 disabled:opacity-50"
+              >
+                {loading ? '...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 });
