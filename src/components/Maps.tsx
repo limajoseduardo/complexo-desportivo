@@ -135,10 +135,10 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-2 text-center border-t border-slate-50 pt-3">
-                <div><p className="text-[8px] font-bold text-slate-400 uppercase">Cloro</p><p className="text-xs font-black text-[#004D71]">{log.clLivre || '--'}</p></div>
-                <div><p className="text-[8px] font-bold text-slate-400 uppercase">pH</p><p className="text-xs font-black text-orange-600">{log.ph || '--'}</p></div>
-                <div><p className="text-[8px] font-bold text-slate-400 uppercase">Água</p><p className="text-xs font-black text-[#004D71]">{log.tempAgua || '--'}º</p></div>
-                <div><p className="text-[8px] font-bold text-slate-400 uppercase">UTA</p><p className="text-xs font-black text-[#004D71]">{log.utaHum || '--'}%</p></div>
+                <div><p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Cloro</p><p className="text-lg font-black text-[#004D71]">{log.clLivre || '--'}</p></div>
+                <div><p className="text-[9px] font-bold text-slate-400 uppercase mb-1">pH</p><p className="text-lg font-black text-orange-600">{log.ph || '--'}</p></div>
+                <div><p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Água</p><p className="text-lg font-black text-[#004D71]">{log.tempAgua || '--'}º</p></div>
+                <div><p className="text-[9px] font-bold text-slate-400 uppercase mb-1">UTA</p><p className="text-lg font-black text-[#004D71]">{log.utaHum || '--'}%</p></div>
               </div>
             </div>
           ))}

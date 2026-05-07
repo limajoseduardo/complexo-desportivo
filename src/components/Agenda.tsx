@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar as CalendarIcon, Clock, Plus, Edit2, 
-  Trash2, Save, X, GraduationCap
+import {
+  Calendar as CalendarIcon, Clock, Plus, Edit2,
+  Trash2, Save, X, GraduationCap, Copy
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
@@ -21,6 +21,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const [loading, setLoading] = useState(true);
   const [editingAula, setEditingAula] = useState<Aula | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() || 7);
   const [professors, setProfessors] = useState<UserProfile[]>([]);
 
@@ -63,11 +64,21 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingAula) return;
-
+    if (!editingAula || saving) return;
+    setSaving(true);
     try {
       const path = `artifacts/${APP_ID}/public/data/agenda`;
       if (isAdding) {
+        // Verificar duplicado: mesmo dia, hora início e modalidade
+        const existe = aulas.some(a =>
+          a.diaSemana === editingAula.diaSemana &&
+          a.horaInicio === editingAula.horaInicio &&
+          a.modalidade.trim().toLowerCase() === editingAula.modalidade.trim().toLowerCase()
+        );
+        if (existe) {
+          alert('Já existe uma aula com esta modalidade, dia e hora de início.');
+          return;
+        }
         await addDoc(collection(db, path), { ...editingAula, id: undefined });
       } else {
         await updateDoc(doc(db, path, editingAula.id), { ...editingAula });
@@ -76,7 +87,34 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
       setIsAdding(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'agenda');
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const removeDuplicates = async () => {
+    if (!window.confirm('Isto irá remover aulas duplicadas (mesmo dia, hora e modalidade). Continuar?')) return;
+    const seen = new Set<string>();
+    const toDelete: string[] = [];
+    // Ordenar por id para manter sempre o primeiro criado
+    const sorted = [...aulas].sort((a, b) => a.id.localeCompare(b.id));
+    for (const aula of sorted) {
+      const key = `${aula.diaSemana}-${aula.horaInicio}-${aula.modalidade.trim().toLowerCase()}`;
+      if (seen.has(key)) {
+        toDelete.push(aula.id);
+      } else {
+        seen.add(key);
+      }
+    }
+    if (toDelete.length === 0) {
+      alert('Não foram encontradas aulas duplicadas.');
+      return;
+    }
+    const path = `artifacts/${APP_ID}/public/data/agenda`;
+    for (const id of toDelete) {
+      await deleteDoc(doc(db, path, id));
+    }
+    alert(`${toDelete.length} aula(s) duplicada(s) removida(s).`);
   };
 
   const handleDelete = async (id: string) => {
@@ -141,20 +179,29 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
         </div>
         <div className="flex gap-2">
           {canEdit && (
-            <button 
+            <button
+              onClick={removeDuplicates}
+              className="px-4 py-4 bg-orange-50 text-orange-500 rounded-2xl border-2 border-orange-50 hover:bg-orange-100 active:scale-95 transition-all flex items-center gap-2"
+              title="Remover Duplicados"
+            >
+              <Copy size={18}/>
+            </button>
+          )}
+          {canEdit && (
+            <button
               onClick={clearAgenda}
               className="px-4 py-4 bg-red-50 text-red-600 rounded-2xl border-2 border-red-50 hover:bg-red-100 active:scale-95 transition-all flex items-center gap-2 group"
               title="Limpar Agenda"
             >
-              <Trash2 size={18}/> 
+              <Trash2 size={18}/>
             </button>
           )}
           {canEdit && (
-            <button 
+            <button
               onClick={() => openEditor()}
               className="px-6 py-4 bg-[#004D71] text-[#F7B500] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center gap-2 group"
             >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform"/> 
+              <Plus size={20} className="group-hover:rotate-90 transition-transform"/>
               <span className="text-[10px] font-black uppercase">Nova Aula</span>
             </button>
           )}
@@ -402,11 +449,12 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                </div>
 
                <div className="pt-6">
-                 <button 
+                 <button
                    type="submit"
-                   className="w-full bg-[#004D71] text-[#F7B500] py-5 rounded-[2rem] font-black uppercase text-xs shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                   disabled={saving}
+                   className="w-full bg-[#004D71] text-[#F7B500] py-5 rounded-[2rem] font-black uppercase text-xs shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                  >
-                   <Save size={18}/> Salvar Aula
+                   <Save size={18}/> {saving ? 'A Guardar...' : 'Salvar Aula'}
                  </button>
                </div>
              </form>
