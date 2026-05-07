@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/jlima/AppData/Local/**)",
+      "Read(//c//**)",
+      "PowerShell([System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) -split \";\" | Where-Object { $_ -ne \"\" })",
+      "PowerShell([System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\) -split \";\" | Where-Object { $_ -ne \"\" })",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(netsh advfirewall firewall add rule name=\"Complexo Desportivo 3100\" dir=in action=allow protocol=TCP localport=3100)",
+      "PowerShell(Start-Process powershell -Verb RunAs -ArgumentList \"-Command `\"netsh advfirewall firewall add rule name='Complexo Desportivo 3100' dir=in action=allow protocol=TCP localport=3100; Write-Host 'Regra criada com sucesso!'`\"\" -Wait)"
+    ]
+  }
+}
