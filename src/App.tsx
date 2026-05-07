@@ -21,16 +21,16 @@ import { LogOut, QrCode, Shield, X, Dumbbell, Waves, Target } from 'lucide-react
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
 import { PicotoIcon } from './components/Common';
-import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
+import { auth, db, handleFirestoreError, OperationType, APP_ID } from './lib/firebase';
 import { REAL_STAFF } from './lib/seed';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { 
-  doc, setDoc, onSnapshot, collection, query, 
+import {
+  doc, setDoc, onSnapshot, collection, query,
   where, limit, orderBy, getDocs, writeBatch,
   collectionGroup
 } from 'firebase/firestore';
 
-export const APP_ID = 'cpx-vila-rei-main';
+export { APP_ID };
 
 const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
   const e = (email || '').toLowerCase().trim();

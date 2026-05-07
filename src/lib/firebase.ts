@@ -3,18 +3,18 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
+export const APP_ID = 'cpx-vila-rei-main';
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
-// Test connection using an allowed path
 const testConnection = async () => {
   try {
-    const appId = 'cpx-vila-rei-main';
-    await getDocFromServer(doc(db, `artifacts/${appId}/public/data/users`, 'connection_test'));
+    await getDocFromServer(doc(db, `artifacts/${APP_ID}/public/data/users`, 'connection_test'));
   } catch (error: any) {
-    if(error.message?.includes('the client is offline')) {
-      console.warn("Firestore: Client is offline.");
+    if (error.message?.includes('the client is offline')) {
+      console.warn('Firestore: Client is offline.');
     }
   }
 };
@@ -62,7 +62,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     },
     operationType,
     path
-  }
-  console.warn('Firestore Error (Suppressed for config): ', JSON.stringify(errInfo));
-  // We log but don't throw to prevent crashing the whole app during login/config jumping
+  };
+  console.warn('Firestore Error:', JSON.stringify(errInfo));
 }

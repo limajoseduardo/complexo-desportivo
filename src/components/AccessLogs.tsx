@@ -143,6 +143,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         await setDoc(doc(db, path, logId), {
           userId: selectedUser.id,
           userName: selectedUser.n || selectedUser.nome || 'Utente',
+          userRole: selectedUser.role,
           checkIn: Timestamp.now(),
           date: today,
           zone: 'Entrada Manual',
@@ -151,7 +152,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         });
 
         // Update UserProfile status
-        const userRef = doc(db, `artifacts/${APP_ID}/public/data/users/${selectedUser.id}`);
+        const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, selectedUser.id);
         await updateDoc(userRef, {
           isInside: true,
           location: selectedModality,
@@ -237,7 +238,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       });
 
       // Update UserProfile status
-      const userRef = doc(db, `artifacts/${APP_ID}/public/data/users/${log.userId}`);
+      const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
       await updateDoc(userRef, {
         isInside: false,
         location: null,
