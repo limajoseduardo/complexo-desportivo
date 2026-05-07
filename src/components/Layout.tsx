@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  Activity, Bug, ChevronRight, Monitor,
-  Sun, Cloud, CloudRain, CloudSnow, Wind, Thermometer
+  Activity, Bug, ChevronRight, Monitor
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -106,229 +105,82 @@ export const ModePicker = ({ onSelect }: { onSelect: (role: string) => void }) =
   );
 };
 
-const WMO: Record<number, { label: string; icon: React.ReactNode }> = {
-  0:  { label: 'Sol',        icon: <Sun size={15} className="text-yellow-400 shrink-0"/> },
-  1:  { label: 'Sol',        icon: <Sun size={15} className="text-yellow-300 shrink-0"/> },
-  2:  { label: 'Nublado',    icon: <Cloud size={15} className="text-slate-400 shrink-0"/> },
-  3:  { label: 'Nublado',    icon: <Cloud size={15} className="text-slate-500 shrink-0"/> },
-  45: { label: 'Névoa',      icon: <Wind size={15} className="text-slate-400 shrink-0"/> },
-  48: { label: 'Névoa',      icon: <Wind size={15} className="text-slate-400 shrink-0"/> },
-  51: { label: 'Chuvisco',   icon: <CloudRain size={15} className="text-blue-400 shrink-0"/> },
-  53: { label: 'Chuvisco',   icon: <CloudRain size={15} className="text-blue-400 shrink-0"/> },
-  61: { label: 'Chuva',      icon: <CloudRain size={15} className="text-blue-500 shrink-0"/> },
-  63: { label: 'Chuva',      icon: <CloudRain size={15} className="text-blue-600 shrink-0"/> },
-  71: { label: 'Neve',       icon: <CloudSnow size={15} className="text-sky-300 shrink-0"/> },
-  80: { label: 'Aguaceiros', icon: <CloudRain size={15} className="text-blue-500 shrink-0"/> },
-  95: { label: 'Trovoada',   icon: <CloudRain size={15} className="text-purple-500 shrink-0"/> },
-};
-const wmoLookup = (code: number) =>
-  WMO[code] ?? { label: '---', icon: <Thermometer size={15} className="text-slate-400 shrink-0"/> };
 
 export function Header({ user, onReportBug, unreadCount = 0 }: { user: UserProfile, onReportBug?: () => void, unreadCount?: number }) {
-  const [time, setTime] = useState(new Date());
-  const [weather, setWeather] = useState<{ temp: number; feels: number; wind: number; code: number } | null>(null);
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.69&longitude=-8.14&current=temperature_2m,apparent_temperature,weathercode,windspeed_10m&timezone=Europe/Lisbon')
-      .then(r => r.json())
-      .then(d => setWeather({
-        temp:   Math.round(d.current.temperature_2m),
-        feels:  Math.round(d.current.apparent_temperature),
-        wind:   Math.round(d.current.windspeed_10m),
-        code:   d.current.weathercode
-      }))
-      .catch(() => {});
-  }, []);
-
-  const w = weather ? wmoLookup(weather.code) : null;
-
-  const dateStr = time.toLocaleDateString('pt-PT', {
-    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
-  });
-  const timeStr = time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-
   return (
-    <header className="bg-white px-4 py-3 border-b-4 border-slate-100 sticky top-0 z-40 shadow-sm">
-      <div className="flex items-center gap-3">
-        {/* Foto */}
-        <div className="w-12 h-12 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-lg shrink-0">
+    <header className="bg-white px-5 py-4 flex justify-between items-center border-b-4 border-slate-100 sticky top-0 z-40">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-11 h-11 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md shrink-0">
           <AvatarImage src={user.img} alt={user.n || user.nome} className="w-full h-full" />
         </div>
-
-        {/* Nome + data + meteo */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <h2 className="text-sm font-black text-[#004D71] uppercase leading-none truncate">{user.nome || user.n}</h2>
-            <span className="text-[9px] font-black text-[#F7B500] uppercase tracking-widest leading-none shrink-0">{user.cargo || 'Membro'}</span>
-          </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-[9px] font-bold text-slate-400 capitalize truncate">{dateStr}</span>
-            <span className="text-[9px] font-black text-[#004D71] tabular-nums shrink-0">• {timeStr}</span>
-            {w && weather && (
-              <span className="flex items-center gap-1 shrink-0">
-                {w.icon}
-                <span className="text-[9px] font-black text-[#004D71]">{weather.temp}°</span>
-                <span className="text-[9px] font-bold text-slate-400">{w.label}</span>
-                <span className="text-[9px] font-bold text-slate-300 hidden sm:inline">· Sens. {weather.feels}° · Vento {weather.wind} km/h</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Ações */}
-        <div className="flex items-center gap-2 shrink-0">
-          {unreadCount > 0 && (
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
-              <div className="relative bg-red-600 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg">{unreadCount}</div>
-            </div>
-          )}
-          <button
-            onClick={onReportBug}
-            className="p-2.5 bg-red-50 text-red-400 rounded-xl active:scale-90 transition-all"
-            title="Reportar Erro"
-          >
-            <Bug size={16}/>
-          </button>
+        <div className="min-w-0">
+          <p className="text-[9px] font-black text-[#F7B500] uppercase tracking-widest leading-none">{user.cargo || 'Membro'}</p>
+          <h2 className="text-sm font-black text-[#004D71] truncate uppercase leading-tight">{user.nome || user.n}</h2>
         </div>
       </div>
-
-      {/* Linha extra com detalhes meteo em mobile (só quando há dados) */}
-      {w && weather && (
-        <div className="sm:hidden mt-2 flex items-center gap-3 px-1 text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-          <span>Sensação {weather.feels}°C</span>
-          <span>·</span>
-          <span>Vento {weather.wind} km/h</span>
-          <span>·</span>
-          <span>Vila de Rei</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2 shrink-0">
+        {unreadCount > 0 && (
+          <div className="relative">
+            <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
+            <div className="relative bg-red-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full shadow-lg">{unreadCount}</div>
+          </div>
+        )}
+        <button onClick={onReportBug} className="p-2.5 bg-red-50 text-red-400 rounded-xl active:scale-90 transition-all" title="Reportar Erro">
+          <Bug size={16}/>
+        </button>
+      </div>
     </header>
   );
 }
 
-export function DesktopSidebar({ activeTab, setActiveTab, onLogout, user, unreadCount = 0 }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, unreadCount?: number }) {
-  const [time, setTime] = useState(new Date());
-  const [weather, setWeather] = useState<{ temp: number; feels: number; wind: number; code: number } | null>(null);
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.69&longitude=-8.14&current=temperature_2m,apparent_temperature,weathercode,windspeed_10m&timezone=Europe/Lisbon')
-      .then(r => r.json())
-      .then(d => setWeather({
-        temp:  Math.round(d.current.temperature_2m),
-        feels: Math.round(d.current.apparent_temperature),
-        wind:  Math.round(d.current.windspeed_10m),
-        code:  d.current.weathercode,
-      }))
-      .catch(() => {});
-  }, []);
-
-  const w = weather ? wmoLookup(weather.code) : null;
-
+export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unreadCount = 0 }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, unreadCount?: number }) => {
   const menu = [
-    { id: 'inicio',     icon: <Home />,         label: 'Início',      roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
-    { id: 'utentes',   icon: <Users />,         label: 'Utentes',     roles: ['admin', 'staff', 'chefia'] },
-    { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',     roles: ['admin', 'staff', 'chefia'] },
-    { id: 'alunos',    icon: <Users />,         label: 'Alunos',      roles: ['professor'] },
-    { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios',  roles: ['admin', 'professor', 'chefia'] },
-    { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',      roles: ['utente'] },
-    { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',        roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
-    { id: 'afluencia', icon: <Activity />,      label: 'Afluência',   roles: ['utente'] },
-    { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',       roles: ['admin', 'staff', 'chefia', 'professor'] },
-    { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',      roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
-    { id: 'perfil',    icon: <User />,          label: 'Perfil',      roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
+    { id: 'inicio',     icon: <Home />,         label: 'Início',     roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
+    { id: 'utentes',   icon: <Users />,         label: 'Utentes',    roles: ['admin', 'staff', 'chefia'] },
+    { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    roles: ['admin', 'staff', 'chefia'] },
+    { id: 'alunos',    icon: <Users />,         label: 'Alunos',     roles: ['professor'] },
+    { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios', roles: ['admin', 'professor', 'chefia'] },
+    { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     roles: ['utente'] },
+    { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
+    { id: 'afluencia', icon: <Activity />,      label: 'Afluência',  roles: ['utente'] },
+    { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      roles: ['admin', 'staff', 'chefia', 'professor'] },
+    { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',     roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
+    { id: 'perfil',    icon: <User />,          label: 'Perfil',     roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   ].filter(item => item.roles.includes(user.role));
 
   return (
-    <aside className="hidden lg:flex flex-col w-80 bg-[#004D71] text-white relative shrink-0">
-
-      {/* Cabeçalho: foto + nome + data/hora/meteo */}
-      <div className="px-6 pt-8 pb-6 border-b border-white/10 space-y-4">
-        {/* Foto + nome */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl border-2 border-white/20 overflow-hidden shadow-lg shrink-0">
-            <AvatarImage src={user.img} alt={user.n || user.nome} className="w-full h-full" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[9px] font-black text-[#F7B500]/70 uppercase tracking-widest">{user.cargo || 'Membro'}</p>
-            <h2 className="text-sm font-black text-white uppercase truncate leading-tight">{user.nome || user.n}</h2>
-          </div>
+    <aside className="hidden lg:flex flex-col w-80 bg-[#004D71] p-8 text-white relative shrink-0">
+      <div className="mb-10 flex items-center gap-3">
+        <div className="w-12 h-12 rounded-2xl border-2 border-white/20 overflow-hidden shadow-lg shrink-0">
+          <AvatarImage src={user.img} alt={user.n || user.nome} className="w-full h-full" />
         </div>
-
-        {/* Hora grande */}
-        <div className="text-center bg-white/5 rounded-2xl py-3 px-4">
-          <p className="text-3xl font-black text-[#F7B500] tabular-nums font-mono tracking-tight leading-none">
-            {time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-          </p>
-          <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-1 tabular-nums">
-            {time.toLocaleTimeString('pt-PT', { second: '2-digit' }).replace(/.*:/, ':')} seg
-          </p>
-          <p className="text-[10px] font-bold text-white/60 capitalize mt-2 leading-tight">
-            {time.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-          </p>
+        <div className="min-w-0">
+          <p className="text-[8px] font-black text-[#F7B500]/70 uppercase tracking-widest">{user.cargo || 'Membro'}</p>
+          <h2 className="text-sm font-black text-white uppercase truncate">{user.nome || user.n}</h2>
         </div>
-
-        {/* Meteorologia */}
-        {w && weather && (
-          <div className="bg-white/5 rounded-2xl px-4 py-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {w.icon}
-                <span className="text-xl font-black text-white">{weather.temp}°C</span>
-                <span className="text-[10px] font-bold text-white/60 uppercase">{w.label}</span>
-              </div>
-              <span className="text-[8px] font-black text-[#F7B500]/60 uppercase tracking-widest">Vila de Rei</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1 pt-1 border-t border-white/10">
-              <div>
-                <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">Sensação</p>
-                <p className="text-xs font-black text-white/70">{weather.feels}°C</p>
-              </div>
-              <div>
-                <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">Vento</p>
-                <p className="text-xs font-black text-white/70">{weather.wind} km/h</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Navegação */}
-      <nav className="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
+      <nav className="flex-1 space-y-1">
         {menu.map(item => (
-          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-5 py-3.5 rounded-[1.25rem] font-black transition-all ${activeTab === item.id ? 'bg-[#F7B500] text-[#004D71] shadow-xl translate-x-1' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}>
-            <div className="flex items-center gap-3">
-              {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
+          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-5 py-4 rounded-[1.5rem] font-black transition-all ${activeTab === item.id ? 'bg-[#F7B500] text-[#004D71] shadow-xl translate-x-2' : 'text-blue-100/40 hover:bg-white/5 hover:text-white'}`}>
+            <div className="flex items-center gap-4">
+              {React.cloneElement(item.icon as React.ReactElement, { size: 20 })}
               <span className="uppercase text-[11px] tracking-widest">{item.label}</span>
             </div>
             {item.badge ? (
               <div className="relative">
                 <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
-                <span className="relative bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg">
-                  {item.badge}
-                </span>
+                <span className="relative bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg shadow-red-600/40">{item.badge}</span>
               </div>
             ) : null}
           </button>
         ))}
       </nav>
-
-      <button onClick={onLogout} className="mx-4 mb-6 flex items-center gap-3 px-5 py-3.5 rounded-2xl font-black text-white/30 hover:text-red-400 hover:bg-white/5 transition-all uppercase text-[11px] tracking-widest">
-        <LogOut size={18}/> Sair
+      <button onClick={onLogout} className="mt-auto flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-blue-300 hover:text-red-400 transition-all uppercase text-xs tracking-widest">
+        <LogOut size={20}/> SAIR
       </button>
     </aside>
   );
-}
+};
 
 export const MobileNav = ({ role, activeTab, setActiveTab, unreadCount = 0 }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, unreadCount?: number }) => {
   const tabs = [

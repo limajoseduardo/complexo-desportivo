@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X,
-  Scale, Activity, Plus, Check
+  Scale, Activity, Plus, Check,
+  Cloud, CloudRain, CloudSnow, Wind, Thermometer
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
@@ -270,17 +271,53 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 });
 
 
+const WMO_U: Record<number, { label: string; icon: React.ReactNode }> = {
+  0:  { label: 'Sol',        icon: <Sun size={20} className="text-yellow-400"/> },
+  1:  { label: 'Sol',        icon: <Sun size={20} className="text-yellow-300"/> },
+  2:  { label: 'Nublado',    icon: <Cloud size={20} className="text-slate-300"/> },
+  3:  { label: 'Nublado',    icon: <Cloud size={20} className="text-slate-400"/> },
+  45: { label: 'Névoa',      icon: <Wind size={20} className="text-slate-300"/> },
+  48: { label: 'Névoa',      icon: <Wind size={20} className="text-slate-300"/> },
+  51: { label: 'Chuvisco',   icon: <CloudRain size={20} className="text-blue-300"/> },
+  53: { label: 'Chuvisco',   icon: <CloudRain size={20} className="text-blue-300"/> },
+  61: { label: 'Chuva',      icon: <CloudRain size={20} className="text-blue-400"/> },
+  63: { label: 'Chuva',      icon: <CloudRain size={20} className="text-blue-500"/> },
+  71: { label: 'Neve',       icon: <CloudSnow size={20} className="text-sky-200"/> },
+  80: { label: 'Aguaceiros', icon: <CloudRain size={20} className="text-blue-400"/> },
+  95: { label: 'Trovoada',   icon: <CloudRain size={20} className="text-purple-400"/> },
+};
+const wmoU = (code: number) => WMO_U[code] ?? { label: '---', icon: <Thermometer size={20} className="text-white/40"/> };
+
 const MODALITIES = [
-  { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={14}/>,    dest: 'Piscina Coberta' },
-  { id: 'gym',      label: 'Ginásio',           icon: <Dumbbell size={14}/>, dest: 'Ginásio' },
-  { id: 'fit',      label: 'Aulas Fitness',     icon: <Activity size={14}/>, dest: 'Aulas Fitness' },
-  { id: 'sauna',    label: 'Sauna',             icon: <Flame size={14}/>,    dest: 'Sauna' },
-  { id: 'pool_out', label: 'Piscina Exterior',  icon: <Sun size={14}/>,      dest: 'Piscina Exterior' },
+  { id: 'pool_in',  label: 'Coberta',   icon: <Waves size={20}/>,    dest: 'Piscina Coberta' },
+  { id: 'gym',      label: 'Ginásio',   icon: <Dumbbell size={20}/>, dest: 'Ginásio' },
+  { id: 'fit',      label: 'Fitness',   icon: <Activity size={20}/>, dest: 'Aulas Fitness' },
+  { id: 'sauna',    label: 'Sauna',     icon: <Flame size={20}/>,    dest: 'Sauna' },
+  { id: 'pool_out', label: 'Exterior',  icon: <Sun size={20}/>,      dest: 'Piscina Exterior' },
 ];
 
 export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
+  const [time, setTime] = useState(new Date());
+  const [weather, setWeather] = useState<{ temp: number; feels: number; wind: number; code: number } | null>(null);
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.69&longitude=-8.14&current=temperature_2m,apparent_temperature,weathercode,windspeed_10m&timezone=Europe/Lisbon')
+      .then(r => r.json())
+      .then(d => setWeather({
+        temp:  Math.round(d.current.temperature_2m),
+        feels: Math.round(d.current.apparent_temperature),
+        wind:  Math.round(d.current.windspeed_10m),
+        code:  d.current.weathercode,
+      }))
+      .catch(() => {});
+  }, []);
 
   const [metrics, setMetrics] = useState<any[]>([]);
   const [activeMetric, setActiveMetric] = useState<'peso' | 'glicemia' | null>(null);
@@ -324,25 +361,63 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
     ? JSON.stringify({ id: user.id, dest: selectedDest })
     : JSON.stringify({ id: user.id });
 
+  const w = weather ? wmoU(weather.code) : null;
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500 text-left px-1 mb-8">
 
-      {/* ── Seletor de Destino ── */}
+      {/* ── Data + Hora + Meteorologia (só utente) ── */}
+      <div className="bg-[#004D71] rounded-[2rem] overflow-hidden shadow-lg">
+        {/* linha principal */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div>
+            <p className="text-[9px] font-black text-[#F7B500]/60 uppercase tracking-widest">Complexo Desportivo · Vila de Rei</p>
+            <p className="text-xs font-bold text-white/70 capitalize mt-0.5">
+              {time.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+          <p className="text-3xl font-black text-[#F7B500] tabular-nums font-mono tracking-tight">
+            {time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+        {/* linha meteorologia */}
+        {w && weather && (
+          <div className="flex items-center justify-between px-5 pb-4 pt-1 border-t border-white/10 mt-1">
+            <div className="flex items-center gap-2">
+              {w.icon}
+              <span className="text-xl font-black text-white">{weather.temp}°C</span>
+              <span className="text-xs font-bold text-white/60">{w.label}</span>
+            </div>
+            <div className="flex items-center gap-4 text-right">
+              <div>
+                <p className="text-[8px] font-black text-white/30 uppercase">Sensação</p>
+                <p className="text-xs font-black text-white/70">{weather.feels}°C</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-black text-white/30 uppercase">Vento</p>
+                <p className="text-xs font-black text-white/70">{weather.wind} km/h</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Destino: 5 pills equilibradas ── */}
       <div className="space-y-2">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Para onde vou hoje?</p>
-        <div className="grid grid-cols-2 gap-2">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Para onde vou?</p>
+        <div className="flex gap-2">
           {MODALITIES.map(m => (
             <button
               key={m.id}
               onClick={() => setSelectedDest(prev => prev === m.dest ? null : m.dest)}
-              className={`flex items-center gap-2 px-3 py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-wide transition-all active:scale-95 ${
+              className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 font-black transition-all active:scale-95 ${
                 selectedDest === m.dest
                   ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-lg'
-                  : 'bg-white border-slate-100 text-slate-500'
+                  : 'bg-white border-slate-100 text-slate-400'
               }`}
             >
               {m.icon}
-              <span className="truncate">{m.label}</span>
+              <span className="text-[7px] uppercase tracking-wide leading-none">{m.label}</span>
             </button>
           ))}
         </div>
