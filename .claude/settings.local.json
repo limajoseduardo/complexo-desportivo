@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(netsh advfirewall firewall show rule name=\"Complexo Desportivo 3100\" 2>&1)"
-    ]
-  }
-}
