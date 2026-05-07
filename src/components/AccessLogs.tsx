@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, LogIn, LogOut, Calendar, Search,
-  MapPin, Download,
+  Download,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode,
   Dumbbell, Waves, Activity, Flame
 } from 'lucide-react';
+import { AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
-import { 
-  collection, query, where, orderBy, onSnapshot, 
-  Timestamp, limit, getDocs, setDoc, addDoc, updateDoc, 
-  doc, serverTimestamp, getDoc, deleteDoc
+import {
+  collection, query, where, onSnapshot,
+  Timestamp, limit, getDocs, setDoc, updateDoc,
+  doc, serverTimestamp, deleteDoc
 } from 'firebase/firestore';
 import { AccessLog, UserProfile } from '../types';
 import { isUserInZone } from '../lib/logic';
@@ -23,6 +24,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
   
   // Manual Entry States
   const [showManualModal, setShowManualModal] = useState(false);
@@ -44,6 +46,15 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     return onSnapshot(q, snap => {
       setUtentesInside(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
     }, () => {});
+  }, []);
+
+  useEffect(() => {
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(500)))
+      .then(snap => {
+        const m: Record<string, UserProfile> = {};
+        snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
+        setUsersMap(m);
+      }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -254,11 +265,11 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   );
 
   const downloadCSV = () => {
-    const header = "Data,Nome,Modalidade,Entrada,Saida,Duração (min),Zona\n";
+    const header = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
     const rows = filteredLogs.map(l => {
       const checkIn = l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString() : l.checkIn;
       const checkOut = l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString() : l.checkOut) : '---';
-      return `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0},"${l.zone}"`;
+      return `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}`;
     }).join("\n");
     
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
@@ -290,12 +301,11 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
       l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
       l.durationMinutes ? `${l.durationMinutes} min` : '---',
-      l.zone
     ]);
 
     autoTable(doc, {
       startY: 45,
-      head: [['Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração', 'Zona']],
+      head: [['Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
       body: tableData,
       headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
       alternateRowStyles: { fillColor: [245, 247, 250] },
@@ -539,46 +549,50 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b-2 border-slate-100">
-                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Utente</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Modalidade</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Entrada</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Saída</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Duração</th>
-                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Zona</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Utente</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Modalidade</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Entrada</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Saída</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Duração</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredLogs.map(log => (
+                  {filteredLogs.map(log => {
+                    const profile = usersMap[log.userId];
+                    return (
                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                           <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-[#004D71] text-[10px]">
-                              {log.userName.substring(0, 2).toUpperCase()}
-                           </div>
-                           <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">{log.userName}</span>
+                          <AvatarImage
+                            src={profile?.img}
+                            alt={log.userName}
+                            className="w-12 h-12 rounded-xl border-2 border-slate-100 shadow-sm shrink-0 object-cover"
+                          />
+                          <span className="text-sm font-black text-[#004D71] uppercase leading-tight">{log.userName}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">{log.modalidade || '---'}</span>
+                        <span className="text-sm font-bold text-slate-500 uppercase">{log.modalidade || '---'}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-600 rounded-md font-black text-[9px]">
-                           <LogIn size={10}/>
-                           {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkIn}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-xl font-black text-sm">
+                          <LogIn size={13}/>
+                          {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkIn}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
                         {log.checkOut ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 rounded-md font-black text-[9px]">
-                             <LogOut size={10}/>
-                             {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                          <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-xl font-black text-sm">
+                            <LogOut size={13}/>
+                            {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-2">
-                            <span className="text-[9px] font-black text-[#F7B500] uppercase animate-pulse">No Recinto</span>
-                            <button 
+                            <span className="text-xs font-black text-[#F7B500] uppercase animate-pulse">No Recinto</span>
+                            <button
                               onClick={() => handleManualCheckOut(log)}
-                              className="px-3 py-1 bg-red-500 text-white rounded-md text-[8px] font-black uppercase hover:bg-red-600 transition-colors shadow-sm"
+                              className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-black uppercase hover:bg-red-600 transition-colors shadow-sm"
                             >
                               Dar Saída
                             </button>
@@ -586,28 +600,23 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="text-[10px] font-black text-[#004D71]">{log.durationMinutes ? `${log.durationMinutes} min` : '---'}</span>
+                        <span className="text-sm font-black text-[#004D71]">{log.durationMinutes ? `${log.durationMinutes} min` : '---'}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1 text-slate-400">
-                            <MapPin size={10}/>
-                            <span className="text-[9px] font-bold uppercase">{log.zone}</span>
-                          </div>
-                          <button 
-                            onClick={() => openEditModal(log)}
-                            className="p-2 text-[#004D71] hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Editar Registo"
-                          >
-                            <Edit2 size={12}/>
-                          </button>
-                        </div>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => openEditModal(log)}
+                          className="p-2 text-[#004D71] hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Editar Registo"
+                        >
+                          <Edit2 size={15}/>
+                        </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {filteredLogs.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-20 text-center text-slate-300 font-black text-[10px] uppercase tracking-widest">Sem registos para este dia</td>
+                      <td colSpan={6} className="px-6 py-20 text-center text-slate-300 font-black text-xs uppercase tracking-widest">Sem registos para este dia</td>
                     </tr>
                   )}
                 </tbody>
