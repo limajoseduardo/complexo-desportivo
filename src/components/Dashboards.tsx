@@ -482,7 +482,6 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
           </p>
         </div>
       </div>
-      </div>
 
       {/* ── Modal QR Code Grande ── */}
       {showQR && (
