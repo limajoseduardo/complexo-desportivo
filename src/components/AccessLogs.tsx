@@ -515,11 +515,11 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       {/* 4 quadrados em tempo real */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={28}/>, color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
           { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={28}/>,    color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'pool_in')).length },
-          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={28}/>,      color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
+          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={28}/>, color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
           { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={28}/>, color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
           { id: 'sauna',    label: 'Sauna',            icon: <Flame size={28}/>,    color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
+          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={28}/>,      color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
         ].map(z => (
           <div key={z.id} className={`${z.bg} rounded-[2rem] p-6 text-white shadow-xl flex flex-col justify-between gap-4 relative overflow-hidden`}>
             <div className="flex items-center justify-between">
