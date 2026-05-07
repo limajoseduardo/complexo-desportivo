@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Dumbbell, Waves, Sun, Flame, Users2, BarChart3, Bell,
-  Cake, AlertTriangle, Droplets, MapPin, Search, ChevronRight, X,
-  Scale, Activity, Target, UtensilsCrossed, Plus, Check,
-  Cloud, CloudRain, CloudSnow, Wind, Thermometer
+  Dumbbell, Waves, Sun, Flame, Users2,
+  Droplets, ChevronRight, X,
+  Scale, Activity, Plus, Check
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
@@ -270,23 +269,6 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
   );
 });
 
-const WEATHER_CODES: Record<number, { label: string; icon: React.ReactNode }> = {
-  0:  { label: 'Sol',          icon: <Sun size={18} className="text-yellow-400"/> },
-  1:  { label: 'Mostly Clear', icon: <Sun size={18} className="text-yellow-300"/> },
-  2:  { label: 'Nublado',      icon: <Cloud size={18} className="text-slate-400"/> },
-  3:  { label: 'Nublado',      icon: <Cloud size={18} className="text-slate-500"/> },
-  45: { label: 'Névoa',        icon: <Wind size={18} className="text-slate-400"/> },
-  48: { label: 'Névoa',        icon: <Wind size={18} className="text-slate-400"/> },
-  51: { label: 'Chuvisco',     icon: <CloudRain size={18} className="text-blue-400"/> },
-  53: { label: 'Chuvisco',     icon: <CloudRain size={18} className="text-blue-400"/> },
-  61: { label: 'Chuva',        icon: <CloudRain size={18} className="text-blue-500"/> },
-  63: { label: 'Chuva',        icon: <CloudRain size={18} className="text-blue-600"/> },
-  71: { label: 'Neve',         icon: <CloudSnow size={18} className="text-sky-300"/> },
-  80: { label: 'Aguaceiros',   icon: <CloudRain size={18} className="text-blue-500"/> },
-  95: { label: 'Trovoada',     icon: <CloudRain size={18} className="text-purple-500"/> },
-};
-const getWeather = (code: number) =>
-  WEATHER_CODES[code] ?? { label: '---', icon: <Thermometer size={18} className="text-slate-400"/> };
 
 const MODALITIES = [
   { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={14}/>,    dest: 'Piscina Coberta' },
@@ -297,8 +279,6 @@ const MODALITIES = [
 ];
 
 export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
-  const [time, setTime] = useState(new Date());
-  const [weather, setWeather] = useState<{ temp: number; code: number } | null>(null);
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
 
@@ -307,18 +287,6 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
   const [historyType, setHistoryType] = useState<'peso' | 'glicemia' | null>(null);
   const [val, setVal] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.69&longitude=-8.14&current=temperature_2m,weathercode&timezone=Europe/Lisbon')
-      .then(r => r.json())
-      .then(d => setWeather({ temp: Math.round(d.current.temperature_2m), code: d.current.weathercode }))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/saude`;
@@ -356,31 +324,8 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
     ? JSON.stringify({ id: user.id, dest: selectedDest })
     : JSON.stringify({ id: user.id });
 
-  const w = weather ? getWeather(weather.code) : null;
-
   return (
     <div className="space-y-4 animate-in fade-in duration-500 text-left px-1 mb-8">
-
-      {/* ── Barra Hora + Meteorologia ── */}
-      <div className="bg-[#004D71] rounded-[1.75rem] px-5 py-3 flex items-center justify-between shadow-lg gap-2">
-        <div className="min-w-0">
-          <p className="text-[8px] font-black text-[#F7B500]/70 uppercase tracking-widest">Complexo Vila de Rei</p>
-          <p className="text-[10px] font-black text-white/60 uppercase truncate">
-            {time.toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: 'short' })}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {w && weather && (
-            <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2.5 py-1.5">
-              {w.icon}
-              <span className="text-sm font-black text-white">{weather.temp}°</span>
-            </div>
-          )}
-          <p className="text-xl font-black text-[#F7B500] tabular-nums font-mono tracking-tight">
-            {time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </p>
-        </div>
-      </div>
 
       {/* ── Seletor de Destino ── */}
       <div className="space-y-2">
