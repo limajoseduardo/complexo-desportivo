@@ -359,107 +359,109 @@ export const UtenteDashboard = React.memo(({ user }: { user: UserProfile }) => {
   const w = weather ? getWeather(weather.code) : null;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500 text-left px-2 mb-24">
+    <div className="space-y-4 animate-in fade-in duration-500 text-left px-1 mb-8">
 
       {/* ── Barra Hora + Meteorologia ── */}
-      <div className="bg-[#004D71] rounded-[2rem] px-6 py-4 flex items-center justify-between shadow-lg">
-        <div>
-          <p className="text-[9px] font-black text-[#F7B500]/70 uppercase tracking-widest">Complexo Vila de Rei</p>
-          <p className="text-xs font-black text-white/70 uppercase mt-0.5">{time.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' })}</p>
+      <div className="bg-[#004D71] rounded-[1.75rem] px-5 py-3 flex items-center justify-between shadow-lg gap-2">
+        <div className="min-w-0">
+          <p className="text-[8px] font-black text-[#F7B500]/70 uppercase tracking-widest">Complexo Vila de Rei</p>
+          <p className="text-[10px] font-black text-white/60 uppercase truncate">
+            {time.toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: 'short' })}
+          </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 shrink-0">
           {w && weather && (
-            <div className="flex items-center gap-2 bg-white/10 rounded-2xl px-3 py-2">
+            <div className="flex items-center gap-1.5 bg-white/10 rounded-xl px-2.5 py-1.5">
               {w.icon}
-              <span className="text-base font-black text-white">{weather.temp}°</span>
-              <span className="text-[9px] font-bold text-white/60 uppercase hidden sm:block">{w.label}</span>
+              <span className="text-sm font-black text-white">{weather.temp}°</span>
             </div>
           )}
-          <p className="text-2xl font-black text-[#F7B500] tabular-nums font-mono">{time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
-        </div>
-      </div>
-
-      {/* ── Cartão de Sócio ── */}
-      <div className="bg-gradient-to-br from-[#004D71] to-[#003a56] rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden">
-        {/* decoração */}
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
-        <div className="absolute -bottom-6 -left-6 w-32 h-32 rounded-full bg-[#F7B500]/10 blur-xl" />
-
-        {/* cabeçalho do cartão */}
-        <div className="flex items-center justify-between mb-5 relative">
-          <div>
-            <p className="text-[8px] font-black text-[#F7B500]/70 uppercase tracking-widest">Complexo Desportivo</p>
-            <p className="text-sm font-black text-white uppercase tracking-tight">Vila de Rei</p>
-          </div>
-          <div className="bg-[#F7B500] rounded-xl px-3 py-1">
-            <p className="text-[8px] font-black text-[#004D71] uppercase tracking-widest">Sócio Activo</p>
-          </div>
-        </div>
-
-        {/* corpo do cartão */}
-        <div className="flex items-center gap-5 relative">
-          {/* foto */}
-          <div className="shrink-0">
-            <AvatarImage
-              src={user.img}
-              alt={user.n || user.nome}
-              className="w-20 h-20 rounded-2xl border-4 border-white/20 shadow-xl object-cover"
-            />
-          </div>
-
-          {/* dados */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-black text-white uppercase leading-tight truncate">{user.n || user.nome}</h3>
-            <p className="text-[10px] font-bold text-[#F7B500] uppercase tracking-widest mt-1">{user.cargo || 'Utente'}</p>
-            {user.data_nasc && (
-              <p className="text-[9px] font-bold text-white/50 uppercase mt-0.5">
-                {new Date().getFullYear() - new Date(user.data_nasc).getFullYear()} anos
-              </p>
-            )}
-            {user.num_utente && (
-              <p className="text-[9px] font-bold text-white/40 uppercase mt-1 font-mono">Nº {user.num_utente}</p>
-            )}
-            {selectedDest && (
-              <div className="mt-2 bg-[#F7B500]/20 rounded-xl px-3 py-1.5 w-fit">
-                <p className="text-[9px] font-black text-[#F7B500] uppercase tracking-widest">→ {selectedDest}</p>
-              </div>
-            )}
-          </div>
-
-          {/* QR button */}
-          <button
-            onClick={() => setShowQR(true)}
-            className="shrink-0 bg-white rounded-2xl p-2 shadow-lg active:scale-95 transition-transform"
-            title="Ver QR Code"
-          >
-            <QRCodeSVG value={qrValue} size={64} bgColor="#ffffff" fgColor="#004D71" level="M" />
-          </button>
+          <p className="text-xl font-black text-[#F7B500] tabular-nums font-mono tracking-tight">
+            {time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </p>
         </div>
       </div>
 
       {/* ── Seletor de Destino ── */}
-      <div className="space-y-3">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Para onde vou hoje?</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="space-y-2">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Para onde vou hoje?</p>
+        <div className="grid grid-cols-2 gap-2">
           {MODALITIES.map(m => (
             <button
               key={m.id}
               onClick={() => setSelectedDest(prev => prev === m.dest ? null : m.dest)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-wide transition-all active:scale-95 ${
+              className={`flex items-center gap-2 px-3 py-3 rounded-2xl border-2 font-black text-[10px] uppercase tracking-wide transition-all active:scale-95 ${
                 selectedDest === m.dest
                   ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-lg'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-[#004D71]/20'
+                  : 'bg-white border-slate-100 text-slate-500'
               }`}
             >
-              {m.icon} {m.label}
+              {m.icon}
+              <span className="truncate">{m.label}</span>
             </button>
           ))}
         </div>
+      </div>
+
+      {/* ── Cartão de Sócio (portrait, mobile-first) ── */}
+      <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
+        {/* topo do cartão */}
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
+          <div>
+            <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
+            <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
+          </div>
+          <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
+            <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Sócio Activo</p>
+          </div>
+        </div>
+
+        {/* perfil */}
+        <div className="px-6 py-4 flex items-center gap-4">
+          <AvatarImage
+            src={user.img}
+            alt={user.n || user.nome}
+            className="w-16 h-16 rounded-2xl border-2 border-white/20 shadow-lg object-cover shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-black text-white uppercase leading-tight line-clamp-2">{user.n || user.nome}</h3>
+            <p className="text-[9px] font-bold text-[#F7B500] uppercase tracking-widest mt-1">{user.cargo || 'Utente'}</p>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+              {user.data_nasc && (
+                <p className="text-[8px] font-bold text-white/40 uppercase">
+                  {new Date().getFullYear() - new Date(user.data_nasc).getFullYear()} anos
+                </p>
+              )}
+              {user.num_utente && (
+                <p className="text-[8px] font-bold text-white/40 uppercase font-mono">Nº {user.num_utente}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* destino selecionado */}
         {selectedDest && (
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">
-            QR atualizado com destino: <span className="text-[#004D71]">{selectedDest}</span>
-          </p>
+          <div className="mx-6 mb-4 bg-[#F7B500]/15 border border-[#F7B500]/30 rounded-xl px-4 py-2 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#F7B500] animate-pulse shrink-0" />
+            <p className="text-[10px] font-black text-[#F7B500] uppercase tracking-widest">
+              Destino: {selectedDest}
+            </p>
+          </div>
         )}
+
+        {/* QR Code centrado e grande */}
+        <div
+          className="mx-auto mb-6 mt-2 w-fit cursor-pointer active:scale-95 transition-transform"
+          onClick={() => setShowQR(true)}
+        >
+          <div className="bg-white rounded-[1.5rem] p-4 shadow-xl">
+            <QRCodeSVG value={qrValue} size={180} bgColor="#ffffff" fgColor="#004D71" level="M" />
+          </div>
+          <p className="text-center text-[8px] font-black text-white/40 uppercase tracking-widest mt-2">
+            Toque para ampliar
+          </p>
+        </div>
+      </div>
       </div>
 
       {/* ── Modal QR Code Grande ── */}
