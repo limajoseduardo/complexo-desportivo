@@ -305,7 +305,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
         </div>
 
         {/* seletor de destino */}
-        <div className="px-6 pt-4 pb-5 border-b border-white/10">
+        <div className="px-6 pt-4 pb-6">
           <div className="flex items-baseline justify-between mb-3">
             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
             <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
@@ -317,26 +317,21 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
           <div className="grid grid-cols-2 gap-2.5">
             {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-              const isSelected = selectedDest === m.dest;
               return (
                 <button
                   key={m.id}
-                  onClick={() => setSelectedDest(prev => prev === m.dest ? null : m.dest)}
-                  className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all active:scale-95 text-left ${
-                    isSelected
-                      ? 'bg-[#F7B500] border-[#F7B500] shadow-lg'
-                      : 'bg-white/5 border-white/10 hover:bg-white/10'
-                  }`}
+                  onClick={() => { setSelectedDest(m.dest); setShowQR(true); }}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left"
                 >
-                  <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-[#004D71]/15' : 'bg-white/10'}`}>
-                    <span className={isSelected ? 'text-[#004D71]' : 'text-white/80'}>{m.icon}</span>
+                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">
+                    {m.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-[11px] font-black uppercase leading-tight line-clamp-2 ${isSelected ? 'text-[#004D71]' : 'text-white/90'}`}>
+                    <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90">
                       {m.label}
                     </p>
-                    <p className={`text-base font-black mt-1 leading-none ${isSelected ? 'text-[#004D71]' : 'text-white'}`}>
-                      {count} <span className={`text-[9px] font-bold ${isSelected ? 'text-[#004D71]/50' : 'text-white/40'}`}>pessoas</span>
+                    <p className="text-base font-black mt-1 leading-none text-white">
+                      {count} <span className="text-[9px] font-bold text-white/40">pessoas</span>
                     </p>
                   </div>
                 </button>
@@ -345,35 +340,46 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
           </div>
         </div>
 
-        {/* QR Code */}
-        <div
-          className="mx-auto mb-6 mt-5 w-fit cursor-pointer active:scale-95 transition-transform"
-          onClick={() => setShowQR(true)}
-        >
-          <div className="bg-white rounded-[1.5rem] p-4 shadow-xl">
-            <QRCodeSVG value={qrValue} size={180} bgColor="#ffffff" fgColor="#004D71" level="M" />
-          </div>
-          <p className="text-center text-[8px] font-black text-white/40 uppercase tracking-widest mt-2">
-            {selectedDest ? `→ ${selectedDest}` : 'Toque para ampliar'}
-          </p>
-        </div>
-
       </div>
 
-      {/* ── Modal QR Code Grande ── */}
+      {/* ── QR Full Screen ── */}
       {showQR && (
-        <div className="fixed inset-0 z-[10000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in" onClick={() => setShowQR(false)}>
-          <div className="bg-white rounded-[3rem] p-8 shadow-2xl flex flex-col items-center gap-6 max-w-xs w-full" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10000] bg-gradient-to-br from-[#004D71] to-[#002f47] flex flex-col animate-in fade-in duration-200">
+          {/* Topo */}
+          <div className="flex items-center gap-4 px-6 pt-10 pb-4">
+            <button
+              onClick={() => { setShowQR(false); setSelectedDest(null); }}
+              className="p-3 bg-white/10 text-white rounded-2xl active:scale-90 transition-all shrink-0"
+            >
+              <ArrowLeft size={22}/>
+            </button>
+            <div className="min-w-0">
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Destino selecionado</p>
+              <p className="text-sm font-black text-[#F7B500] uppercase truncate">{selectedDest}</p>
+            </div>
+          </div>
+
+          {/* QR Code centrado */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-6 px-8">
+            <div className="bg-white rounded-[2rem] p-6 shadow-2xl">
+              <QRCodeSVG value={qrValue} size={240} bgColor="#ffffff" fgColor="#004D71" level="M" />
+            </div>
             <div className="text-center">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Código de Entrada</p>
-              <h3 className="text-lg font-black text-[#004D71] uppercase mt-1">{user.n || user.nome}</h3>
-              {selectedDest && <p className="text-xs font-bold text-[#F7B500] uppercase mt-0.5">→ {selectedDest}</p>}
+              <h3 className="text-xl font-black text-white uppercase">{user.n || user.nome}</h3>
+              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-1">
+                Apresente este código na entrada
+              </p>
             </div>
-            <div className="p-4 bg-white rounded-3xl shadow-inner border-4 border-slate-50">
-              <QRCodeSVG value={qrValue} size={220} bgColor="#ffffff" fgColor="#004D71" level="M" />
-            </div>
-            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest text-center">Apresente este código na entrada</p>
-            <button onClick={() => setShowQR(false)} className="w-full bg-[#004D71] text-[#F7B500] py-4 rounded-2xl font-black uppercase text-xs">Fechar</button>
+          </div>
+
+          {/* Botão de retroceder */}
+          <div className="px-6 pb-12">
+            <button
+              onClick={() => { setShowQR(false); setSelectedDest(null); }}
+              className="w-full bg-white/10 border border-white/15 text-white py-5 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all"
+            >
+              <ArrowLeft size={18}/> Voltar
+            </button>
           </div>
         </div>
       )}
