@@ -103,8 +103,9 @@ export interface HealthMetric {
   id: string;
   userId: string;
   timestamp: any;
-  type: 'peso' | 'glicemia';
+  type: 'peso' | 'glicemia' | 'tensao';
   value: number;
+  value2?: number;
   unit: string;
 }
 
