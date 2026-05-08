@@ -15,7 +15,7 @@ import { ChatModule } from './components/Chat';
 import { UtenteTrainingModule } from './components/UtenteTraining';
 import { AccessLogsModule } from './components/AccessLogs';
 import { AgendaModule } from './components/Agenda';
-import { LogOut, QrCode, Shield } from 'lucide-react';
+import { QrCode, Shield } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
 import { PicotoIcon } from './components/Common';
@@ -58,27 +58,7 @@ export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogou
 }) => {
   return (
     <div className="animate-in fade-in pb-32 font-sans text-left px-1">
-      {user.role === 'utente' ? (
-        <div className="space-y-6">
-          <div className="px-1 flex justify-between items-end print:hidden gap-3">
-            <div>
-              <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Área Pessoal</h2>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gestão de acessos Picoto</p>
-            </div>
-            <button
-              onClick={onLogout}
-              className="px-4 py-3 bg-white text-[#004D71] rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all hover:bg-slate-100 active:scale-95"
-            >
-              <LogOut size={16} className="inline-block mr-2" /> Sair
-            </button>
-          </div>
-          <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} />
-        </div>
-      )}
+      <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} />
     </div>
   );
 });
