@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Users2, Dumbbell, Waves, Flame, Droplet, Activity,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Gauge
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Gauge, Star
 } from 'lucide-react';
 import { collection, onSnapshot, orderBy, query, where, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -148,11 +148,16 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   const todayNumber = getTodayNumber(now);
 
   const zones = useMemo(() => [
-    { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={28} />,    color: 'text-sky-400',     bg: 'bg-sky-400/10' },
-    { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={28} />, color: 'text-[#F7B500]',   bg: 'bg-[#F7B500]/10' },
-    { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={28} />, color: 'text-purple-400',  bg: 'bg-purple-400/10' },
-    { id: 'sauna',    label: 'Sauna',            icon: <Flame size={28} />,    color: 'text-orange-400',  bg: 'bg-orange-400/10' },
-    { id: 'pool_out', label: 'Piscina Exterior', icon: <Waves size={28} />,    color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+    { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={28}/>,      color: 'text-sky-400',     bg: 'bg-sky-400/10' },
+    { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={28}/>,       color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+    { id: 'nat1',     label: 'Natação Nível 1',      icon: <Waves size={28}/>,     color: 'text-blue-300',    bg: 'bg-blue-300/10' },
+    { id: 'nat2',     label: 'Natação Nível 2',      icon: <Waves size={28}/>,     color: 'text-blue-400',    bg: 'bg-blue-400/10' },
+    { id: 'nat3',     label: 'Natação Nível 3',      icon: <Waves size={28}/>,     color: 'text-blue-500',    bg: 'bg-blue-500/10' },
+    { id: 'hidro',    label: 'Hidroginástica',       icon: <Droplets size={28}/>,  color: 'text-teal-400',    bg: 'bg-teal-400/10' },
+    { id: 'bebes',    label: 'Bebés / AMA',          icon: <Users2 size={28}/>,    color: 'text-indigo-400',  bg: 'bg-indigo-400/10' },
+    { id: 'fit',      label: 'Aulas Fitness',        icon: <Activity size={28}/>,  color: 'text-purple-400',  bg: 'bg-purple-400/10' },
+    { id: 'gym',      label: 'Ginásio',              icon: <Dumbbell size={28}/>,  color: 'text-[#F7B500]',   bg: 'bg-[#F7B500]/10' },
+    { id: 'sauna',    label: 'Sauna',                icon: <Flame size={28}/>,     color: 'text-orange-400',  bg: 'bg-orange-400/10' },
   ], []);
 
   const zoneCounts = useMemo(() =>
@@ -271,21 +276,23 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
                 <span className="text-sm sm:text-base font-black text-white tabular-nums">{total} total</span>
               </div>
             </div>
-            {/* Mobile: grelha 2 col; Desktop: lista 1 col */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-1 gap-2 lg:flex lg:flex-col lg:flex-1 lg:gap-3 lg:min-h-0">
+            {/* Grelha de 2 colunas para as 10 modalidades */}
+            <div className="grid grid-cols-2 gap-2 lg:gap-3 min-h-0 overflow-y-auto pb-2 custom-scrollbar">
               {zoneCounts.map(z => (
                 <div
                   key={z.id}
-                  className="bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-4 py-3 sm:py-4 lg:flex-1 flex items-center justify-between gap-2 sm:gap-3 min-h-[72px] sm:min-h-[84px] lg:min-h-0"
+                  className="bg-white/5 border border-white/10 rounded-2xl p-3 lg:p-4 flex flex-col justify-center items-center gap-2 lg:gap-3"
                 >
-                  <div className={`p-2 sm:p-2.5 rounded-xl ${z.bg} ${z.color} shrink-0`}>
-                    {React.cloneElement(z.icon, { size: 20 })}
+                  <div className="flex items-center justify-between w-full">
+                    <div className={`p-2 lg:p-2.5 rounded-xl ${z.bg} ${z.color} shrink-0`}>
+                      {React.cloneElement(z.icon, { size: 22 })}
+                    </div>
+                    <p className="text-3xl lg:text-4xl font-black text-white tabular-nums leading-none">
+                      {z.count}
+                    </p>
                   </div>
-                  <p className="text-[10px] sm:text-xs lg:text-sm xl:text-base font-black uppercase tracking-wide text-slate-200 flex-1 leading-tight">
+                  <p className="text-xs lg:text-sm font-black uppercase tracking-widest text-slate-300 w-full text-left leading-tight truncate">
                     {z.label}
-                  </p>
-                  <p className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white tabular-nums leading-none">
-                    {z.count}
                   </p>
                 </div>
               ))}
