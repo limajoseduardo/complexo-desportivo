@@ -87,6 +87,7 @@ export function ProfileViewModule({
   currentRole?: string;
   onReportBug?: () => void;
 }) {
+  const LOCAL_USERS_KEY = 'cpx_local_users_overrides_v1';
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<UserProfile>({ ...user });
   const [saving, setSaving] = useState(false);
@@ -104,6 +105,22 @@ export function ProfileViewModule({
   const [savingMetric, setSavingMetric] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const readLocalOverrides = (): Record<string, UserProfile> => {
+    try {
+      const raw = localStorage.getItem(LOCAL_USERS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const writeLocalOverride = (profile: UserProfile) => {
+    const map = readLocalOverrides();
+    map[profile.id] = profile;
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(map));
+    localStorage.setItem('cpx_v33_session', JSON.stringify(profile));
+  };
+
   const age = calcAge(formData.data_nasc);
   const isMinor = age !== null && age < 16;
   const canEdit = true;
@@ -111,6 +128,13 @@ export function ProfileViewModule({
   useEffect(() => {
     if (!isEditing) setFormData({ ...user });
   }, [user.id, user.updatedAt, user.isInside, user.location]);
+
+  useEffect(() => {
+    const local = readLocalOverrides()[user.id];
+    if (!local) return;
+    setFormData(prev => ({ ...prev, ...local }));
+    if (setUser) setUser({ ...user, ...local });
+  }, [user.id]);
 
   useEffect(() => {
     if (!user.id) return;
@@ -180,8 +204,14 @@ export function ProfileViewModule({
         ...(formData.termo_imagens && !user.termo_imagens_data && { termo_imagens_data: now }),
         ...(formData.termo_responsabilidade && !user.termo_responsabilidade_data && { termo_responsabilidade_data: now }),
       };
-      await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, id), updateData);
       const saved = { ...formData, ...updateData };
+      // Save locally first so it always persists even when cloud is unavailable.
+      writeLocalOverride(saved);
+      try {
+        await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, id), updateData);
+      } catch (cloudError) {
+        handleFirestoreError(cloudError, OperationType.UPDATE, `users/${formData.id}`);
+      }
       setFormData(saved);
       if (setUser) setUser(saved);
       setIsEditing(false);
