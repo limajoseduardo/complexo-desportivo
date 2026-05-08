@@ -12,7 +12,8 @@
     "firebase:local": "PATH=.local-java/bin:$PATH firebase emulators:start --only auth,firestore --import=./local-data/firebase --export-on-exit=./local-data/firebase",
     "firebase:seed": "tsx scripts/seed-local.ts",
     "dev:cloud": "vite --port=3100 --host=0.0.0.0",
-    "firebase:migrate": "tsx scripts/migrate-cloud-to-local.ts"
+    "firebase:migrate": "tsx scripts/migrate-cloud-to-local.ts",
+    "firebase:migrate:retry": "bash scripts/migrate-retry.sh 600"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
