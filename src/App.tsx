@@ -234,7 +234,7 @@ export default function App() {
         cargo: fresh.cargo || (normalizedRole === 'chefia' ? 'Direção Municipal' : normalizedRole.toUpperCase()),
       };
 
-      if (updatedUser.role !== user.role || updatedUser.cargo !== user.cargo || updatedUser.img !== user.img) {
+      if (JSON.stringify(updatedUser) !== JSON.stringify(user)) {
         setUser(updatedUser);
         localStorage.setItem('cpx_v33_session', JSON.stringify(updatedUser));
       }
@@ -484,7 +484,10 @@ export default function App() {
                   <ProfileViewModuleCustom 
                     user={user} 
                     onLogout={handleLogout} 
-                    setUser={setUser}
+                    setUser={(updatedUser) => {
+                      setUser(updatedUser);
+                      localStorage.setItem('cpx_v33_session', JSON.stringify(updatedUser));
+                    }}
                     setActiveTab={setActiveTab}
                   />
                 )}
