@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
-  Droplets, ChevronRight, X,
+  Droplets, ChevronRight, X, ArrowLeft,
   Activity, Plus, Check, Star
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
