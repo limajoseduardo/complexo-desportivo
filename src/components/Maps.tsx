@@ -120,40 +120,46 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {poolLogs.map((log, i) => {
             const { data, hora } = fmtDateTime(log.timestamp, log.data, log.hora);
             return (
-            <div key={i} className="bg-white rounded-[2rem] p-5 border-2 border-slate-50 shadow-sm">
-              <div className="flex justify-between items-start mb-4 text-left">
-                <div className="text-left space-y-1">
-                  <p className="text-base font-black text-[#004D71] uppercase tracking-tight">{data}</p>
-                  <p className="text-sm font-black text-[#004D71]/70 tabular-nums">{hora}</p>
-                  <p className="text-sm font-black text-slate-500 uppercase tracking-wide">{log.tecnico}</p>
-                  {log.editedBy && (
-                    <p className="text-xs text-orange-400 font-bold uppercase mt-0.5">Editado por {log.editedBy}</p>
-                  )}
+              <div key={i} className="flex items-center gap-3 bg-white rounded-[1.5rem] px-4 py-3 border-2 border-slate-50 shadow-sm">
+                {/* Meta: data + hora + técnico */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-black text-[#004D71] tabular-nums whitespace-nowrap">{data} {hora}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{log.tecnico}</span>
+                    {log.editedBy && (
+                      <span className="text-[8px] text-orange-400 font-bold uppercase">✎ {log.editedBy}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                {/* Valores inline */}
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Cl</span>
+                    <span className="text-sm font-black text-[#004D71] tabular-nums">{log.clLivre || '—'}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">pH</span>
+                    <span className="text-sm font-black text-orange-600 tabular-nums">{log.ph || '—'}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Água</span>
+                    <span className="text-sm font-black text-[#004D71] tabular-nums">{log.tempAgua ? `${log.tempAgua}°` : '—'}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">UTA</span>
+                    <span className="text-sm font-black text-[#004D71] tabular-nums">{log.utaHum ? `${log.utaHum}%` : '—'}</span>
+                  </div>
                   {canEdit && (
-                    <button
-                      onClick={() => openEdit(log)}
-                      className="p-2 text-[#004D71] hover:bg-slate-100 rounded-xl transition-colors"
-                      title="Corrigir registo"
-                    >
-                      <Edit2 size={16}/>
+                    <button onClick={() => openEdit(log)} className="p-2 text-slate-300 hover:text-[#004D71] hover:bg-slate-50 rounded-xl transition-colors" title="Corrigir">
+                      <Edit2 size={14}/>
                     </button>
                   )}
-                  <div className="bg-blue-50 text-[#004D71] px-3 py-1 rounded-full text-[9px] font-black uppercase">Validado</div>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3 text-center border-t border-slate-100 pt-4">
-                <div><p className="text-xs font-bold text-slate-400 uppercase mb-2">Cloro</p><p className="text-2xl font-black text-[#004D71]">{log.clLivre || '--'}</p></div>
-                <div><p className="text-xs font-bold text-slate-400 uppercase mb-2">pH</p><p className="text-2xl font-black text-orange-600">{log.ph || '--'}</p></div>
-                <div><p className="text-xs font-bold text-slate-400 uppercase mb-2">Água</p><p className="text-2xl font-black text-[#004D71]">{log.tempAgua || '--'}º</p></div>
-                <div><p className="text-xs font-bold text-slate-400 uppercase mb-2">UTA</p><p className="text-2xl font-black text-[#004D71]">{log.utaHum || '--'}%</p></div>
-              </div>
-            </div>
             );
           })}
           {poolLogs.length === 0 && (

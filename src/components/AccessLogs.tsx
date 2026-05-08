@@ -534,17 +534,6 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
 
       <div className="flex flex-col gap-6">
         <div className="space-y-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input 
-              type="text" 
-              placeholder="Pesquisar por nome ou modalidade..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-6 py-4 bg-white border-4 border-slate-100 rounded-[2.5rem] text-sm font-black text-[#004D71] placeholder-slate-300 outline-none shadow-sm focus:border-[#004D71]/5 transition-all"
-            />
-          </div>
-
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">

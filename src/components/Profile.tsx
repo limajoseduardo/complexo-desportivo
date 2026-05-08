@@ -221,8 +221,8 @@ export function ProfileViewModule({
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 text-left px-2 pb-24 max-w-4xl mx-auto">
 
-      {/* ID CARD — oculto na vista própria do utente */}
-      {!(user.role === 'utente' && !isExternalView) && <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
+      {/* ID CARD — oculto na vista própria do utente e staff */}
+      {!(['utente', 'staff'].includes(user.role) && !isExternalView) && <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
         <div className="flex items-center justify-between px-6 pt-5 pb-2">
           <div className="flex items-center gap-2">
             {isExternalView && (
@@ -342,8 +342,8 @@ export function ProfileViewModule({
         }
       }}/>
 
-      {/* Barra de edição — visível apenas na vista própria do utente */}
-      {user.role === 'utente' && !isExternalView && (
+      {/* Barra de edição — visível na vista própria do utente e staff */}
+      {['utente', 'staff'].includes(user.role) && !isExternalView && (
         <div className="flex items-center justify-between bg-white rounded-[2rem] px-5 py-3 border-2 border-slate-100 shadow-sm gap-3">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             {isEditing ? 'Modo de edição activo' : 'Dados do perfil'}
