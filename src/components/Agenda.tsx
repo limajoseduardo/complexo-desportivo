@@ -8,6 +8,7 @@ import { APP_ID } from '../App';
 import { 
   collection, onSnapshot, query, addDoc, updateDoc, 
   deleteDoc, doc, orderBy, where
+} from 'firebase/firestore';
 import { Aula, UserRole, UserProfile } from '../types';
 
 interface AgendaModuleProps {

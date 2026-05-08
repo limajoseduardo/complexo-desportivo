@@ -63,7 +63,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(8000)))
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(500)))
       .then(snap => {
         const m: Record<string, UserProfile> = {};
         snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
@@ -75,7 +75,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     setLoading(true);
     const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
     
-    const q = query(collection(db, path), orderBy('checkIn', 'desc'), limit(3000));
+    const q = query(collection(db, path), orderBy('checkIn', 'desc'), limit(500));
 
     const unsub = onSnapshot(q, (snap) => {
       const sorted = snap.docs
