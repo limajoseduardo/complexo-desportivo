@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield
+  Activity, Plus, Check, Star, Shield, LogOut
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -278,10 +278,11 @@ const MODALITIES = [
   { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
 ];
 
-export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
+export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onLogout }: {
   user: UserProfile;
   utentes?: UserProfile[];
   onUserClick: (u: UserProfile) => void;
+  onLogout?: () => void;
 }) => {
   const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
   const totalInside = utentes.filter(u => u.isInside).length;
@@ -295,8 +296,23 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
             <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
             <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
           </div>
-          <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
-            <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
+          <div className="flex items-center gap-3">
+            <div className="bg-[#F7B500] rounded-lg px-2.5 py-1 hidden sm:block">
+              <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
+            </div>
+            {onLogout && (
+              <button 
+                onClick={() => {
+                  if (window.confirm('Tem a certeza que deseja sair?')) {
+                    onLogout();
+                  }
+                }}
+                className="bg-red-500 text-white hover:bg-red-600 rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-95 shadow-md border border-red-400"
+              >
+                <LogOut size={12} />
+                <span className="text-[9px] font-black uppercase tracking-widest">Sair</span>
+              </button>
+            )}
           </div>
         </div>
 

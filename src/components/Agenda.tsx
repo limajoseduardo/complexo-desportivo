@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon, Clock, Plus, Edit2,
-  Trash2, Save, X, GraduationCap, Copy
+  Trash2, Save, X, GraduationCap, Copy, Users
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
@@ -24,6 +24,8 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() || 7);
   const [professors, setProfessors] = useState<UserProfile[]>([]);
+  const [viewingInscritos, setViewingInscritos] = useState<any[] | null>(null);
+  const [viewingAulaNome, setViewingAulaNome] = useState('');
 
   const canEdit = ['admin', 'staff', 'chefia', 'professor'].includes(userRole);
 
@@ -123,6 +125,28 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
       await deleteDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, id));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'agenda');
+    }
+  };
+
+  const toggleInscricao = async (aula: any) => {
+    if (!user) return;
+    const path = `artifacts/${APP_ID}/public/data/agenda`;
+    const inscritos = aula.inscritos || [];
+    const isEnrolled = inscritos.some((i: any) => i.id === user.id);
+    
+    if (!isEnrolled && aula.vagas && inscritos.length >= aula.vagas) {
+      alert('Esta aula já está cheia!');
+      return;
+    }
+    
+    try {
+      const newInscritos = isEnrolled 
+        ? inscritos.filter((i: any) => i.id !== user.id)
+        : [...inscritos, { id: user.id, nome: user.nome || user.n || 'Utente' }];
+        
+      await updateDoc(doc(db, path, aula.id), { inscritos: newInscritos });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'agenda');
     }
   };
 
@@ -254,7 +278,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                 <h4 className="text-lg font-black text-[#004D71] uppercase leading-tight mt-2">{aula.modalidade}</h4>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+              <div className="flex items-end justify-between pt-4 border-t border-slate-50">
                  <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-[#004D71]/5 flex items-center justify-center text-[#004D71]">
                        <GraduationCap size={16}/>
@@ -265,11 +289,33 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                        {aula.professor2 && <p className="text-[10px] font-black text-[#004D71]/70 uppercase">{aula.professor2}</p>}
                     </div>
                  </div>
-                 <div className="text-right">
-                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">Vagas</p>
-                    <p className="text-[10px] font-black text-[#F7B500] uppercase">{aula.vagas || '---'}</p>
+                 <div className="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">Inscritos / Vagas</p>
+                      <p className="text-[10px] font-black text-[#F7B500] uppercase">{((aula as any).inscritos || []).length} / {aula.vagas || '---'}</p>
+                    </div>
+                    {userRole === 'utente' && (
+                      <button 
+                        onClick={() => toggleInscricao(aula)}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                          ((aula as any).inscritos || []).some((i: any) => i.id === user?.id)
+                            ? 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-100' 
+                            : 'bg-[#004D71] text-[#F7B500] active:scale-95 shadow-md'
+                        }`}
+                      >
+                        {((aula as any).inscritos || []).some((i: any) => i.id === user?.id) ? 'Cancelar' : 'Inscrever'}
+                      </button>
+                    )}
                  </div>
               </div>
+              {canEdit && ((aula as any).inscritos && (aula as any).inscritos.length > 0) && (
+                <button 
+                  onClick={() => { setViewingInscritos((aula as any).inscritos); setViewingAulaNome(aula.modalidade); }}
+                  className="mt-3 w-full py-2.5 bg-slate-50 text-[9px] font-black text-[#004D71] uppercase rounded-xl hover:bg-slate-100 transition-colors border border-slate-100 flex items-center justify-center gap-2"
+                >
+                  <Users size={14}/> Ver {((aula as any).inscritos).length} {((aula as any).inscritos).length === 1 ? 'Inscrito' : 'Inscritos'}
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -296,6 +342,28 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
           </div>
         )}
       </div>
+
+      {viewingInscritos && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative animate-in zoom-in max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <button onClick={() => setViewingInscritos(null)} className="absolute top-6 right-6 p-4 bg-slate-50 text-slate-400 rounded-full active:scale-90"><X size={20}/></button>
+            <div className="mb-6 pr-10 text-left">
+              <h3 className="text-xl font-black text-[#004D71] uppercase">{viewingAulaNome}</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Lista de Inscritos</p>
+            </div>
+            <div className="space-y-2">
+              {viewingInscritos.map((inscrito: any, idx: number) => (
+                <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-[#004D71] font-black text-xs shadow-sm border border-slate-100 shrink-0">
+                    {idx + 1}
+                  </div>
+                  <p className="font-black text-sm text-[#004D71] uppercase truncate">{inscrito.nome}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingAula && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">

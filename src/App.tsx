@@ -470,6 +470,7 @@ export default function App() {
                     user={user} 
                     utentes={utentes} 
                     onUserClick={setViewingProfile} 
+                    onLogout={handleLogout}
                   />
                 )}
                 {activeTab === 'inicio' && !['utente', 'staff'].includes(user.role) && (

@@ -31,14 +31,25 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [userSearchText, setUserSearchText] = useState('');
   const [foundUsers, setFoundUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [selectedModality, setSelectedModality] = useState('Piscina Livre');
+  const [selectedModality, setSelectedModality] = useState('Piscina Regime Livre');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
 
-  const modalities = ['Piscina Livre', 'Piscina Exterior', 'Ginásio', 'Hidroginástica', 'Natação (Nível 1/2)', 'Natação (Nível 3)', 'Bebés / AMA'];
+  const modalities = [
+    'Piscina Regime Livre',
+    'Piscina Exterior',
+    'Natação Nível 1',
+    'Natação Nível 2',
+    'Natação Nível 3',
+    'Hidroginástica',
+    'Bebés/AMA',
+    'Aulas Fitness',
+    'Ginásio',
+    'Sauna'
+  ];
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/users`;
@@ -194,7 +205,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const openEditModal = (log: AccessLog) => {
     setEditingLogId(log.id);
     setSelectedUser({ id: log.userId, n: log.userName } as any);
-    setSelectedModality(log.modalidade || 'Piscina Livre');
+    setSelectedModality(log.modalidade || 'Piscina Regime Livre');
     setEditDate(log.date);
     
     const checkInDate = log.checkIn instanceof Timestamp ? log.checkIn.toDate() : new Date(log.checkIn);

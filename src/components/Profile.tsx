@@ -20,15 +20,16 @@ const TERMO_RESPONSABILIDADE =
   'A Lei n.º 5/2007, de 16 de Janeiro, que aprova a Lei de Bases da Actividade Física e do Desporto, estatui, no n.º 2 do seu artigo 40.º, no âmbito das actividades físicas e desportivas não federadas, que "constitui especial obrigação do praticante assegurar-se, previamente, de que não tem quaisquer contra-indicações para a sua prática". Assim, deixa de ser obrigatório a apresentação de exame médico para a prática desportiva, cabendo ao praticante assegurar que não tem quaisquer contraindicações para o efeito. Declaro que estou ciente e tomei conhecimento da legislação em vigor, pelo que declaro que não possuo quaisquer contra-indicações para a prática de actividades desportivas. A Direção Técnica do Complexo Desportivo de Vila de Rei recomenda a entrega de um atestado médico. Caso, no futuro, as condições actuais sejam alteradas, assumo a responsabilidade de informar a Direção Técnica do Complexo Desportivo de Vila de Rei. Mais declaro que cumprirei todas as regras do regulamento interno do Complexo Desportivo de Vila de Rei.';
 
 const MODALIDADES = [
-  'Piscina Livre',
-  'Natação Nível 1 (Iniciação / Bebés & AMA)',
-  'Natação Nível 2 (Aperfeiçoamento)',
-  'Natação Nível 3 (Avançado)',
-  'Hidroginástica (Sénior)',
+  'Piscina Regime Livre',
+  'Piscina Exterior',
+  'Natação Nível 1',
+  'Natação Nível 2',
+  'Natação Nível 3',
+  'Hidroginástica',
+  'Bebés/AMA',
+  'Aulas Fitness',
   'Ginásio',
-  'Aula de Fitness',
-  'Sauna',
-  'Ténis',
+  'Sauna'
 ];
 
 function calcAge(dataNasc?: string): number | null {
