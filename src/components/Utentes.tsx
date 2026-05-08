@@ -184,6 +184,12 @@ export function UtentesList({
 
       <div className="space-y-3">
 
+        {search.trim().length > 0 ? (
+          <div className="bg-white rounded-[2rem] border-4 border-[#004D71]/5 overflow-hidden shadow-sm divide-y divide-[#004D71]/5">
+            {filtered.map(u => <UtenteRow key={u.id} u={u} onClick={() => onUserClick(u)} />)}
+          </div>
+        ) : (
+          <>
         {/* Grupo: No Recinto */}
         {groups.inside.length > 0 && (
           <div className="bg-white rounded-[2rem] border-4 border-green-200/60 overflow-hidden shadow-sm">
@@ -227,6 +233,8 @@ export function UtentesList({
             )}
           </div>
         ))}
+          </>
+        )}
 
         {filtered.length === 0 && (
           <div className="bg-white rounded-[2.5rem] border-4 border-[#004D71]/5 text-center py-20 text-slate-200">

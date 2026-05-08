@@ -22,6 +22,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [startDate, setStartDate] = useState('2024-01-01');
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,7 +63,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`)))
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(8000)))
       .then(snap => {
         const m: Record<string, UserProfile> = {};
         snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
@@ -74,7 +75,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     setLoading(true);
     const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
     
-    const q = query(collection(db, path));
+    const q = query(collection(db, path), orderBy('checkIn', 'desc'), limit(3000));
 
     const unsub = onSnapshot(q, (snap) => {
       const sorted = snap.docs
