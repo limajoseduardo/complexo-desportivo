@@ -596,79 +596,30 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       )}
 
       {/* Quadrados em tempo real (10 modalidades) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         {[
-          { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={20}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
-          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={20}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
-          { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={20}/>,     color: 'text-blue-200',   bg: 'bg-blue-500',     count: utentesInside.filter(u => isUserInZone(u, 'nat1')).length },
-          { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={20}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat2')).length },
-          { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={20}/>,     color: 'text-blue-400',   bg: 'bg-blue-700',     count: utentesInside.filter(u => isUserInZone(u, 'nat3')).length },
-          { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={20}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
-          { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={20}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
-          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={20}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
-          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={20}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
-          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={20}/>,     color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
+          { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={16}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
+          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={16}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
+          { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={16}/>,     color: 'text-blue-200',   bg: 'bg-blue-500',     count: utentesInside.filter(u => isUserInZone(u, 'nat1')).length },
+          { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={16}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat2')).length },
+          { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={16}/>,     color: 'text-blue-400',   bg: 'bg-blue-700',     count: utentesInside.filter(u => isUserInZone(u, 'nat3')).length },
+          { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={16}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
+          { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={16}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
+          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={16}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
+          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={16}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
+          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={16}/>,     color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
         ].map(z => (
-          <div key={z.id} className={`${z.bg} rounded-3xl p-4 text-white shadow-sm flex flex-col justify-between gap-3 border border-white/10`}>
-            <div className="flex items-center justify-between">
-              <span className={`${z.color} bg-white/10 p-2 rounded-xl`}>{z.icon}</span>
-              <p className={`text-3xl font-black tabular-nums leading-none ${z.color}`}>{z.count}</p>
+          <div key={z.id} className={`${z.bg} rounded-2xl p-3 text-white shadow-sm flex items-center justify-between gap-2 border border-white/10`}>
+            <div className="flex items-center gap-2 flex-1">
+              <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0`}>{z.icon}</span>
+              <p className="text-[9px] font-black uppercase tracking-wide text-white/90 leading-tight break-words line-clamp-2">{z.label}</p>
             </div>
-            <p className="text-[10px] font-black uppercase tracking-wide text-white/90 leading-tight w-full break-words">{z.label}</p>
+            <p className={`text-2xl font-black tabular-nums leading-none ${z.color} shrink-0`}>{z.count}</p>
           </div>
         ))}
       </div>
 
-      {/* Resumo Estatístico */}
-      <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border-4 border-slate-100 mb-6 mt-6">
-        <div className="flex flex-col md:flex-row justify-between gap-6">
-           <div>
-              <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2 mb-1">
-                 <FileText size={16} className="text-[#F7B500]"/> Resumo do Período
-              </h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">De {startDate} a {endDate}</p>
-              <div className="bg-[#004D71] text-[#F7B500] px-6 py-4 rounded-2xl inline-flex flex-col items-center justify-center shadow-lg">
-                 <span className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Total de Entradas</span>
-                 <span className="text-4xl font-black tabular-nums leading-none">{filteredLogs.length}</span>
-              </div>
-           </div>
-           
-           <div className="flex-1">
-             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b-2 border-slate-50 pb-2">Distribuição por Modalidade</h4>
-             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-               {statsByModality.map((stat, i) => (
-                 <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center">
-                   <span className="text-xl font-black text-[#004D71] tabular-nums leading-none mb-1">{stat.count}</span>
-                   <span className="text-[9px] font-bold text-slate-500 uppercase leading-tight line-clamp-2">{stat.label}</span>
-                 </div>
-               ))}
-               {statsByModality.length === 0 && (
-                 <p className="text-[10px] text-slate-400 italic">Sem dados</p>
-               )}
-             </div>
-           </div>
-        </div>
-        
-        {/* Gráfico de Afluência Horária */}
-        <div className="mt-6 pt-6 border-t-2 border-slate-50">
-          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Activity size={14} className="text-[#004D71]" /> Horários de Maior Afluência
-          </h4>
-          <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                <XAxis dataKey="hora" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold', fill: '#94a3b8'}}/>
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#94a3b8'}} allowDecimals={false}/>
-                <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.1)'}} formatter={(value: any) => [`${value} entradas`, 'Afluência']} labelStyle={{color: '#004D71', fontWeight: 'black', marginBottom: '4px'}}/>
-                <Area type="monotone" dataKey="entradas" stroke="#004D71" strokeWidth={3} fill="#004D71" fillOpacity={0.06} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 mt-6">
         <div className="space-y-6">
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
