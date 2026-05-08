@@ -24,7 +24,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 30);
+    d.setDate(d.getDate() - 7);
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -66,7 +66,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(3000)))
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(10000)))
       .then(snap => {
         const m: Record<string, UserProfile> = {};
         snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
@@ -80,7 +80,9 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     
     const q = query(
       collection(db, path),
-      limit(2000)
+      where('date', '>=', startDate),
+      where('date', '<=', endDate),
+      limit(5000)
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -107,17 +109,16 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       return;
     }
 
-    const searchUsers = async () => {
-      const q = query(
-        collection(db, `artifacts/${APP_ID}/public/data/users`),
-        where('role', '==', 'utente'),
-        limit(1000)
-      );
-      const snap = await getDocs(q);
-      const allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
-      setFoundUsers(allUsers.filter(u => 
-        (u.n || u.nome || '').toLowerCase().includes(userSearchText.toLowerCase())
-      ));
+    const searchUsers = () => {
+      const vals = Object.values(usersMap);
+      const term = userSearchText.toLowerCase();
+      const filtered = vals.filter(u => {
+        const r = (u.role || '').toLowerCase();
+        const c = (u.cargo || '').toLowerCase();
+        const isUtente = r === 'utente' || r === '' || c === 'utente';
+        return isUtente && (u.n || u.nome || '').toLowerCase().includes(term);
+      });
+      setFoundUsers(filtered.slice(0, 50));
     };
 
     const timer = setTimeout(searchUsers, 300);

@@ -78,7 +78,11 @@ export function UtentesList({
 
   const filtered = useMemo(() =>
     utentes
-      .filter(u => !u.role || u.role === 'utente')
+      .filter(u => {
+        const r = (u.role || '').toLowerCase();
+        const c = (u.cargo || '').toLowerCase();
+        return r === 'utente' || r === '' || c === 'utente';
+      })
       .filter(u => (u.n || u.nome || '').toLowerCase().includes(search.toLowerCase()))
       .sort((a, b) => (a.n || a.nome || '').localeCompare(b.n || b.nome || '', 'pt')),
     [search, utentes]
