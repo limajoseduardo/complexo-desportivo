@@ -17,6 +17,7 @@ import { AccessLog, UserProfile } from '../types';
 import { isUserInZone } from '../lib/logic';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -287,6 +288,28 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   if (otherCount > 0) {
     statsByModality.push({ label: 'Outro / Geral', count: otherCount });
   }
+
+  const hourlyData = React.useMemo(() => {
+    const hours = new Array(24).fill(0);
+    filteredLogs.forEach(log => {
+      let hour = -1;
+      if (log.checkIn instanceof Timestamp) {
+        hour = log.checkIn.toDate().getHours();
+      } else if (typeof log.checkIn === 'string' && log.checkIn.includes(':')) {
+        hour = parseInt(log.checkIn.split(':')[0], 10);
+      } else if (log.checkIn && typeof (log.checkIn as any).seconds === 'number') {
+        hour = new Date((log.checkIn as any).seconds * 1000).getHours();
+      }
+      if (hour >= 0 && hour <= 23) {
+        hours[hour]++;
+      }
+    });
+    const data = [];
+    for (let i = 7; i <= 22; i++) {
+      data.push({ hora: `${i.toString().padStart(2, '0')}h`, entradas: hours[i] });
+    }
+    return data;
+  }, [filteredLogs]);
 
   const downloadCSV = () => {
     let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
@@ -625,6 +648,24 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                )}
              </div>
            </div>
+        </div>
+        
+        {/* Gráfico de Afluência Horária */}
+        <div className="mt-6 pt-6 border-t-2 border-slate-50">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Activity size={14} className="text-[#004D71]" /> Horários de Maior Afluência
+          </h4>
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                <XAxis dataKey="hora" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold', fill: '#94a3b8'}}/>
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#94a3b8'}} allowDecimals={false}/>
+                <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.1)'}} formatter={(value: any) => [`${value} entradas`, 'Afluência']} labelStyle={{color: '#004D71', fontWeight: 'black', marginBottom: '4px'}}/>
+                <Area type="monotone" dataKey="entradas" stroke="#004D71" strokeWidth={3} fill="#004D71" fillOpacity={0.06} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
