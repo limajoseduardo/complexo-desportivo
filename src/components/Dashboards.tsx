@@ -306,7 +306,14 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
         {/* seletor de destino */}
         <div className="px-6 pt-4 pb-5 border-b border-white/10">
-          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-3">Para onde vou?</p>
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
+            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
+              Neste momento estão{' '}
+              <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
+              {' '}pessoas
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-2.5">
             {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
