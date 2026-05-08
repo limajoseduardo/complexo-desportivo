@@ -3,6 +3,9 @@ declare module 'react' {
   export type SetStateAction<S> = S | ((prevState: S) => S);
   export type Dispatch<A> = (value: A) => void;
   export type PropsWithChildren<P> = P & { children?: ReactNode };
+  export interface Attributes {
+    key?: any;
+  }
 
   export function useState<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
   export function useRef<T>(initialValue: T | null): { current: T | null };
