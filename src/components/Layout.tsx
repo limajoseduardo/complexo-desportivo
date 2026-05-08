@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  Bug, ChevronRight, Monitor,
+  ChevronRight, Monitor,
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
@@ -141,7 +141,7 @@ function headerAqiLabel(aqi: number): { label: string; color: string } {
   return                 { label: 'Crítica',      color: 'text-purple-500' };
 }
 
-export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }: { user: UserProfile, onReportBug?: () => void, unreadCount?: number, isVisible?: boolean }) {
+export function Header({ user, unreadCount = 0, isVisible = true }: { user: UserProfile, unreadCount?: number, isVisible?: boolean }) {
   const [time, setTime] = React.useState(new Date());
   const [weather, setWeather] = React.useState<{
     temperature: number; humidity: number; apparentTemp: number;
@@ -270,7 +270,7 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
           </span>
         </div>
 
-        {/* Notificações + Bug */}
+        {/* Notificações */}
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
             <div className="relative">
@@ -278,9 +278,6 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
               <div className="relative bg-red-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full shadow-lg">{unreadCount}</div>
             </div>
           )}
-          <button onClick={onReportBug} className="p-2.5 bg-red-50 text-red-400 rounded-xl active:scale-90 transition-all" title="Reportar Erro">
-            <Bug size={16}/>
-          </button>
         </div>
       </div>
     </header>

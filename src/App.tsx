@@ -50,15 +50,16 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   utente:    ['inicio', 'treino', 'mensagens', 'agenda', 'perfil'],
 };
 
-export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser }: {
+export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug }: {
   user: UserProfile,
   setActiveTab: (t: string) => void,
   onLogout: () => void,
-  setUser?: (u: UserProfile) => void
+  setUser?: (u: UserProfile) => void,
+  onReportBug?: () => void
 }) => {
   return (
     <div className="animate-in fade-in pb-32 font-sans text-left px-1">
-      <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} />
+      <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} onReportBug={onReportBug} />
     </div>
   );
 });
@@ -467,7 +468,7 @@ export default function App() {
         />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} onReportBug={() => setShowBugReport(true)} unreadCount={totalUnread} isVisible={isNavVisible} />
+          <Header user={user} unreadCount={totalUnread} isVisible={isNavVisible} />
           <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
           
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
@@ -512,6 +513,7 @@ export default function App() {
                       setUser(updatedUser);
                       localStorage.setItem('cpx_v33_session', JSON.stringify(updatedUser));
                     }}
+                    onReportBug={() => setShowBugReport(true)}
                     setActiveTab={setActiveTab}
                   />
                 )}

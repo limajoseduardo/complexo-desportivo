@@ -78,13 +78,14 @@ function TermoCheckbox({ checked, disabled, onChange, label, text }: {
 }
 
 export function ProfileViewModule({
-  user, onLogout, setUser, isExternalView = false, currentRole = 'utente'
+  user, onLogout, setUser, isExternalView = false, currentRole = 'utente', onReportBug
 }: {
   user: UserProfile;
   onLogout: () => void;
   setUser?: (u: UserProfile) => void;
   isExternalView?: boolean;
   currentRole?: string;
+  onReportBug?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<UserProfile>({ ...user });
@@ -348,12 +349,21 @@ export function ProfileViewModule({
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             {!isEditing && (
-              <button
-                onClick={onLogout}
-                className="px-4 py-2 rounded-xl font-black text-[10px] uppercase bg-red-50 text-red-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm border border-red-100 hover:bg-red-100"
-              >
-                <LogOut size={13}/> Terminar Sessão
-              </button>
+              <>
+                <button
+                  onClick={onReportBug}
+                  className="px-3 py-2 rounded-xl font-black text-[10px] uppercase bg-slate-100 text-slate-500 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm border border-slate-200 hover:bg-slate-200"
+                  title="Reportar Bug"
+                >
+                  <AlertCircle size={13}/> Bug
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="px-4 py-2 rounded-xl font-black text-[10px] uppercase bg-red-50 text-red-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm border border-red-100 hover:bg-red-100"
+                >
+                  <LogOut size={13}/> Terminar Sessão
+                </button>
+              </>
             )}
             {isEditing && (
               <button
