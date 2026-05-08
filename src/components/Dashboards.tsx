@@ -265,6 +265,19 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
   );
 });
 
+const MODALITIES = [
+  { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,     dest: 'Piscina Regime Livre' },
+  { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={18}/>,      dest: 'Piscina Exterior'     },
+  { id: 'nat1',     label: 'Natação Nível 1',      icon: <Waves size={18}/>,    dest: 'Natação Nível 1'      },
+  { id: 'nat2',     label: 'Natação Nível 2',      icon: <Waves size={18}/>,    dest: 'Natação Nível 2'      },
+  { id: 'nat3',     label: 'Natação Nível 3',      icon: <Waves size={18}/>,    dest: 'Natação Nível 3'      },
+  { id: 'hidro',    label: 'Hidroginástica',        icon: <Droplets size={18}/>, dest: 'Hidroginástica'       },
+  { id: 'bebes',    label: 'Bebés / AMA',           icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'            },
+  { id: 'fit',      label: 'Aula Fitness',          icon: <Activity size={18}/>, dest: 'Aulas Fitness'        },
+  { id: 'gym',      label: 'Ginásio',               icon: <Dumbbell size={18}/>, dest: 'Ginásio'              },
+  { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
+];
+
 export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
   user: UserProfile;
   utentes?: UserProfile[];
@@ -297,7 +310,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            {STAFF_MODALITIES.map(m => {
+            {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
               return (
                 <button key={m.id} onClick={() => setSelectedMod(m)}
@@ -360,19 +373,6 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
     </div>
   );
 });
-
-const MODALITIES = [
-  { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,     dest: 'Piscina Regime Livre' },
-  { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={18}/>,      dest: 'Piscina Exterior'     },
-  { id: 'nat1',     label: 'Natação Nível 1',      icon: <Waves size={18}/>,    dest: 'Natação Nível 1'      },
-  { id: 'nat2',     label: 'Natação Nível 2',      icon: <Waves size={18}/>,    dest: 'Natação Nível 2'      },
-  { id: 'nat3',     label: 'Natação Nível 3',      icon: <Waves size={18}/>,    dest: 'Natação Nível 3'      },
-  { id: 'hidro',    label: 'Hidroginástica',        icon: <Droplets size={18}/>, dest: 'Hidroginástica'       },
-  { id: 'bebes',    label: 'Bebés / AMA',           icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'            },
-  { id: 'fit',      label: 'Aula Fitness',          icon: <Activity size={18}/>, dest: 'Aulas Fitness'        },
-  { id: 'gym',      label: 'Ginásio',               icon: <Dumbbell size={18}/>, dest: 'Ginásio'              },
-  { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
-];
 
 export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserProfile, utentes?: UserProfile[] }) => {
   const [selectedDest, setSelectedDest] = useState<string | null>(null);

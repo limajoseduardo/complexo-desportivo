@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ModalitiesDashboard, UtenteDashboard } from './components/Dashboards';
+import { ModalitiesDashboard, UtenteDashboard, StaffDashboard } from './components/Dashboards';
 import { EntranceDashboard } from './components/EntranceDashboard';
 import { UtentesList, ScannerScreen } from './components/Utentes';
 import { BugReportModule } from './components/BugReport';
@@ -465,7 +465,14 @@ export default function App() {
             ) : (
               <>
                 {user.role === 'utente' && activeTab === 'inicio' && <UtenteDashboard user={user} utentes={utentes} />}
-                {activeTab === 'inicio' && user.role !== 'utente' && (
+                {activeTab === 'inicio' && user.role === 'staff' && (
+                  <StaffDashboard 
+                    user={user} 
+                    utentes={utentes} 
+                    onUserClick={setViewingProfile} 
+                  />
+                )}
+                {activeTab === 'inicio' && !['utente', 'staff'].includes(user.role) && (
                   <ModalitiesDashboard 
                     onUserClick={setViewingProfile} 
                     logs={logs} 
