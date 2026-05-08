@@ -456,7 +456,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                        </div>
 
                        {editingLogId && (
-                         <div className="grid grid-cols-2 gap-4">
+                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                            <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Data</label>
                              <input 
@@ -513,7 +513,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       )}
 
       {/* 4 quadrados em tempo real */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
           { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={28}/>,    color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'pool_in')).length },
           { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={28}/>, color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },

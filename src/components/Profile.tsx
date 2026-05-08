@@ -238,7 +238,7 @@ export function ProfileViewModule({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {['admin', 'staff', 'chefia', 'professor'].includes(currentRole) && (
               !user.isInside ? (
                 <button onClick={() => handleAccessAction('IN', 'C. Desportivo')} disabled={accessLoading}
@@ -320,7 +320,7 @@ export function ProfileViewModule({
                 <p className="text-[10px] text-white/40 font-bold mt-1">{age} anos {isMinor ? '· Encarregado de Educação obrigatório' : ''}</p>
               )}
             </div>
-            <div className="grid grid-cols-4 gap-3 mt-5 pt-4 border-t border-white/10">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-white/10">
               <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Peso</p><p className="text-base font-black text-white leading-none">{currentWeight}<span className="text-[9px] opacity-40 ml-0.5">kg</span></p></div>
               <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Glicemia</p><p className="text-base font-black text-red-300 leading-none">{currentGly}<span className="text-[9px] opacity-40 ml-0.5">mg/dL</span></p></div>
               <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Presenças</p><p className="text-base font-black text-emerald-300 leading-none">{logs.length}<span className="text-[9px] opacity-40 ml-0.5">dias</span></p></div>
@@ -828,16 +828,6 @@ export function ProfileViewModule({
               />
             </div>
           </div>
-        </div>
-      )}
-
-      {/* CV Cards para professor */}
-      {formData.role === 'professor' && activeTab === 'geral' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CVCard icon={<GraduationCap size={24}/>} label="Formação" value={formData.formacao || 'Mestrado Desporto'}/>
-          <CVCard icon={<Award size={24}/>} label="IPDJ" value={formData.cedula || 'IPDJ-0000'}/>
-          <CVCard icon={<Clock size={24}/>} label="Experiência" value={formData.experiencia || '10+ Anos'}/>
-          <CVCard icon={<Briefcase size={24}/>} label="Cargo" value={formData.cargo || 'Direção Técnica'}/>
         </div>
       )}
     </div>

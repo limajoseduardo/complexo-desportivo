@@ -78,7 +78,7 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
          <div className="text-right font-mono font-black text-xl text-[#004D71]">{time.toLocaleTimeString()}</div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
          {zonesUsers.map(m => (
            <button key={m.id} onClick={() => setSelected({label: m.label, target: m.target})} className="bg-white rounded-3xl p-4 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
               <div className="flex items-center justify-between mb-3">
@@ -309,7 +309,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
               {' '}{totalInside === 1 ? 'utente' : 'utentes'}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
               return (
@@ -419,7 +419,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                   {' '}{utentes.filter(u => u.isInside).length === 1 ? 'utente' : 'utentes'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {MODALITIES.map(m => {
                   const count = utentes.filter(u => isUserInZone(u, m.id)).length;
                   return (

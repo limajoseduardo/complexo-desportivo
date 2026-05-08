@@ -252,7 +252,7 @@ export function UtentesList({
                 value={formData.nome} 
                 onChange={v => setFormData({...formData, nome: v})} 
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormInput 
                   label="Data de Nascimento" 
                   type="date"
@@ -280,7 +280,7 @@ export function UtentesList({
 
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 space-y-6">
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2">Contacto e Acesso</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormInput 
                   label="Email (Login/QR ID)" 
                   type="email"

@@ -330,7 +330,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                  />
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2 text-left">
                    <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Hora Início</label>
                    <input 
@@ -353,7 +353,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                  </div>
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Dia da Semana</label>
                     <select 
@@ -423,7 +423,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                  </div>
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">
                     <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Cor</label>
                     <input 
