@@ -308,9 +308,9 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
           <div className="flex items-baseline justify-between mb-3">
             <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
             <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
-              Neste momento estão{' '}
+              Neste momento tem{' '}
               <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
-              {' '}pessoas
+              {' '}{utentes.filter(u => u.isInside).length === 1 ? 'utente' : 'utentes'}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
@@ -330,9 +330,9 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                       {m.label}
                     </p>
                     <p className="text-[9px] font-bold text-white/50 mt-1 leading-none">
-                      neste momento{' '}
+                      tem{' '}
                       <span className="text-white font-black text-xs">{count}</span>
-                      {' '}pessoas
+                      {' '}{count === 1 ? 'utente' : 'utentes'}
                     </p>
                   </div>
                 </button>

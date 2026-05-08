@@ -3,14 +3,14 @@ import {
   User, LogOut, Camera, Info, GraduationCap, Award, Clock, Star,
   Phone, Mail, FileText, ArrowLeft, Briefcase, Trophy, Target,
   AlertCircle, MapPin, Activity, LogIn, Calendar, TrendingUp, History,
-  Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users
+  Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users, X, Plus
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { UserProfile, HealthMetric } from '../types';
 import { CVCard, FormInput, PicotoIcon, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
-import { doc, updateDoc, collection, query, where, getDocs, orderBy, limit, Timestamp, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, Timestamp, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { handleCheckIn, handleCheckOut } from '../lib/access';
 
 const TERMO_IMAGENS =
@@ -94,6 +94,12 @@ export function ProfileViewModule({
   const [logs, setLogs] = useState<any[]>([]);
   const [plan, setPlan] = useState<any | null>(null);
   const [durationText, setDurationText] = useState('');
+  const [healthModal, setHealthModal] = useState<'peso' | 'glicemia' | 'tensao' | null>(null);
+  const [newPeso, setNewPeso] = useState('');
+  const [newGlicemia, setNewGlicemia] = useState('');
+  const [newTensaoSis, setNewTensaoSis] = useState('');
+  const [newTensaoDia, setNewTensaoDia] = useState('');
+  const [savingMetric, setSavingMetric] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const age = calcAge(formData.data_nasc);
@@ -108,7 +114,7 @@ export function ProfileViewModule({
     if (!user.id) return;
     const saudePath = `artifacts/${APP_ID}/public/data/saude`;
     const unsubSaude = onSnapshot(
-      query(collection(db, saudePath), where('userId', '==', user.id), limit(20)),
+      query(collection(db, saudePath), where('userId', '==', user.id), limit(100)),
       snap => {
         setMetrics(snap.docs.map(d => ({ id: d.id, ...d.data() } as HealthMetric))
           .sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0)));
@@ -192,6 +198,20 @@ export function ProfileViewModule({
     } finally {
       setAccessLoading(false);
     }
+  };
+
+  const saveMetric = async (type: 'peso' | 'glicemia' | 'tensao', value: number, value2?: number) => {
+    if (savingMetric) return;
+    setSavingMetric(true);
+    try {
+      const data: any = { userId: user.id, type, value, unit: type === 'peso' ? 'kg' : type === 'glicemia' ? 'mg/dL' : 'mmHg', timestamp: serverTimestamp() };
+      if (value2 !== undefined) data.value2 = value2;
+      await addDoc(collection(db, `artifacts/${APP_ID}/public/data/saude`), data);
+      if (type === 'peso') setNewPeso('');
+      else if (type === 'glicemia') setNewGlicemia('');
+      else { setNewTensaoSis(''); setNewTensaoDia(''); }
+    } catch (e) { console.error('Erro ao guardar métrica:', e); }
+    finally { setSavingMetric(false); }
   };
 
   const currentWeight = metrics.filter(m => m.type === 'peso').slice(-1)[0]?.value || '--';
@@ -506,39 +526,170 @@ export function ProfileViewModule({
       {/* TAB: Saúde */}
       {activeTab === 'saude' && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50">
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-[10px] font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2"><TrendingUp size={14}/> Evolução de Peso</h4>
-              </div>
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={metrics.filter(m => m.type === 'peso').map(m => ({ d: (m.timestamp as any)?.toDate().toLocaleDateString('pt-PT', {day:'2-digit', month:'2-digit'}), v: m.value }))}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                    <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold'}}/>
-                    <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 15px rgba(0,0,0,0.1)'}}/>
-                    <Area type="monotone" dataKey="v" stroke="#004D71" strokeWidth={3} fill="#004D71" fillOpacity={0.05}/>
-                  </AreaChart>
-                </ResponsiveContainer>
+          {/* Metric cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Peso */}
+            <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-slate-50 flex flex-col gap-4">
+              <button onClick={() => setHealthModal('peso')} className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={16} className="text-[#004D71]"/>
+                  <span className="text-[10px] font-black text-[#004D71] uppercase tracking-widest">Peso</span>
+                </div>
+                <div className="text-right">
+                  {currentWeight !== '--'
+                    ? <span className="text-lg font-black text-[#004D71]">{currentWeight} <small className="text-[9px] opacity-40">kg</small></span>
+                    : <span className="text-sm text-slate-300 font-black">—</span>}
+                </div>
+              </button>
+              <p className="text-[9px] text-slate-400 font-bold text-center -mt-2">Toque para ver histórico</p>
+              <div className="flex gap-2">
+                <input type="number" step="0.1" value={newPeso} onChange={e => setNewPeso(e.target.value)}
+                  placeholder="ex: 75.5"
+                  className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-black text-[#003350] outline-none focus:border-[#004D71]/30 transition-all"/>
+                <button onClick={() => { const v = parseFloat(newPeso); if (!isNaN(v) && v > 0) saveMetric('peso', v); }}
+                  disabled={savingMetric || !newPeso}
+                  className="bg-[#004D71] text-white px-4 py-3 rounded-2xl disabled:opacity-30 active:scale-95 transition-all flex items-center justify-center">
+                  {savingMetric ? '…' : <Plus size={16}/>}
+                </button>
               </div>
             </div>
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50">
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2"><Activity size={14}/> Glicemia</h4>
+
+            {/* Glicemia */}
+            <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-slate-50 flex flex-col gap-4">
+              <button onClick={() => setHealthModal('glicemia')} className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Activity size={16} className="text-red-500"/>
+                  <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Glicemia</span>
+                </div>
+                <div className="text-right">
+                  {currentGly !== '--'
+                    ? <span className="text-lg font-black text-red-500">{currentGly} <small className="text-[9px] opacity-40">mg/dL</small></span>
+                    : <span className="text-sm text-slate-300 font-black">—</span>}
+                </div>
+              </button>
+              <p className="text-[9px] text-slate-400 font-bold text-center -mt-2">Toque para ver histórico</p>
+              <div className="flex gap-2">
+                <input type="number" step="1" value={newGlicemia} onChange={e => setNewGlicemia(e.target.value)}
+                  placeholder="ex: 95"
+                  className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-black text-[#003350] outline-none focus:border-red-200 transition-all"/>
+                <button onClick={() => { const v = parseFloat(newGlicemia); if (!isNaN(v) && v > 0) saveMetric('glicemia', v); }}
+                  disabled={savingMetric || !newGlicemia}
+                  className="bg-red-500 text-white px-4 py-3 rounded-2xl disabled:opacity-30 active:scale-95 transition-all flex items-center justify-center">
+                  {savingMetric ? '…' : <Plus size={16}/>}
+                </button>
               </div>
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={metrics.filter(m => m.type === 'glicemia').map(m => ({ d: (m.timestamp as any)?.toDate().toLocaleDateString('pt-PT', {day:'2-digit', month:'2-digit'}), v: m.value }))}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                    <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold'}}/>
-                    <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 15px rgba(0,0,0,0.1)'}}/>
-                    <Area type="monotone" dataKey="v" stroke="#ef4444" strokeWidth={3} fill="#ef4444" fillOpacity={0.05}/>
-                  </AreaChart>
-                </ResponsiveContainer>
+            </div>
+
+            {/* Tensão */}
+            <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border-2 border-slate-50 flex flex-col gap-4">
+              <button onClick={() => setHealthModal('tensao')} className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Heart size={16} className="text-violet-600"/>
+                  <span className="text-[10px] font-black text-violet-600 uppercase tracking-widest">Tensão Arterial</span>
+                </div>
+                <div className="text-right">
+                  {(() => {
+                    const last = metrics.filter(m => m.type === 'tensao').slice(-1)[0] as any;
+                    return last
+                      ? <span className="text-base font-black text-violet-600">{last.value}/{last.value2} <small className="text-[9px] opacity-40">mmHg</small></span>
+                      : <span className="text-sm text-slate-300 font-black">—</span>;
+                  })()}
+                </div>
+              </button>
+              <p className="text-[9px] text-slate-400 font-bold text-center -mt-2">Toque para ver histórico</p>
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input type="number" value={newTensaoSis} onChange={e => setNewTensaoSis(e.target.value)}
+                    placeholder="Sistólica"
+                    className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-3 py-3 text-sm font-black text-[#003350] outline-none focus:border-violet-200 transition-all"/>
+                  <span className="font-black text-slate-300 text-lg">/</span>
+                  <input type="number" value={newTensaoDia} onChange={e => setNewTensaoDia(e.target.value)}
+                    placeholder="Diastólica"
+                    className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-3 py-3 text-sm font-black text-[#003350] outline-none focus:border-violet-200 transition-all"/>
+                </div>
+                <button onClick={() => { const s = parseInt(newTensaoSis), d = parseInt(newTensaoDia); if (!isNaN(s) && !isNaN(d) && s > 0 && d > 0) saveMetric('tensao', s, d); }}
+                  disabled={savingMetric || !newTensaoSis || !newTensaoDia}
+                  className="w-full bg-violet-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase disabled:opacity-30 active:scale-95 transition-all flex items-center justify-center gap-2">
+                  {savingMetric ? '…' : <><Plus size={14}/> Registar</>}
+                </button>
               </div>
             </div>
           </div>
 
+          {/* Chart modal */}
+          {healthModal && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHealthModal(null)}>
+              <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-8 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[#004D71]">
+                    {healthModal === 'peso' ? 'Evolução de Peso' : healthModal === 'glicemia' ? 'Evolução da Glicemia' : 'Evolução da Tensão Arterial'}
+                  </h3>
+                  <button onClick={() => setHealthModal(null)} className="text-slate-400 hover:text-slate-600 p-2 rounded-2xl hover:bg-slate-50">
+                    <X size={20}/>
+                  </button>
+                </div>
+
+                <div className="h-[260px]">
+                  {healthModal !== 'tensao' ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={metrics.filter(m => m.type === healthModal).map(m => ({
+                        d: (m.timestamp as any)?.toDate?.()?.toLocaleDateString('pt-PT', {day:'2-digit', month:'2-digit'}) || '',
+                        v: m.value
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                        <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold'}}/>
+                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9}} domain={['auto', 'auto']}/>
+                        <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.1)'}}
+                          formatter={(v: any) => [`${v} ${healthModal === 'peso' ? 'kg' : 'mg/dL'}`, '']}/>
+                        <Area type="monotone" dataKey="v"
+                          stroke={healthModal === 'peso' ? '#004D71' : '#ef4444'}
+                          strokeWidth={3}
+                          fill={healthModal === 'peso' ? '#004D71' : '#ef4444'}
+                          fillOpacity={0.06}/>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={(metrics.filter(m => m.type === 'tensao') as any[]).map(m => ({
+                        d: (m.timestamp as any)?.toDate?.()?.toLocaleDateString('pt-PT', {day:'2-digit', month:'2-digit'}) || '',
+                        sis: m.value,
+                        dia: m.value2
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                        <XAxis dataKey="d" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold'}}/>
+                        <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9}} domain={['auto', 'auto']}/>
+                        <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.1)'}}
+                          formatter={(v: any, name: string) => [`${v} mmHg`, name === 'sis' ? 'Sistólica' : 'Diastólica']}/>
+                        <Line type="monotone" dataKey="sis" stroke="#7c3aed" strokeWidth={3} dot={false}/>
+                        <Line type="monotone" dataKey="dia" stroke="#a78bfa" strokeWidth={2} dot={false} strokeDasharray="5 5"/>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                <div className="mt-4 bg-slate-50 rounded-[1.5rem] p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Últimas medições</p>
+                  <div className="space-y-2 max-h-36 overflow-y-auto">
+                    {metrics.filter(m => m.type === healthModal).slice(-10).reverse().map(m => (
+                      <div key={m.id} className="flex justify-between items-center px-1">
+                        <span className="text-[10px] text-slate-500">
+                          {(m.timestamp as any)?.toDate?.()?.toLocaleDateString('pt-PT', {day:'2-digit', month:'2-digit', year:'2-digit'}) || '—'}
+                        </span>
+                        <span className="text-xs font-black text-[#004D71]">
+                          {healthModal === 'tensao' ? `${m.value}/${(m as any).value2} mmHg` : `${m.value} ${m.unit}`}
+                        </span>
+                      </div>
+                    ))}
+                    {metrics.filter(m => m.type === healthModal).length === 0 && (
+                      <p className="text-[10px] text-slate-400 text-center py-4">Sem registos para mostrar</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Saúde e Objetivos form */}
           <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
             <SectionTitle icon={<Star size={16}/>} label="Saúde e Objetivos" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
