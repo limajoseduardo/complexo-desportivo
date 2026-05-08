@@ -35,6 +35,7 @@ async function main() {
 
   await batch.commit();
   console.log(`Seed local concluido: ${REAL_STAFF.length} utilizadores e aulas base.`);
+  process.exit(0);
 }
 
 main().catch((error) => {

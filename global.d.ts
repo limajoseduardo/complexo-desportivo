@@ -4,3 +4,7 @@ declare namespace JSX {
     [elemName: string]: any;
   }
 }
+
+interface ImportMeta {
+  env: Record<string, string | undefined>;
+}
