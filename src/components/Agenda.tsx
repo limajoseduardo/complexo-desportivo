@@ -7,7 +7,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
   collection, onSnapshot, query, addDoc, updateDoc, 
-  deleteDoc, doc, orderBy, where
+  deleteDoc, doc, orderBy, where, Timestamp
 } from 'firebase/firestore';
 import { Aula, UserRole, UserProfile } from '../types';
 

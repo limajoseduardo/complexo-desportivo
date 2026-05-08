@@ -39,6 +39,10 @@ declare module 'react/jsx-dev-runtime' {
 
 declare global {
   namespace JSX {
+    interface IntrinsicAttributes {
+      key?: any;
+    }
+
     interface IntrinsicElements {
       [elemName: string]: any;
     }

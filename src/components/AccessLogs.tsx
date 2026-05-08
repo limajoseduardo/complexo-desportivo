@@ -11,7 +11,7 @@ import { APP_ID } from '../App';
 import {
   collection, query, where, onSnapshot,
   Timestamp, limit, getDocs, setDoc, updateDoc,
-  doc, serverTimestamp, deleteDoc
+  doc, serverTimestamp, deleteDoc, orderBy
 } from 'firebase/firestore';
 import { AccessLog, UserProfile } from '../types';
 import { isUserInZone } from '../lib/logic';

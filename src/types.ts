@@ -85,6 +85,7 @@ export interface AccessLog {
   durationMinutes?: number;
   zone: string;
   date: string;
+  timestamp?: any;
 }
 
 export interface Exercicio {
