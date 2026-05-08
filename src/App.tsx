@@ -87,7 +87,7 @@ export default function App() {
       }
       if (saved) {
         const parsed = JSON.parse(saved);
-        return normalizeRole(parsed.role, parsed.email) === 'staff' ? 'acessos' : 'inicio';
+        return 'inicio';
       }
     } catch (e) {}
     return 'inicio';
@@ -368,12 +368,12 @@ export default function App() {
         }
         setUser(finalProfile);
         localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
-        if (isInfoAccount) { setShowModePicker(true); } else { setActiveTab(finalProfile.role === 'staff' ? 'acessos' : 'inicio'); }
+        if (isInfoAccount) { setShowModePicker(true); } else { setActiveTab('inicio'); }
       } catch (syncErr: any) {
         console.warn("Cloud Sync Error during jump:", syncErr);
         setUser(finalProfile);
         localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
-        if (isInfoAccount) { setShowModePicker(true); } else { setActiveTab(finalProfile.role === 'staff' ? 'acessos' : 'inicio'); }
+        if (isInfoAccount) { setShowModePicker(true); } else { setActiveTab('inicio'); }
         if (syncErr.message?.includes('permission')) {
           setAuthError('Ligação local ativa. Nota: Anonymous Auth precisa estar ativo na consola Firebase.');
         } else {
@@ -426,7 +426,7 @@ export default function App() {
   if (showModePicker) return (
     <ModePicker onSelect={(role) => {
       setUser({ ...user, role: role as any, cargo: role === 'chefia' ? 'Direção Municipal' : role.toUpperCase() });
-      setActiveTab(role === 'staff' ? 'acessos' : 'inicio');
+      setActiveTab('inicio');
       setShowModePicker(false);
     }} />
   );
