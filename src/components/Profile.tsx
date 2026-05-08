@@ -261,11 +261,6 @@ export function ProfileViewModule({
             <button onClick={() => window.print()} className="bg-white/10 text-white/70 p-2 rounded-xl hover:bg-white/20 transition-colors">
               <FileText size={16}/>
             </button>
-            {!isExternalView && (
-              <button onClick={onLogout} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase flex items-center gap-2 border border-red-100 active:scale-95 shadow-sm">
-                <LogOut size={16}/> Sair
-              </button>
-            )}
           </div>
         </div>
 
@@ -346,11 +341,19 @@ export function ProfileViewModule({
 
       {/* Barra de edição — visível para todos na vista própria */}
       {!isExternalView && (
-        <div className="flex items-center justify-between bg-white rounded-[2rem] px-5 py-3 border-2 border-slate-100 shadow-sm gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between bg-white rounded-[2rem] px-5 py-3 border-2 border-slate-100 shadow-sm gap-3">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             {isEditing ? 'Modo de edição activo' : 'Dados do perfil'}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {!isEditing && (
+              <button
+                onClick={onLogout}
+                className="px-4 py-2 rounded-xl font-black text-[10px] uppercase bg-red-50 text-red-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm border border-red-100 hover:bg-red-100"
+              >
+                <LogOut size={13}/> Terminar Sessão
+              </button>
+            )}
             {isEditing && (
               <button
                 onClick={() => { setIsEditing(false); setFormData({ ...user }); }}
