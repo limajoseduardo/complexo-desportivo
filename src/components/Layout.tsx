@@ -2,7 +2,8 @@ import React from 'react';
 import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  Bug, ChevronRight, Monitor
+  Bug, ChevronRight, Monitor,
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -108,9 +109,45 @@ export const ModePicker = ({ onSelect }: { onSelect: (role: string) => void }) =
   );
 };
 
+function HeaderWeatherIcon({ code, size = 18 }: { code: number; size?: number }) {
+  if (code === 0)   return <Sun size={size} className="text-[#F7B500]" />;
+  if (code <= 2)    return <Sun size={size} className="text-yellow-400" />;
+  if (code === 3)   return <Cloud size={size} className="text-slate-400" />;
+  if (code <= 48)   return <Wind size={size} className="text-slate-400" />;
+  if (code <= 67)   return <CloudRain size={size} className="text-sky-400" />;
+  if (code <= 77)   return <CloudSnow size={size} className="text-blue-300" />;
+  if (code <= 82)   return <CloudRain size={size} className="text-sky-500" />;
+  return                   <CloudLightning size={size} className="text-yellow-400" />;
+}
+
+function headerWeatherLabel(code: number): string {
+  if (code === 0)  return 'Céu Limpo';
+  if (code <= 2)   return 'Pouco Nublado';
+  if (code === 3)  return 'Nublado';
+  if (code <= 48)  return 'Nevoeiro';
+  if (code <= 55)  return 'Chuvisco';
+  if (code <= 67)  return 'Chuva';
+  if (code <= 77)  return 'Neve';
+  if (code <= 82)  return 'Aguaceiros';
+  return                  'Trovoada';
+}
+
+function headerAqiLabel(aqi: number): { label: string; color: string } {
+  if (aqi <= 20)  return { label: 'Boa',         color: 'text-emerald-500' };
+  if (aqi <= 40)  return { label: 'Razoável',    color: 'text-lime-500'   };
+  if (aqi <= 60)  return { label: 'Moderada',    color: 'text-yellow-500' };
+  if (aqi <= 80)  return { label: 'Fraca',       color: 'text-orange-500' };
+  if (aqi <= 100) return { label: 'Muito Fraca', color: 'text-red-500'    };
+  return                 { label: 'Crítica',      color: 'text-purple-500' };
+}
+
 export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }: { user: UserProfile, onReportBug?: () => void, unreadCount?: number, isVisible?: boolean }) {
   const [time, setTime] = React.useState(new Date());
-  const [weather, setWeather] = React.useState<any>(null);
+  const [weather, setWeather] = React.useState<{
+    temperature: number; humidity: number; apparentTemp: number;
+    weatherCode: number; windSpeed: number;
+  } | null>(null);
+  const [aqi, setAqi] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -118,11 +155,35 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
   }, []);
 
   React.useEffect(() => {
-    // Vai buscar a meteorologia atual para Vila de Rei
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=39.67&longitude=-8.14&current_weather=true')
-      .then(res => res.json())
-      .then(data => setWeather(data.current_weather))
-      .catch(e => console.error('Erro de meteorologia:', e));
+    const fetchW = () =>
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=39.67&longitude=-8.14' +
+        '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m')
+        .then(r => r.json())
+        .then(d => {
+          const c = d.current;
+          setWeather({
+            temperature:  Math.round(c.temperature_2m),
+            humidity:     c.relative_humidity_2m,
+            apparentTemp: Math.round(c.apparent_temperature),
+            weatherCode:  c.weather_code,
+            windSpeed:    Math.round(c.wind_speed_10m),
+          });
+        })
+        .catch(() => {});
+    fetchW();
+    const t = setInterval(fetchW, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  React.useEffect(() => {
+    const fetchAqi = () =>
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=39.67&longitude=-8.14&current=european_aqi')
+        .then(r => r.json())
+        .then(d => setAqi(Math.round(d.current?.european_aqi ?? 0)))
+        .catch(() => {});
+    fetchAqi();
+    const t = setInterval(fetchAqi, 10 * 60 * 1000);
+    return () => clearInterval(t);
   }, []);
 
   const fullName = (user.nome || user.n || '').trim() || 'Utilizador';
@@ -134,8 +195,11 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
     return a;
   })() : null;
 
+  const aqiInfo = aqi !== null ? headerAqiLabel(aqi) : null;
+
   return (
     <header className={`bg-white px-5 flex justify-between items-center sticky top-0 z-40 transition-all duration-300 overflow-hidden ${isVisible ? 'max-h-[160px] py-4 border-b-4 border-slate-100 opacity-100' : 'max-h-0 py-0 border-b-0 border-transparent opacity-0'}`}>
+
       {/* Esquerda: Foto + Info */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
         <div className="w-16 h-16 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md shrink-0">
@@ -155,20 +219,48 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
         </div>
       </div>
 
-      {/* Centro: Meteorologia Vila de Rei */}
-      <div className="hidden md:flex flex-1 flex-col items-center justify-center text-center">
-         {weather ? (
-           <>
-             <span className="text-2xl font-black text-[#004D71] tabular-nums leading-none">{Math.round(weather.temperature)}°C</span>
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Vila de Rei</span>
-           </>
-         ) : (
-           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A carregar...</span>
-         )}
-      </div>
+      {/* Centro + Direita: Meteorologia completa + Relógio */}
+      <div className="flex items-center gap-4 justify-end shrink-0">
 
-      {/* Direita: Data, Horas, Minutos e Segundos */}
-      <div className="flex flex-1 items-center justify-end gap-6 shrink-0">
+        {/* Bloco meteorologia — md+ */}
+        {weather && (
+          <div className="hidden md:flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-2.5 border border-slate-100">
+            <HeaderWeatherIcon code={weather.weatherCode} size={22} />
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-3">
+                <span className="text-base font-black text-[#004D71] tabular-nums leading-none">{weather.temperature}°C</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase">{headerWeatherLabel(weather.weatherCode)}</span>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                  <Thermometer size={10}/> sensação {weather.apparentTemp}°C
+                </span>
+                <span className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                  <Droplets size={10}/> {weather.humidity}%
+                </span>
+                {aqiInfo && (
+                  <span className={`flex items-center gap-1 text-[9px] font-bold ${aqiInfo.color}`}>
+                    <Gauge size={10}/> Ar {aqiInfo.label}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
+                  <Wind size={10}/> {weather.windSpeed} km/h
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Meteorologia compacta — sm */}
+        {weather && (
+          <div className="flex md:hidden items-center gap-1.5 text-[#004D71]">
+            <HeaderWeatherIcon code={weather.weatherCode} size={16} />
+            <span className="text-sm font-black tabular-nums">{weather.temperature}°C</span>
+            <span className="text-[9px] font-bold text-slate-400">{weather.humidity}%<Droplets size={9} className="inline ml-0.5"/></span>
+          </div>
+        )}
+
+        {/* Relógio */}
         <div className="hidden sm:flex flex-col items-end">
           <span className="text-xl font-black text-[#004D71] tabular-nums leading-none">
             {time.toLocaleTimeString('pt-PT')}
@@ -177,6 +269,8 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
             {time.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' })}
           </span>
         </div>
+
+        {/* Notificações + Bug */}
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
             <div className="relative">
