@@ -108,7 +108,7 @@ export const ModePicker = ({ onSelect }: { onSelect: (role: string) => void }) =
   );
 };
 
-export function Header({ user, onReportBug, unreadCount = 0 }: { user: UserProfile, onReportBug?: () => void, unreadCount?: number }) {
+export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }: { user: UserProfile, onReportBug?: () => void, unreadCount?: number, isVisible?: boolean }) {
   const [time, setTime] = React.useState(new Date());
   const [weather, setWeather] = React.useState<any>(null);
 
@@ -130,7 +130,7 @@ export function Header({ user, onReportBug, unreadCount = 0 }: { user: UserProfi
   const displayName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[nameParts.length - 1]}` : nameParts[0];
 
   return (
-    <header className="bg-white px-5 py-4 flex justify-between items-center border-b-4 border-slate-100 sticky top-0 z-40">
+    <header className={`bg-white px-5 flex justify-between items-center sticky top-0 z-40 transition-all duration-300 overflow-hidden ${isVisible ? 'max-h-[160px] py-4 border-b-4 border-slate-100 opacity-100' : 'max-h-0 py-0 border-b-0 border-transparent opacity-0'}`}>
       {/* Esquerda: Foto Maior e Nome (Primeiro e Último) */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
         <div className="w-16 h-16 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md shrink-0">

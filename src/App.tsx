@@ -577,7 +577,7 @@ export default function App() {
         />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} onReportBug={() => setShowBugReport(true)} unreadCount={totalUnread} />
+          <Header user={user} onReportBug={() => setShowBugReport(true)} unreadCount={totalUnread} isVisible={isNavVisible} />
           <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
           
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
