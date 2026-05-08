@@ -11,7 +11,8 @@ const emptyForm = (user: UserProfile) => ({
   data: new Date().toISOString().split('T')[0],
   hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   tecnico: user?.nome || user?.n || '',
-  tempAgua: '', ph: '', clLivre: '', utaHum: ''
+  tempAgua: '', ph: '', clLivre: '', utaHum: '',
+  tempAr: '', clTotal: '', clComb: '', acidoCianurico: '', banhistas: '', obs: ''
 });
 
 export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) {
@@ -45,6 +46,12 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
       ph:       log.ph       || '',
       clLivre:  log.clLivre  || '',
       utaHum:   log.utaHum   || '',
+      tempAr:   log.tempAr   || '',
+      clTotal:  log.clTotal  || '',
+      clComb:   log.clComb   || '',
+      acidoCianurico: log.acidoCianurico || '',
+      banhistas: log.banhistas || '',
+      obs:      log.obs      || ''
     });
     setMode('form');
   };
@@ -119,13 +126,14 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
 
       autoTable(pdf, {
         startY: y,
-        head: [['Data', 'Hora', 'Técnico', 'Cloro Livre', 'pH', 'Água (°C)', 'Hum. UTA (%)', 'Editado por']],
+        head: [['Data', 'Hora', 'Técnico', 'pH', 'C.Livre', 'C.Total', 'C.Comb', 'Água', 'Ar', 'Hum.', 'Banh.', 'Obs']],
         body: rows.map(l => {
           const { data, hora } = fmtDateTime(l.timestamp, l.data, l.hora);
-          return [data, hora, l.tecnico || '—', l.clLivre || '—', l.ph || '—',
-            l.tempAgua ? `${l.tempAgua}°` : '—', l.utaHum ? `${l.utaHum}%` : '—', l.editedBy || '—'];
+          return [data, hora, l.tecnico || '—', l.ph || '—', l.clLivre || '—', l.clTotal || '—', l.clComb || '—',
+            l.tempAgua ? `${l.tempAgua}°C` : '—', l.tempAr ? `${l.tempAr}°C` : '—', l.utaHum ? `${l.utaHum}%` : '—',
+            l.banhistas || '—', l.obs || '—'];
         }),
-        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0], fontSize: 8, fontStyle: 'bold' },
+        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0], fontSize: 7, fontStyle: 'bold' },
         bodyStyles: { fontSize: 8 },
         alternateRowStyles: { fillColor: [245, 247, 250] },
         margin: { left: 14, right: 14 },
@@ -235,14 +243,22 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
             <FormInput label="Data" type="date" value={formData.data} onChange={v => setFormData({...formData, data: v})} />
             <FormInput label="Hora" type="time" value={formData.hora} onChange={v => setFormData({...formData, hora: v})} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput label="Cloro Livre" value={formData.clLivre} onChange={v => setFormData({...formData, clLivre: v})} />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <FormInput label="Temp. Água (ºC)" value={formData.tempAgua} onChange={v => setFormData({...formData, tempAgua: v})} />
+            <FormInput label="Temp. Ar (ºC)" value={formData.tempAr} onChange={v => setFormData({...formData, tempAr: v})} />
+            <FormInput label="Humidade (UTA %)" value={formData.utaHum} onChange={v => setFormData({...formData, utaHum: v})} />
+            <FormInput label="Nº Banhistas" type="number" value={formData.banhistas} onChange={v => setFormData({...formData, banhistas: v})} />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <FormInput label="Valor pH" value={formData.ph} onChange={v => setFormData({...formData, ph: v})} />
+            <FormInput label="Cloro Livre" value={formData.clLivre} onChange={v => setFormData({...formData, clLivre: v})} />
+            <FormInput label="Cloro Total" value={formData.clTotal} onChange={v => setFormData({...formData, clTotal: v})} />
+            <FormInput label="Cloro Combinado" value={formData.clComb} onChange={v => setFormData({...formData, clComb: v})} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput label="Água (ºC)" value={formData.tempAgua} onChange={v => setFormData({...formData, tempAgua: v})} />
-            <FormInput label="Humidade (%)" value={formData.utaHum} onChange={v => setFormData({...formData, utaHum: v})} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput label="Ácido Cianúrico" value={formData.acidoCianurico} onChange={v => setFormData({...formData, acidoCianurico: v})} />
           </div>
+          <FormInput label="Observações / Anomalias" multiline value={formData.obs} onChange={v => setFormData({...formData, obs: v})} />
           <button onClick={saveEntry} className="w-full bg-[#004D71] text-[#F7B500] py-5 rounded-[2rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
             <Save size={20}/> {editingId ? 'Guardar Correção' : 'Gravar Registo'}
           </button>
@@ -264,7 +280,7 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
                   </div>
                 </div>
                 {/* Valores inline */}
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="flex items-center gap-4 shrink-0 overflow-x-auto hide-scrollbar">
                   <div className="flex flex-col items-center">
                     <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Cl</span>
                     <span className="text-sm font-black text-[#004D71] tabular-nums">{log.clLivre || '—'}</span>
@@ -276,6 +292,10 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
                   <div className="flex flex-col items-center">
                     <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Água</span>
                     <span className="text-sm font-black text-[#004D71] tabular-nums">{log.tempAgua ? `${log.tempAgua}°` : '—'}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Ar</span>
+                    <span className="text-sm font-black text-[#004D71] tabular-nums">{log.tempAr ? `${log.tempAr}°` : '—'}</span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">UTA</span>
