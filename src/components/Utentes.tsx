@@ -80,8 +80,7 @@ export function UtentesList({
     utentes
       .filter(u => {
         const r = (u.role || '').toLowerCase();
-        const c = (u.cargo || '').toLowerCase();
-        return r === 'utente' || r === '' || c === 'utente';
+        return !['admin', 'staff', 'chefia', 'professor'].includes(r);
       })
       .filter(u => (u.n || u.nome || '').toLowerCase().includes(search.toLowerCase()))
       .sort((a, b) => (a.n || a.nome || '').localeCompare(b.n || b.nome || '', 'pt')),

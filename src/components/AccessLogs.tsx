@@ -22,11 +22,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState('2024-01-01');
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
@@ -66,7 +62,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(10000)))
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`)))
       .then(snap => {
         const m: Record<string, UserProfile> = {};
         snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
@@ -78,12 +74,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     setLoading(true);
     const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
     
-    const q = query(
-      collection(db, path),
-      where('date', '>=', startDate),
-      where('date', '<=', endDate),
-      limit(5000)
-    );
+    const q = query(collection(db, path));
 
     const unsub = onSnapshot(q, (snap) => {
       const sorted = snap.docs
@@ -114,9 +105,8 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       const term = userSearchText.toLowerCase();
       const filtered = vals.filter(u => {
         const r = (u.role || '').toLowerCase();
-        const c = (u.cargo || '').toLowerCase();
-        const isUtente = r === 'utente' || r === '' || c === 'utente';
-        return isUtente && (u.n || u.nome || '').toLowerCase().includes(term);
+        const isStaff = ['admin', 'staff', 'chefia', 'professor'].includes(r);
+        return !isStaff && (u.n || u.nome || '').toLowerCase().includes(term);
       });
       setFoundUsers(filtered.slice(0, 50));
     };
@@ -278,7 +268,12 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   };
 
   const filteredLogs = logs.filter(l => {
-    const lDate = l.date || (l.checkIn instanceof Timestamp ? l.checkIn.toDate().toISOString().split('T')[0] : '');
+    let lDate = l.date;
+    if (!lDate) {
+      if (l.checkIn instanceof Timestamp) lDate = l.checkIn.toDate().toISOString().split('T')[0];
+      else if (l.timestamp && (l.timestamp as any).toDate) lDate = (l.timestamp as any).toDate().toISOString().split('T')[0];
+      else lDate = '2024-01-01';
+    }
     const inRange = lDate >= startDate && lDate <= endDate;
     const matchSearch = (l.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
     return inRange && matchSearch;
