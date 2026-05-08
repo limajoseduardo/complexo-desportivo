@@ -276,7 +276,7 @@ const MODALITIES = [
   { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={18}/>, dest: 'Ginásio'          },
   { id: 'fit',      label: 'Aula Fitness',     icon: <Activity size={18}/>, dest: 'Aulas Fitness'    },
   { id: 'sauna',    label: 'Sauna',            icon: <Flame size={18}/>,    dest: 'Sauna'            },
-  { id: 'livre',    label: 'Livre / Geral',    icon: <Star size={18}/>,     dest: 'Livre/Geral'      },
+  { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,  dest: 'Piscina Regime Livre' },
 ];
 
 export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserProfile, utentes?: UserProfile[] }) => {
@@ -325,11 +325,11 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                     <span className={isSelected ? 'text-[#004D71]' : 'text-white/80'}>{m.icon}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-[9px] font-black uppercase leading-tight line-clamp-2 ${isSelected ? 'text-[#004D71]' : 'text-white/80'}`}>
+                    <p className={`text-[11px] font-black uppercase leading-tight line-clamp-2 ${isSelected ? 'text-[#004D71]' : 'text-white/90'}`}>
                       {m.label}
                     </p>
-                    <p className={`text-sm font-black mt-0.5 leading-none ${isSelected ? 'text-[#004D71]' : 'text-white'}`}>
-                      {count} <span className={`text-[8px] font-bold ${isSelected ? 'text-[#004D71]/50' : 'text-white/40'}`}>pessoas</span>
+                    <p className={`text-base font-black mt-1 leading-none ${isSelected ? 'text-[#004D71]' : 'text-white'}`}>
+                      {count} <span className={`text-[9px] font-bold ${isSelected ? 'text-[#004D71]/50' : 'text-white/40'}`}>pessoas</span>
                     </p>
                   </div>
                 </button>

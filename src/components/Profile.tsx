@@ -201,8 +201,8 @@ export function ProfileViewModule({
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 text-left px-2 pb-24 max-w-4xl mx-auto">
 
-      {/* ID CARD */}
-      <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
+      {/* ID CARD — oculto na vista própria do utente */}
+      {!(user.role === 'utente' && !isExternalView) && <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
         <div className="flex items-center justify-between px-6 pt-5 pb-2">
           <div className="flex items-center gap-2">
             {isExternalView && (
@@ -312,7 +312,7 @@ export function ProfileViewModule({
           </div>
         </div>
         <div className="h-2 bg-[#F7B500] w-full"/>
-      </div>
+      </div>}
 
       <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={e => {
         if (e.target.files?.[0]) {

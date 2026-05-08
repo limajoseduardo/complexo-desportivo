@@ -15,8 +15,7 @@ import { ChatModule } from './components/Chat';
 import { UtenteTrainingModule } from './components/UtenteTraining';
 import { AccessLogsModule } from './components/AccessLogs';
 import { AgendaModule } from './components/Agenda';
-import { QRCodeSVG } from 'qrcode.react';
-import { LogOut, QrCode, Shield, X, Dumbbell, Waves, Target } from 'lucide-react';
+import { LogOut, QrCode, Shield } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
 import { PicotoIcon } from './components/Common';
@@ -51,137 +50,33 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   utente:    ['inicio', 'treino', 'mensagens', 'agenda', 'perfil'],
 };
 
-export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser }: { 
-  user: UserProfile, 
-  setActiveTab: (t: string) => void, 
+export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser }: {
+  user: UserProfile,
+  setActiveTab: (t: string) => void,
   onLogout: () => void,
   setUser?: (u: UserProfile) => void
 }) => {
-  const [showQR, setShowQR] = useState(false);
-  const [selectedGate, setSelectedGate] = useState('LIVRE');
-  
-  const gates = [
-    { id: 'GINASIO', label: 'Ginásio', color: 'border-orange-500', text: 'text-orange-600', prefix: 'G_GINASIO', icon: <Dumbbell size={16}/> },
-    { id: 'PISCINA', label: 'Piscina', color: 'border-blue-500', text: 'text-blue-600', prefix: 'G_PISCINA', icon: <Waves size={16}/> },
-    { id: 'MODALIDADE', label: user.modalidade || 'Modalidade', color: 'border-emerald-500', text: 'text-emerald-600', prefix: 'G_MODALIDADE', icon: <Target size={16}/> },
-    { id: 'LIVRE', label: 'Livre / Geral', color: 'border-slate-400', text: 'text-slate-500', prefix: 'G_LIVRE', icon: <Shield size={16}/> }
-  ];
-
-  const currentGate = gates.find(g => g.id === selectedGate) || gates[0];
-  const qrValue = `${currentGate.prefix}:${user.id}`;
-  
-  const profileHeader = (
-    <div className="px-1 flex justify-between items-end print:hidden gap-3">
-      <div>
-        <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Área Pessoal</h2>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gestão de acessos Picoto</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onLogout}
-          className="px-4 py-3 bg-white text-[#004D71] rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all hover:bg-slate-100 active:scale-95"
-        >
-          <LogOut size={16} className="inline-block mr-2" /> Sair
-        </button>
-        <button 
-          onClick={() => setShowQR(true)}
-          className="p-4 bg-[#F7B500] text-[#004D71] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center gap-2"
-        >
-          <QrCode size={20}/> <span className="text-[10px] font-black uppercase">Cartão Digital</span>
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="animate-in fade-in pb-32 font-sans text-left px-1">
       {user.role === 'utente' ? (
         <div className="space-y-6">
-          {profileHeader}
-
-          <ProfileViewModule 
-            user={user} 
-            onLogout={onLogout} 
-            setUser={setUser} 
-          />
-
-          {showQR && (
-            <div className="fixed inset-0 z-[100000] bg-[#004D71]/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300 print:hidden">
-               <div className="bg-white rounded-[3.5rem] p-8 w-full max-w-sm text-center shadow-2xl relative animate-in zoom-in duration-300">
-                  <button 
-                    onClick={() => setShowQR(false)} 
-                    aria-label="Fechar Modal QR Code"
-                    className="absolute -top-4 -right-4 bg-white p-5 rounded-2xl shadow-xl text-slate-400 active:scale-90 transition-all border-2 border-slate-50"
-                  >
-                    <X size={24}/>
-                  </button>
-                  
-                  <div className="mb-8">
-                    <h3 className="text-xl font-black text-[#004D71] uppercase mb-1">Acesso Seletivo</h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Toque na área que pretende aceder</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 mb-8">
-                     {gates.map(g => (
-                       <button 
-                         key={g.id}
-                         onClick={() => setSelectedGate(g.id)}
-                         className={`p-4 rounded-3xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${selectedGate === g.id ? 'bg-[#004D71] border-[#F7B500] text-[#F7B500] shadow-lg scale-105 z-10' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
-                       >
-                         <div className={`${selectedGate === g.id ? 'text-[#F7B500]' : g.text}`}>
-                           {g.icon}
-                         </div>
-                         <span className="text-[9px] font-black uppercase tracking-tighter leading-tight">{g.label}</span>
-                       </button>
-                     ))}
-                  </div>
-
-                  <div className="bg-white p-6 rounded-[3rem] border-8 border-slate-50 mb-8 flex flex-col items-center shadow-inner relative overflow-hidden group">
-                     {/* Decorative background stripes */}
-                     <div className="absolute top-0 left-0 w-full h-2 bg-[#F7B500] opacity-10 animate-pulse" />
-                     
-                     <div className="p-2 bg-white rounded-xl shadow-sm mb-4">
-                        <QRCodeSVG 
-                          value={qrValue} 
-                          size={160}
-                          level="H"
-                        />
-                     </div>
-                     
-                     <div className="mt-2 flex flex-col items-center">
-                        <div className="bg-slate-900/5 px-4 py-2 rounded-xl">
-                          <code className="text-[#004D71] font-mono font-black text-[10px] tracking-[0.2em]">
-                             {qrValue}
-                          </code>
-                        </div>
-                        <div className={`mt-3 flex items-center gap-2 px-3 py-1 rounded-full text-[8px] font-black uppercase border ${currentGate.color} ${currentGate.text} bg-white shadow-sm`}>
-                           {currentGate.icon} {currentGate.label}
-                        </div>
-                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 bg-[#F7B500]/10 p-5 rounded-[2rem] border-2 border-[#F7B500]/20">
-                     <div className="w-12 h-12 bg-[#004D71] rounded-2xl flex items-center justify-center shrink-0 shadow-lg">
-                       <QrCode size={24} className="text-[#F7B500] animate-pulse" />
-                     </div>
-                     <div className="text-left">
-                        <p className="text-[9px] font-black uppercase text-slate-400">Validação Digital</p>
-                        <p className="text-[12px] font-black uppercase text-[#004D71] leading-tight">Acesso: {currentGate.label}</p>
-                     </div>
-                  </div>
-
-                  <p className="mt-8 text-[9px] font-black text-slate-300 uppercase tracking-[0.1em]">Aproxime o ecrã do leitor na receção</p>
-               </div>
+          <div className="px-1 flex justify-between items-end print:hidden gap-3">
+            <div>
+              <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Área Pessoal</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gestão de acessos Picoto</p>
             </div>
-          )}
+            <button
+              onClick={onLogout}
+              className="px-4 py-3 bg-white text-[#004D71] rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all hover:bg-slate-100 active:scale-95"
+            >
+              <LogOut size={16} className="inline-block mr-2" /> Sair
+            </button>
+          </div>
+          <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} />
         </div>
       ) : (
         <div className="space-y-6">
-           <ProfileViewModule 
-             user={user} 
-             onLogout={onLogout} 
-             setUser={setUser} 
-           />
+          <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} />
         </div>
       )}
     </div>

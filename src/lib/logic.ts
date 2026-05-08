@@ -44,7 +44,7 @@ export const isUserInZone = (user: UserProfile, zoneId: string) => {
     return loc.includes('bebé') || loc.includes('bebe') || loc.includes('/ama') || loc.includes('bebés/ama');
   }
   if (zoneId === 'livre') {
-    return loc.includes('livre/geral') || loc.includes('geral') || loc.includes('g_livre');
+    return loc.includes('regime livre') || loc.includes('piscina livre') || loc.includes('livre/geral') || loc.includes('geral') || loc.includes('g_livre');
   }
 
   return false;
