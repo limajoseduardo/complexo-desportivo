@@ -13,7 +13,8 @@
     "firebase:seed": "tsx scripts/seed-local.ts",
     "dev:cloud": "vite --port=3100 --host=0.0.0.0",
     "firebase:migrate": "tsx scripts/migrate-cloud-to-local.ts",
-    "firebase:migrate:retry": "bash scripts/migrate-retry.sh 600"
+    "firebase:migrate:retry": "bash scripts/migrate-retry.sh 600",
+    "test:local": "bash scripts/test-local.sh"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

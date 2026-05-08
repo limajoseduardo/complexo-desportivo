@@ -25,7 +25,7 @@ import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import {
   doc, setDoc, onSnapshot, collection, query,
   where, limit, orderBy, getDocs, writeBatch,
-  collectionGroup
+  collectionGroup, getCountFromServer
 } from 'firebase/firestore';
 
 export { APP_ID };
@@ -104,6 +104,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<any[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
+  const [migrationStats, setMigrationStats] = useState<{ users: number; logs: number; mapasCoberta: number; mapasDescoberta: number; agenda: number } | null>(null);
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastScrollY = React.useRef(0);
@@ -131,6 +132,41 @@ export default function App() {
       setTotalUnread(snap.size);
     });
   }, [user?.email]);
+
+  useEffect(() => {
+    const isStaff = user && ['admin', 'chefia', 'staff', 'professor'].includes(user.role);
+    const isLocalMode = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+    if (!isStaff || !isLocalMode) {
+      setMigrationStats(null);
+      return;
+    }
+
+    const readCounts = async () => {
+      try {
+        const base = `artifacts/${APP_ID}/public/data`;
+        const [users, logs, mapasCoberta, mapasDescoberta, agenda] = await Promise.all([
+          getCountFromServer(collection(db, `${base}/users`)),
+          getCountFromServer(collection(db, `${base}/logs_acesso`)),
+          getCountFromServer(collection(db, `${base}/mapas_coberta`)),
+          getCountFromServer(collection(db, `${base}/mapas_descoberta`)),
+          getCountFromServer(collection(db, `${base}/agenda`)),
+        ]);
+        setMigrationStats({
+          users: users.data().count,
+          logs: logs.data().count,
+          mapasCoberta: mapasCoberta.data().count,
+          mapasDescoberta: mapasDescoberta.data().count,
+          agenda: agenda.data().count,
+        });
+      } catch (err) {
+        console.warn('Falha ao ler estatisticas locais de migracao:', err);
+      }
+    };
+
+    readCounts();
+    const timer = setInterval(readCounts, 30000);
+    return () => clearInterval(timer);
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     // Session Restoration and Auth Listeners
@@ -469,6 +505,18 @@ export default function App() {
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header user={user} unreadCount={totalUnread} isVisible={isNavVisible} />
+          {migrationStats && (
+            <div className="px-4 lg:px-10 pt-2">
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wider flex flex-wrap gap-x-4 gap-y-1">
+                <span>Local/Recuperado</span>
+                <span>Utentes: {migrationStats.users}</span>
+                <span>Acessos: {migrationStats.logs}</span>
+                <span>Mapas Coberta: {migrationStats.mapasCoberta}</span>
+                <span>Mapas Descoberta: {migrationStats.mapasDescoberta}</span>
+                <span>Agenda: {migrationStats.agenda}</span>
+              </div>
+            </div>
+          )}
           <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
           
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
