@@ -44,7 +44,7 @@ function PickerModal({ users, unreadCounts, searchTerm, onSearch, onSelect, onCl
   });
   const letterGroups = Object.keys(byLetter).sort().map(l => ({ key: l, users: byLetter[l] }));
 
-  const PickerRow = ({ u }: { u: UserProfile }) => (
+  const PickerRow = ({ u }: { u: UserProfile, key?: any }) => (
     <button onClick={() => onSelect(u)} className="w-full p-4 flex items-center justify-between hover:bg-white/5 active:bg-[#F7B500]/10 transition-all text-left">
       <div className="flex items-center gap-4">
         <div className="relative">

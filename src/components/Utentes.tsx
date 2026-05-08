@@ -8,7 +8,7 @@ import { doc, setDoc } from 'firebase/firestore';
 
 import { handleCheckIn, handleCheckOut } from '../lib/access';
 
-function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void }) {
+function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void, key?: any }) {
   return (
     <button onClick={onClick} className={`w-full p-5 flex items-center justify-between hover:bg-slate-50 active:bg-blue-50 transition-all text-left ${u.isInside ? 'bg-green-50/20' : ''}`}>
       <div className="flex items-center gap-4">
