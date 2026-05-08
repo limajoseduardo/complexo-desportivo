@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export const APP_ID = 'cpx-vila-rei-main';
@@ -8,6 +8,20 @@ export const APP_ID = 'cpx-vila-rei-main';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+
+const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+
+if (useEmulator && typeof window !== 'undefined') {
+  const globalState = window as typeof window & {
+    __cpxFirebaseEmulatorConnected?: boolean;
+  };
+
+  if (!globalState.__cpxFirebaseEmulatorConnected) {
+    connectFirestoreEmulator(db, import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || '127.0.0.1', Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || 8080));
+    connectAuthEmulator(auth, import.meta.env.VITE_AUTH_EMULATOR_URL || 'http://127.0.0.1:9099', { disableWarnings: true });
+    globalState.__cpxFirebaseEmulatorConnected = true;
+  }
+}
 
 const testConnection = async () => {
   try {
