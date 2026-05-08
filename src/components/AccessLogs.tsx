@@ -619,6 +619,55 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         ))}
       </div>
 
+      {/* Resumo Estatístico */}
+      <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border-4 border-slate-100 mb-6 mt-6">
+        <div className="flex flex-col md:flex-row justify-between gap-6">
+           <div>
+              <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2 mb-1">
+                 <FileText size={16} className="text-[#F7B500]"/> Resumo do Período
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">De {startDate} a {endDate}</p>
+              <div className="bg-[#004D71] text-[#F7B500] px-6 py-4 rounded-2xl inline-flex flex-col items-center justify-center shadow-lg">
+                 <span className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Total de Entradas</span>
+                 <span className="text-4xl font-black tabular-nums leading-none">{filteredLogs.length}</span>
+              </div>
+           </div>
+           
+           <div className="flex-1">
+             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b-2 border-slate-50 pb-2">Distribuição por Modalidade</h4>
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+               {statsByModality.map((stat, i) => (
+                 <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center">
+                   <span className="text-xl font-black text-[#004D71] tabular-nums leading-none mb-1">{stat.count}</span>
+                   <span className="text-[9px] font-bold text-slate-500 uppercase leading-tight line-clamp-2">{stat.label}</span>
+                 </div>
+               ))}
+               {statsByModality.length === 0 && (
+                 <p className="text-[10px] text-slate-400 italic">Sem dados</p>
+               )}
+             </div>
+           </div>
+        </div>
+        
+        {/* Gráfico de Afluência Horária */}
+        <div className="mt-6 pt-6 border-t-2 border-slate-50">
+          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Activity size={14} className="text-[#004D71]" /> Horários de Maior Afluência
+          </h4>
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                <XAxis dataKey="hora" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 'bold', fill: '#94a3b8'}}/>
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#94a3b8'}} allowDecimals={false}/>
+                <Tooltip contentStyle={{borderRadius:'16px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.1)'}} formatter={(value: any) => [`${value} entradas`, 'Afluência']} labelStyle={{color: '#004D71', fontWeight: 'black', marginBottom: '4px'}}/>
+                <Area type="monotone" dataKey="entradas" stroke="#004D71" strokeWidth={3} fill="#004D71" fillOpacity={0.06} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-6">
         <div className="space-y-6">
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 overflow-hidden shadow-sm">

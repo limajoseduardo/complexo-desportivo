@@ -243,20 +243,22 @@ export function MapsManager({ user, logs }: { user: UserProfile, logs: any[] }) 
             <FormInput label="Data" type="date" value={formData.data} onChange={v => setFormData({...formData, data: v})} />
             <FormInput label="Hora" type="time" value={formData.hora} onChange={v => setFormData({...formData, hora: v})} />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <FormInput label="Temp. Água (ºC)" value={formData.tempAgua} onChange={v => setFormData({...formData, tempAgua: v})} />
-            <FormInput label="Temp. Ar (ºC)" value={formData.tempAr} onChange={v => setFormData({...formData, tempAr: v})} />
-            <FormInput label="Humidade (UTA %)" value={formData.utaHum} onChange={v => setFormData({...formData, utaHum: v})} />
-            <FormInput label="Nº Banhistas" type="number" value={formData.banhistas} onChange={v => setFormData({...formData, banhistas: v})} />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <FormInput label="Valor pH" value={formData.ph} onChange={v => setFormData({...formData, ph: v})} />
+          <div className="grid grid-cols-2 gap-4">
             <FormInput label="Cloro Livre" value={formData.clLivre} onChange={v => setFormData({...formData, clLivre: v})} />
+            <FormInput label="Valor pH" value={formData.ph} onChange={v => setFormData({...formData, ph: v})} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Água (ºC)" value={formData.tempAgua} onChange={v => setFormData({...formData, tempAgua: v})} />
+            <FormInput label="Humidade (%)" value={formData.utaHum} onChange={v => setFormData({...formData, utaHum: v})} />
+          </div>
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t-2 border-slate-50">
             <FormInput label="Cloro Total" value={formData.clTotal} onChange={v => setFormData({...formData, clTotal: v})} />
             <FormInput label="Cloro Combinado" value={formData.clComb} onChange={v => setFormData({...formData, clComb: v})} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <FormInput label="Temp. Ar (ºC)" value={formData.tempAr} onChange={v => setFormData({...formData, tempAr: v})} />
             <FormInput label="Ácido Cianúrico" value={formData.acidoCianurico} onChange={v => setFormData({...formData, acidoCianurico: v})} />
+            <FormInput label="Nº Banhistas" type="number" value={formData.banhistas} onChange={v => setFormData({...formData, banhistas: v})} />
           </div>
           <FormInput label="Observações / Anomalias" multiline value={formData.obs} onChange={v => setFormData({...formData, obs: v})} />
           <button onClick={saveEntry} className="w-full bg-[#004D71] text-[#F7B500] py-5 rounded-[2rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
