@@ -3,7 +3,7 @@ import {
   User, LogOut, Camera, Info, GraduationCap, Award, Clock, Star,
   Phone, Mail, FileText, ArrowLeft, Briefcase, Trophy, Target,
   AlertCircle, MapPin, Activity, LogIn, Calendar, TrendingUp, History,
-  Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users, X, Plus
+  Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users, X, Plus, Edit2, Check
 } from 'lucide-react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { UserProfile, HealthMetric } from '../types';
@@ -341,6 +341,32 @@ export function ProfileViewModule({
           r.readAsDataURL(e.target.files[0]);
         }
       }}/>
+
+      {/* Barra de edição — visível apenas na vista própria do utente */}
+      {user.role === 'utente' && !isExternalView && (
+        <div className="flex items-center justify-between bg-white rounded-[2rem] px-5 py-3 border-2 border-slate-100 shadow-sm gap-3">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {isEditing ? 'Modo de edição activo' : 'Dados do perfil'}
+          </p>
+          <div className="flex gap-2">
+            {isEditing && (
+              <button
+                onClick={() => { setIsEditing(false); setFormData({ ...user }); }}
+                className="px-4 py-2 rounded-xl font-black text-[10px] uppercase bg-slate-100 text-slate-500 active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            )}
+            <button
+              onClick={() => isEditing ? save() : setIsEditing(true)}
+              disabled={saving}
+              className={`px-5 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 active:scale-95 transition-all shadow-sm ${isEditing ? 'bg-emerald-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+            >
+              {saving ? '…' : isEditing ? <><Check size={13}/> Gravar</> : <><Edit2 size={13}/> Editar Perfil</>}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex p-2 bg-slate-200/50 backdrop-blur rounded-[2.5rem] gap-1 sticky top-0 z-20 overflow-x-auto hide-scrollbar">
