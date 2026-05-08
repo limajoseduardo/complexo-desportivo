@@ -64,5 +64,25 @@ export const REAL_STAFF: UserProfile[] = [
     role: 'staff',
     cargo: 'Assistente Operacional',
     img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoseMaria'
+  },
+  {
+    id: 'carlos_luis',
+    nome: 'Carlos Luís',
+    n: 'CARLOS LUÍS',
+    email: 'carlos.luis@cm-viladerei.pt',
+    role: 'chefia',
+    cargo: 'Direção Municipal',
+    password: '123456',
+    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CarlosLuis'
+  },
+  {
+    id: 'sandra_carvalho',
+    nome: 'Sandra Carvalho',
+    n: 'SANDRA CARVALHO',
+    email: 'sandra.carvalho@cm-viladerei.pt',
+    role: 'chefia',
+    cargo: 'Direção Municipal',
+    password: '123456',
+    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SandraCarvalho'
   }
 ];

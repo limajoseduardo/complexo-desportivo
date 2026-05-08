@@ -49,7 +49,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'alunos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  utente:    ['inicio', 'treino', 'mensagens', 'afluencia', 'agenda', 'perfil'],
+  utente:    ['inicio', 'mensagens', 'afluencia', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser }: { 
@@ -230,6 +230,21 @@ export default function App() {
   const [logs, setLogs] = useState<any[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
 
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const lastScrollY = React.useRef(0);
+
+  const handleMainScroll = React.useCallback((e: React.UIEvent<HTMLElement>) => {
+    const currentScrollY = e.currentTarget.scrollTop;
+    if (currentScrollY < 50) {
+      setIsNavVisible(true); // Mostrar sempre se estiver no topo
+    } else if (currentScrollY > lastScrollY.current + 10) {
+      setIsNavVisible(false); // A descer (esconder)
+    } else if (currentScrollY < lastScrollY.current - 10) {
+      setIsNavVisible(true); // A subir (mostrar)
+    }
+    lastScrollY.current = currentScrollY;
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -292,43 +307,41 @@ export default function App() {
     }
 
     const usersPath = `artifacts/${APP_ID}/public/data/users`;
+    
+    // 1. Carregar quem está no recinto (AGORA PARA TODOS, para os números de afluência funcionarem)
+    let unsubInside: () => void;
+    const qInside = query(collection(db, usersPath), where('isInside', '==', true));
+    unsubInside = onSnapshot(qInside, (snap) => {
+      setUtentesInside(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
+    }, (error) => {
+      console.warn("Inside users query failed:", error.message);
+    });
+
+    // 2. Carregar o resto dos utentes conforme o cargo
+    let unsubRecent: () => void;
     const isStaff = ['admin', 'chefia', 'staff', 'professor'].includes(user.role);
     
     if (isStaff) {
-      // 1. Snapshot for users currently inside
-      let unsubInside: () => void;
-      const qInside = query(collection(db, usersPath), where('isInside', '==', true));
-      unsubInside = onSnapshot(qInside, (snap) => {
-        setUtentesInside(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
-      }, (error) => {
-        console.warn("Inside users query failed, falling back to client-side filter:", error.message);
-        // Fallback: use recent users to filter inside users if the index for isInside is missing
-        // This is not ideal but better than zero
-      });
-
-      // 2. Snapshot for recent users (for browsing and checking in new people)
-      let unsubRecent: () => void;
       const qRecent = query(collection(db, usersPath), orderBy('updatedAt', 'desc'), limit(500));
       unsubRecent = onSnapshot(qRecent, (snap) => {
         setUtentesRecent(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
       }, (error) => {
-        console.warn("Recent users access restricted or index missing, falling back:", error.message);
         const qFallback = query(collection(db, usersPath), limit(500));
         unsubRecent = onSnapshot(qFallback, (snapFallback) => {
           setUtentesRecent(snapFallback.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
         });
       });
-
-      return () => { 
-        unsubInside?.(); 
-        unsubRecent?.(); 
-      };
     } else {
       const qSelf = query(collection(db, usersPath), where('id', '==', user.id));
-      return onSnapshot(qSelf, (snap) => {
+      unsubRecent = onSnapshot(qSelf, (snap) => {
         setUtentesRecent(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
       });
     }
+
+    return () => { 
+      unsubInside?.(); 
+      unsubRecent?.(); 
+    };
   }, [user?.id, user?.role]);
 
   useEffect(() => {
@@ -567,7 +580,7 @@ export default function App() {
           <Header user={user} onReportBug={() => setShowBugReport(true)} unreadCount={totalUnread} />
           <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
           
-          <main className="content-area hide-scrollbar p-4 lg:p-10">
+          <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
             {viewingProfile ? (
               <ProfileViewModule 
                 user={viewingProfile} 
@@ -577,7 +590,7 @@ export default function App() {
               />
             ) : (
               <>
-                {user.role === 'utente' && activeTab === 'inicio' && <UtenteDashboard user={user} />}
+                {user.role === 'utente' && activeTab === 'inicio' && <UtenteDashboard user={user} utentes={utentes} />}
                 {activeTab === 'inicio' && user.role !== 'utente' && (
                   <ModalitiesDashboard 
                     onUserClick={setViewingProfile} 
@@ -587,9 +600,8 @@ export default function App() {
                 )}
                 {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'chefia'].includes(user.role)} />}
                 {activeTab === 'alunos' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={user.role === 'professor' || user.role === 'admin'} />}
-                {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />}
                 {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
-                {activeTab === 'treino' && <UtenteTrainingModule user={user} />}
+                {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'afluencia' && <AttendanceModule />}
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
@@ -609,8 +621,9 @@ export default function App() {
           <MobileNav 
             role={user.role} 
             activeTab={activeTab} 
-            setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); }} 
+            setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); setIsNavVisible(true); }} 
             unreadCount={totalUnread}
+            isVisible={isNavVisible}
           />
 
           {user.role !== 'utente' && (
