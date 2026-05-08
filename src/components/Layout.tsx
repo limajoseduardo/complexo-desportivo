@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  Activity, Bug, ChevronRight, Monitor
+  Bug, ChevronRight, Monitor
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -200,8 +200,8 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
     { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    roles: ['admin', 'staff', 'chefia'] },
     { id: 'alunos',    icon: <Users />,         label: 'Alunos',     roles: ['professor'] },
     { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios', roles: ['admin', 'professor', 'chefia'] },
+    { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     roles: ['utente'] },
     { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
-    { id: 'afluencia', icon: <Activity />,      label: 'Afluência',  roles: ['utente'] },
     { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      roles: ['admin', 'staff', 'chefia', 'professor'] },
     { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',     roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
     { id: 'perfil',    icon: <User />,          label: 'Perfil',     roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
@@ -238,9 +238,9 @@ export const MobileNav = ({ role, activeTab, setActiveTab, unreadCount = 0, isVi
     { id: 'utentes', icon: <Users />, label: 'UTENTES', roles: ['admin', 'staff', 'chefia'] },
     { id: 'acessos', icon: <ClipboardList />, label: 'ACESSOS', roles: ['admin', 'staff', 'chefia'] },
     { id: 'alunos', icon: <Users />, label: 'ALUNOS', roles: ['professor'] },
+    { id: 'treino', icon: <Dumbbell />, label: 'TREINO', roles: ['utente'] },
     { id: 'mensagens', icon: <MessageSquare />, label: 'CHAT', roles: ['professor', 'staff', 'admin', 'utente'], badge: unreadCount },
     { id: 'agenda', icon: <Calendar />, label: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
-    { id: 'afluencia', icon: <Activity />, label: 'AFLUENCIA', roles: ['utente'] },
     { id: 'perfil', icon: <User />, label: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   ].filter(tab => tab.roles.includes(role));
 

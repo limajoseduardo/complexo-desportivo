@@ -266,17 +266,17 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 });
 
 const MODALITIES = [
-  { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={14}/>,    dest: 'Piscina Coberta'  },
-  { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14}/>,      dest: 'Piscina Exterior' },
-  { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={14}/>,    dest: 'Natação Nível 1'  },
-  { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={14}/>,    dest: 'Natação Nível 2'  },
-  { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={14}/>,    dest: 'Natação Nível 3'  },
-  { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={14}/>, dest: 'Hidroginástica'   },
-  { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={14}/>,   dest: 'Bebés/AMA'        },
-  { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={14}/>, dest: 'Ginásio'          },
-  { id: 'fit',      label: 'Aula Fitness',     icon: <Activity size={14}/>, dest: 'Aulas Fitness'    },
-  { id: 'sauna',    label: 'Sauna',            icon: <Flame size={14}/>,    dest: 'Sauna'            },
-  { id: 'livre',    label: 'Livre / Geral',    icon: <Star size={14}/>,     dest: 'Livre/Geral'      },
+  { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={18}/>,    dest: 'Piscina Coberta'  },
+  { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={18}/>,      dest: 'Piscina Exterior' },
+  { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={18}/>,    dest: 'Natação Nível 1'  },
+  { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={18}/>,    dest: 'Natação Nível 2'  },
+  { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={18}/>,    dest: 'Natação Nível 3'  },
+  { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={18}/>, dest: 'Hidroginástica'   },
+  { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'        },
+  { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={18}/>, dest: 'Ginásio'          },
+  { id: 'fit',      label: 'Aula Fitness',     icon: <Activity size={18}/>, dest: 'Aulas Fitness'    },
+  { id: 'sauna',    label: 'Sauna',            icon: <Flame size={18}/>,    dest: 'Sauna'            },
+  { id: 'livre',    label: 'Livre / Geral',    icon: <Star size={18}/>,     dest: 'Livre/Geral'      },
 ];
 
 export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserProfile, utentes?: UserProfile[] }) => {
@@ -306,8 +306,8 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
         {/* seletor de destino */}
         <div className="px-6 pt-4 pb-5 border-b border-white/10">
-          <p className="text-[7px] font-black text-white/40 uppercase tracking-widest mb-3">Para onde vou?</p>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-3">Para onde vou?</p>
+          <div className="grid grid-cols-2 gap-2.5">
             {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
               const isSelected = selectedDest === m.dest;
@@ -315,23 +315,23 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                 <button
                   key={m.id}
                   onClick={() => setSelectedDest(prev => prev === m.dest ? null : m.dest)}
-                  className={`relative flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all active:scale-95 text-center ${
+                  className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all active:scale-95 text-left ${
                     isSelected
                       ? 'bg-[#F7B500] border-[#F7B500] shadow-lg'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}
                 >
-                  {count > 0 && !isSelected && (
-                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                      {count}
-                    </span>
-                  )}
-                  <div className={isSelected ? 'text-[#004D71]' : 'text-white/70'}>
-                    {m.icon}
+                  <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-[#004D71]/15' : 'bg-white/10'}`}>
+                    <span className={isSelected ? 'text-[#004D71]' : 'text-white/80'}>{m.icon}</span>
                   </div>
-                  <p className={`text-[7px] font-black uppercase leading-tight ${isSelected ? 'text-[#004D71]' : 'text-white/60'}`}>
-                    {m.label}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[9px] font-black uppercase leading-tight line-clamp-2 ${isSelected ? 'text-[#004D71]' : 'text-white/80'}`}>
+                      {m.label}
+                    </p>
+                    <p className={`text-sm font-black mt-0.5 leading-none ${isSelected ? 'text-[#004D71]' : 'text-white'}`}>
+                      {count} <span className={`text-[8px] font-bold ${isSelected ? 'text-[#004D71]/50' : 'text-white/40'}`}>pessoas</span>
+                    </p>
+                  </div>
                 </button>
               );
             })}

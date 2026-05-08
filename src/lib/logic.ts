@@ -28,6 +28,24 @@ export const isUserInZone = (user: UserProfile, zoneId: string) => {
   if (zoneId === 'fit') {
     return loc.includes('aula') || loc.includes('treino') || loc.includes('personal') || loc.includes('dance') || loc.includes('hiit') || loc.includes('g_modalidade');
   }
+  if (zoneId === 'nat1') {
+    return loc.includes('nível 1') || loc.includes('nivel 1') || loc.includes('natação nível 1');
+  }
+  if (zoneId === 'nat2') {
+    return loc.includes('nível 2') || loc.includes('nivel 2') || loc.includes('natação nível 2');
+  }
+  if (zoneId === 'nat3') {
+    return loc.includes('nível 3') || loc.includes('nivel 3') || loc.includes('natação nível 3');
+  }
+  if (zoneId === 'hidro') {
+    return loc.includes('hidro');
+  }
+  if (zoneId === 'bebes') {
+    return loc.includes('bebé') || loc.includes('bebe') || loc.includes('/ama') || loc.includes('bebés/ama');
+  }
+  if (zoneId === 'livre') {
+    return loc.includes('livre/geral') || loc.includes('geral') || loc.includes('g_livre');
+  }
 
   return false;
 };

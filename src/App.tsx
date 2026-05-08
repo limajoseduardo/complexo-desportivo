@@ -13,7 +13,6 @@ import { MapsManager } from './components/Maps';
 import { ExerciseGallery } from './components/Exercises';
 import { ChatModule } from './components/Chat';
 import { UtenteTrainingModule } from './components/UtenteTraining';
-import { AttendanceModule } from './components/Attendance';
 import { AccessLogsModule } from './components/AccessLogs';
 import { AgendaModule } from './components/Agenda';
 import { QRCodeSVG } from 'qrcode.react';
@@ -49,7 +48,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'alunos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  utente:    ['inicio', 'mensagens', 'afluencia', 'agenda', 'perfil'],
+  utente:    ['inicio', 'treino', 'mensagens', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser }: { 
@@ -602,7 +601,7 @@ export default function App() {
                 {activeTab === 'alunos' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={user.role === 'professor' || user.role === 'admin'} />}
                 {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
-                {activeTab === 'afluencia' && <AttendanceModule />}
+                {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                 {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
