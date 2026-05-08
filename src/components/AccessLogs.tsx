@@ -21,7 +21,8 @@ import autoTable from 'jspdf-autotable';
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
@@ -75,8 +76,9 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     // We filter by 'date' field which is YYYY-MM-DD
     const q = query(
       collection(db, path),
-      where('date', '==', selectedDate),
-      limit(200)
+      where('date', '>=', startDate),
+      where('date', '<=', endDate),
+      limit(2000)
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -95,7 +97,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     });
 
     return () => unsub();
-  }, [selectedDate]);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     if (userSearchText.length < 2) {
@@ -181,7 +183,8 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
           lastIn: serverTimestamp()
         });
 
-        setSelectedDate(today);
+        setStartDate(today);
+        setEndDate(today);
       }
 
       closeModal();
@@ -275,19 +278,35 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     l.userName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const statsByModality = modalities.map(m => ({
+    label: m,
+    count: filteredLogs.filter(l => l.modalidade === m).length
+  })).filter(s => s.count > 0);
+  
+  const otherCount = filteredLogs.filter(l => !modalities.includes(l.modalidade || '')).length;
+  if (otherCount > 0) {
+    statsByModality.push({ label: 'Outro / Geral', count: otherCount });
+  }
+
   const downloadCSV = () => {
-    const header = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
-    const rows = filteredLogs.map(l => {
+    let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
+    filteredLogs.forEach(l => {
       const checkIn = l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString() : l.checkIn;
       const checkOut = l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString() : l.checkOut) : '---';
-      return `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}`;
-    }).join("\n");
+      csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}\n`;
+    });
     
-    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    csv += "\nResumo por Modalidade\nModalidade,Total de Entradas\n";
+    statsByModality.forEach(s => {
+      csv += `"${s.label}",${s.count}\n`;
+    });
+    csv += `"TOTAL GERAL",${filteredLogs.length}\n`;
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `relatorio_acessos_${selectedDate}.csv`);
+    link.setAttribute("download", `relatorio_acessos_${startDate}_a_${endDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -303,10 +322,11 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Data: ${selectedDate}`, 14, 30);
-    doc.text(`Total de entradas: ${filteredLogs.length}`, 14, 35);
+    doc.text(`Período: ${startDate} a ${endDate}`, 14, 30);
+    doc.text(`Total de Entradas: ${filteredLogs.length}`, 14, 35);
     
     const tableData = filteredLogs.map(l => [
+      l.date,
       l.userName,
       l.modalidade || '---',
       l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
@@ -316,7 +336,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
 
     autoTable(doc, {
       startY: 45,
-      head: [['Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
+      head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
       body: tableData,
       headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
       alternateRowStyles: { fillColor: [245, 247, 250] },
@@ -324,7 +344,24 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       styles: { fontSize: 8, font: 'helvetica' }
     });
 
-    doc.save(`relatorio_acessos_${selectedDate}.pdf`);
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    
+    doc.setFontSize(14);
+    doc.setTextColor(0, 77, 113);
+    doc.text('Resumo por Modalidade', 14, finalY);
+
+    const summaryData = statsByModality.map(s => [s.label, s.count.toString()]);
+    summaryData.push(['TOTAL', filteredLogs.length.toString()]);
+
+    autoTable(doc, {
+      startY: finalY + 5,
+      head: [['Modalidade', 'Total de Entradas']],
+      body: summaryData,
+      headStyles: { fillColor: [247, 181, 0], textColor: [0, 77, 113] },
+      styles: { fontSize: 9, font: 'helvetica' }
+    });
+
+    doc.save(`relatorio_acessos_${startDate}_a_${endDate}.pdf`);
   };
 
   return (
@@ -337,14 +374,26 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Controlo histórico de entradas e saídas</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-48">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input 
-              type="date" 
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="pl-9 pr-4 py-2.5 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative w-32 md:w-40">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="pl-9 pr-2 py-2.5 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
+              />
+            </div>
+            <span className="text-slate-400 font-bold text-[10px] uppercase">a</span>
+            <div className="relative w-32 md:w-40">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="pl-9 pr-2 py-2.5 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             {onScan && (
@@ -548,6 +597,37 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         ))}
       </div>
 
+      {/* Resumo Estatístico */}
+      <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border-4 border-slate-100 mb-6">
+        <div className="flex flex-col md:flex-row justify-between gap-6">
+           <div>
+              <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2 mb-1">
+                 <FileText size={16} className="text-[#F7B500]"/> Resumo do Período
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">De {startDate} a {endDate}</p>
+              <div className="bg-[#004D71] text-[#F7B500] px-6 py-4 rounded-2xl inline-flex flex-col items-center justify-center shadow-lg">
+                 <span className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Total de Entradas</span>
+                 <span className="text-4xl font-black tabular-nums leading-none">{filteredLogs.length}</span>
+              </div>
+           </div>
+           
+           <div className="flex-1">
+             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b-2 border-slate-50 pb-2">Distribuição por Modalidade</h4>
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+               {statsByModality.map((stat, i) => (
+                 <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-center">
+                   <span className="text-xl font-black text-[#004D71] tabular-nums leading-none mb-1">{stat.count}</span>
+                   <span className="text-[9px] font-bold text-slate-500 uppercase leading-tight line-clamp-2">{stat.label}</span>
+                 </div>
+               ))}
+               {statsByModality.length === 0 && (
+                 <p className="text-[10px] text-slate-400 italic">Sem dados</p>
+               )}
+             </div>
+           </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-6">
         <div className="space-y-6">
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 overflow-hidden shadow-sm">
@@ -555,6 +635,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b-2 border-slate-100">
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Data</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Utente</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Modalidade</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Entrada</th>
@@ -568,6 +649,9 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                     const profile = usersMap[log.userId];
                     return (
                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-slate-500">{log.date}</span>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <AvatarImage
