@@ -3,7 +3,7 @@ import {
   Users, LogIn, LogOut, Calendar, Search,
   Download,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode,
-  Dumbbell, Waves, Activity, Flame, Sun
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets
 } from 'lucide-react';
 import { AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -523,14 +523,19 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         </div>
       )}
 
-      {/* 4 quadrados em tempo real */}
+      {/* Quadrados em tempo real (10 modalidades) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
-          { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={28}/>,    color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'pool_in')).length },
-          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={28}/>, color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
-          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={28}/>, color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
-          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={28}/>,    color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
-          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={28}/>,      color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
+          { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={28}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
+          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={28}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
+          { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={28}/>,     color: 'text-blue-200',   bg: 'bg-blue-500',     count: utentesInside.filter(u => isUserInZone(u, 'nat1')).length },
+          { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={28}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat2')).length },
+          { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={28}/>,     color: 'text-blue-400',   bg: 'bg-blue-700',     count: utentesInside.filter(u => isUserInZone(u, 'nat3')).length },
+          { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={28}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
+          { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={28}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
+          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={28}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
+          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={28}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
+          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={28}/>,     color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
         ].map(z => (
           <div key={z.id} className={`${z.bg} rounded-[2rem] p-6 text-white shadow-xl flex flex-col justify-between gap-4 relative overflow-hidden`}>
             <div className="flex items-center justify-between">
