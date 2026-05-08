@@ -217,7 +217,7 @@ export default function App() {
     const isStaff = ['admin', 'chefia', 'staff', 'professor'].includes(user.role);
     
     if (isStaff) {
-      const qRecent = query(collection(db, usersPath), limit(1500));
+      const qRecent = query(collection(db, usersPath), limit(3000));
       unsubRecent = onSnapshot(qRecent, (snap) => {
         setUtentesRecent(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
       });

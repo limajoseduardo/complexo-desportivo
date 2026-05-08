@@ -24,7 +24,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 7);
+    d.setDate(d.getDate() - 30);
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -66,7 +66,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(1500)))
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(3000)))
       .then(snap => {
         const m: Record<string, UserProfile> = {};
         snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
@@ -78,11 +78,8 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     setLoading(true);
     const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
     
-    // We filter by 'date' field which is YYYY-MM-DD
     const q = query(
       collection(db, path),
-      where('date', '>=', startDate),
-      where('date', '<=', endDate),
       limit(2000)
     );
 
@@ -90,8 +87,8 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       const sorted = snap.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as AccessLog))
         .sort((a, b) => {
-          const ta = a.checkIn instanceof Timestamp ? a.checkIn.seconds : 0;
-          const tb = b.checkIn instanceof Timestamp ? b.checkIn.seconds : 0;
+          const ta = a.checkIn instanceof Timestamp ? a.checkIn.seconds : (a.timestamp?.seconds || 0);
+          const tb = b.checkIn instanceof Timestamp ? b.checkIn.seconds : (b.timestamp?.seconds || 0);
           return tb - ta;
         });
       setLogs(sorted);
@@ -102,7 +99,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     });
 
     return () => unsub();
-  }, [startDate, endDate]);
+  }, []);
 
   useEffect(() => {
     if (userSearchText.length < 2) {
@@ -279,9 +276,12 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     }
   };
 
-  const filteredLogs = logs.filter(l => 
-    l.userName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredLogs = logs.filter(l => {
+    const lDate = l.date || (l.checkIn instanceof Timestamp ? l.checkIn.toDate().toISOString().split('T')[0] : '');
+    const inRange = lDate >= startDate && lDate <= endDate;
+    const matchSearch = (l.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    return inRange && matchSearch;
+  });
 
   const statsByModality = modalities.map(m => ({
     label: m,
