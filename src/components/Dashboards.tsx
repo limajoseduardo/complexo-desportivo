@@ -266,7 +266,6 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 });
 
 const MODALITIES = [
-  { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={18}/>,    dest: 'Piscina Coberta'  },
   { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={18}/>,      dest: 'Piscina Exterior' },
   { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={18}/>,    dest: 'Natação Nível 1'  },
   { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={18}/>,    dest: 'Natação Nível 2'  },
@@ -330,8 +329,10 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                     <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90">
                       {m.label}
                     </p>
-                    <p className="text-base font-black mt-1 leading-none text-white">
-                      {count} <span className="text-[9px] font-bold text-white/40">pessoas</span>
+                    <p className="text-[9px] font-bold text-white/50 mt-1 leading-none">
+                      neste momento{' '}
+                      <span className="text-white font-black text-xs">{count}</span>
+                      {' '}pessoas
                     </p>
                   </div>
                 </button>
