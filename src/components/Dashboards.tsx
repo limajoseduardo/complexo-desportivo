@@ -265,6 +265,102 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
   );
 });
 
+export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick }: {
+  user: UserProfile;
+  utentes?: UserProfile[];
+  onUserClick: (u: UserProfile) => void;
+}) => {
+  const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
+  const totalInside = utentes.filter(u => u.isInside).length;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
+
+      <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
+          <div>
+            <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
+            <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
+          </div>
+          <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
+            <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
+          </div>
+        </div>
+
+        <div className="px-6 pt-4 pb-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
+            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
+              Neste momento tem{' '}
+              <span className="text-[#F7B500] text-sm font-black">{totalInside}</span>
+              {' '}{totalInside === 1 ? 'utente' : 'utentes'}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {STAFF_MODALITIES.map(m => {
+              const count = utentes.filter(u => isUserInZone(u, m.id)).length;
+              return (
+                <button key={m.id} onClick={() => setSelectedMod(m)}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
+                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90">{m.label}</p>
+                    <p className="text-[9px] font-bold text-white/50 mt-1 leading-none">
+                      tem <span className="text-white font-black text-xs">{count}</span> {count === 1 ? 'utente' : 'utentes'}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {selectedMod && (() => {
+        const users = utentes.filter(u => isUserInZone(u, selectedMod.id));
+        return (
+          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4" onClick={() => setSelectedMod(null)}>
+            <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{selectedMod.icon}</div>
+                  <div>
+                    <h3 className="text-base font-black text-[#004D71] uppercase">{selectedMod.label}</h3>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                      {users.length} {users.length === 1 ? 'utente presente' : 'utentes presentes'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
+              </div>
+              <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
+                {users.map(u => (
+                  <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
+                    className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
+                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-[#F7B500] shrink-0"/>
+                  </button>
+                ))}
+                {users.length === 0 && (
+                  <div className="py-16 text-center">
+                    <PicotoIcon className="mx-auto mb-4 opacity-10" size={50}/>
+                    <p className="uppercase font-black text-[10px] tracking-widest text-slate-300">Nenhum utente nesta modalidade</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+});
+
 const MODALITIES = [
   { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,     dest: 'Piscina Regime Livre' },
   { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={18}/>,      dest: 'Piscina Exterior'     },

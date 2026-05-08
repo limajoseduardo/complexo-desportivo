@@ -108,7 +108,7 @@ export function ProfileViewModule({
 
   useEffect(() => {
     if (!isEditing) setFormData({ ...user });
-  }, [user.id, user.updatedAt, isEditing, user.isInside, user.location]);
+  }, [user.id, user.updatedAt, user.isInside, user.location]);
 
   useEffect(() => {
     if (!user.id) return;
@@ -179,7 +179,9 @@ export function ProfileViewModule({
         ...(formData.termo_responsabilidade && !user.termo_responsabilidade_data && { termo_responsabilidade_data: now }),
       };
       await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, id), updateData);
-      if (setUser) setUser({ ...formData, ...updateData });
+      const saved = { ...formData, ...updateData };
+      setFormData(saved);
+      if (setUser) setUser(saved);
       setIsEditing(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${formData.id}`);
@@ -221,8 +223,8 @@ export function ProfileViewModule({
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 text-left px-2 pb-24 max-w-4xl mx-auto">
 
-      {/* ID CARD — oculto na vista própria do utente e staff */}
-      {!(['utente', 'staff'].includes(user.role) && !isExternalView) && <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
+      {/* ID CARD — apenas visível em vistas externas (admin a ver utente, etc.) */}
+      {isExternalView && <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
         <div className="flex items-center justify-between px-6 pt-5 pb-2">
           <div className="flex items-center gap-2">
             {isExternalView && (
@@ -342,8 +344,8 @@ export function ProfileViewModule({
         }
       }}/>
 
-      {/* Barra de edição — visível na vista própria do utente e staff */}
-      {['utente', 'staff'].includes(user.role) && !isExternalView && (
+      {/* Barra de edição — visível para todos na vista própria */}
+      {!isExternalView && (
         <div className="flex items-center justify-between bg-white rounded-[2rem] px-5 py-3 border-2 border-slate-100 shadow-sm gap-3">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             {isEditing ? 'Modo de edição activo' : 'Dados do perfil'}
