@@ -106,7 +106,7 @@ export function ProfileViewModule({
 
   const age = calcAge(formData.data_nasc);
   const isMinor = age !== null && age < 16;
-  const canEdit = !isExternalView || currentRole === 'admin' || currentRole === 'staff';
+  const canEdit = true;
 
   useEffect(() => {
     if (!isEditing) setFormData({ ...user });
