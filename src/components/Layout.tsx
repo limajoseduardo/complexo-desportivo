@@ -125,20 +125,33 @@ export function Header({ user, onReportBug, unreadCount = 0, isVisible = true }:
       .catch(e => console.error('Erro de meteorologia:', e));
   }, []);
 
-  const nameRaw = (user.nome || user.n || '').trim();
-  const nameParts = nameRaw ? nameRaw.split(/\s+/) : ['Utente'];
-  const displayName = nameParts.length > 1 ? `${nameParts[0]} ${nameParts[nameParts.length - 1]}` : nameParts[0];
+  const fullName = (user.nome || user.n || '').trim() || 'Utilizador';
+  const age = user.data_nasc ? (() => {
+    const b = new Date(user.data_nasc);
+    const t = new Date();
+    let a = t.getFullYear() - b.getFullYear();
+    if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
+    return a;
+  })() : null;
 
   return (
     <header className={`bg-white px-5 flex justify-between items-center sticky top-0 z-40 transition-all duration-300 overflow-hidden ${isVisible ? 'max-h-[160px] py-4 border-b-4 border-slate-100 opacity-100' : 'max-h-0 py-0 border-b-0 border-transparent opacity-0'}`}>
-      {/* Esquerda: Foto Maior e Nome (Primeiro e Último) */}
+      {/* Esquerda: Foto + Info */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
         <div className="w-16 h-16 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md shrink-0">
-          <AvatarImage src={user.img} alt={user.n || user.nome} className="w-full h-full object-cover" />
+          <AvatarImage src={user.img} alt={fullName} className="w-full h-full object-cover" />
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] font-black text-[#F7B500] uppercase tracking-widest leading-none">{user.cargo || 'Membro'}</p>
-          <h2 className="text-xl font-black text-[#004D71] truncate uppercase leading-tight">{displayName}</h2>
+          <h2 className="text-base font-black text-[#004D71] uppercase leading-tight line-clamp-2">{fullName}</h2>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-0 mt-0.5">
+            <p className="text-[9px] font-black text-[#F7B500] uppercase tracking-widest">{user.cargo || 'Membro'}</p>
+            {age !== null && <p className="text-[9px] font-bold text-slate-400 uppercase">· {age} anos</p>}
+          </div>
+          {user.cartao_municipal && (
+            <p className="text-[8px] font-bold text-emerald-600 uppercase tracking-wide mt-0.5">
+              Cartão: {user.municipio_cartao || user.cartao_municipal}
+            </p>
+          )}
         </div>
       </div>
 

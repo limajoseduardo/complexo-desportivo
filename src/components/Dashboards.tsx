@@ -266,17 +266,17 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 });
 
 const MODALITIES = [
-  { id: 'pool_in',  label: 'P. Coberta',     icon: <Waves size={14}/>,    dest: 'Piscina Coberta'  },
-  { id: 'pool_out', label: 'P. Exterior',    icon: <Sun size={14}/>,      dest: 'Piscina Exterior' },
-  { id: 'nat1',     label: 'Natação Nv.1',   icon: <Waves size={14}/>,    dest: 'Natação Nível 1'  },
-  { id: 'nat2',     label: 'Natação Nv.2',   icon: <Waves size={14}/>,    dest: 'Natação Nível 2'  },
-  { id: 'nat3',     label: 'Natação Nv.3',   icon: <Waves size={14}/>,    dest: 'Natação Nível 3'  },
-  { id: 'hidro',    label: 'Hidroginástica', icon: <Droplets size={14}/>, dest: 'Hidroginástica'   },
-  { id: 'bebes',    label: 'Bebés/AMA',      icon: <Users2 size={14}/>,   dest: 'Bebés/AMA'        },
-  { id: 'gym',      label: 'Ginásio',        icon: <Dumbbell size={14}/>, dest: 'Ginásio'          },
-  { id: 'fit',      label: 'Aula Fitness',   icon: <Activity size={14}/>, dest: 'Aulas Fitness'    },
-  { id: 'sauna',    label: 'Sauna',          icon: <Flame size={14}/>,    dest: 'Sauna'            },
-  { id: 'livre',    label: 'Livre',          icon: <Star size={14}/>,     dest: 'Livre/Geral'      },
+  { id: 'pool_in',  label: 'Piscina Coberta',  icon: <Waves size={14}/>,    dest: 'Piscina Coberta'  },
+  { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14}/>,      dest: 'Piscina Exterior' },
+  { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={14}/>,    dest: 'Natação Nível 1'  },
+  { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={14}/>,    dest: 'Natação Nível 2'  },
+  { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={14}/>,    dest: 'Natação Nível 3'  },
+  { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={14}/>, dest: 'Hidroginástica'   },
+  { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={14}/>,   dest: 'Bebés/AMA'        },
+  { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={14}/>, dest: 'Ginásio'          },
+  { id: 'fit',      label: 'Aula Fitness',     icon: <Activity size={14}/>, dest: 'Aulas Fitness'    },
+  { id: 'sauna',    label: 'Sauna',            icon: <Flame size={14}/>,    dest: 'Sauna'            },
+  { id: 'livre',    label: 'Livre / Geral',    icon: <Star size={14}/>,     dest: 'Livre/Geral'      },
 ];
 
 export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserProfile, utentes?: UserProfile[] }) => {
@@ -301,29 +301,6 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
           </div>
           <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
             <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Sócio Activo</p>
-          </div>
-        </div>
-
-        {/* perfil */}
-        <div className="px-6 py-4 flex items-center gap-4 border-b border-white/10">
-          <AvatarImage
-            src={user.img}
-            alt={user.n || user.nome}
-            className="w-16 h-16 rounded-2xl border-2 border-white/20 shadow-lg object-cover shrink-0"
-          />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-black text-white uppercase leading-tight line-clamp-2">{user.n || user.nome}</h3>
-            <p className="text-[9px] font-bold text-[#F7B500] uppercase tracking-widest mt-1">{user.cargo || 'Utente'}</p>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-              {user.data_nasc && (
-                <p className="text-[8px] font-bold text-white/40 uppercase">
-                  {new Date().getFullYear() - new Date(user.data_nasc).getFullYear()} anos
-                </p>
-              )}
-              {user.num_utente && (
-                <p className="text-[8px] font-bold text-white/40 uppercase font-mono">Nº {user.num_utente}</p>
-              )}
-            </div>
           </div>
         </div>
 
