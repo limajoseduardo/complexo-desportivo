@@ -22,7 +22,11 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
@@ -62,7 +66,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, []);
 
   useEffect(() => {
-    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(500)))
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), limit(1500)))
       .then(snap => {
         const m: Record<string, UserProfile> = {};
         snap.docs.forEach(d => { m[d.id] = { id: d.id, ...d.data() } as UserProfile; });
@@ -110,7 +114,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       const q = query(
         collection(db, `artifacts/${APP_ID}/public/data/users`),
         where('role', '==', 'utente'),
-        limit(50)
+        limit(1000)
       );
       const snap = await getDocs(q);
       const allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));

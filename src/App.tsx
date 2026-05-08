@@ -217,14 +217,9 @@ export default function App() {
     const isStaff = ['admin', 'chefia', 'staff', 'professor'].includes(user.role);
     
     if (isStaff) {
-      const qRecent = query(collection(db, usersPath), orderBy('updatedAt', 'desc'), limit(500));
+      const qRecent = query(collection(db, usersPath), limit(1500));
       unsubRecent = onSnapshot(qRecent, (snap) => {
         setUtentesRecent(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
-      }, (error) => {
-        const qFallback = query(collection(db, usersPath), limit(500));
-        unsubRecent = onSnapshot(qFallback, (snapFallback) => {
-          setUtentesRecent(snapFallback.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
-        });
       });
     } else {
       const qSelf = query(collection(db, usersPath), where('id', '==', user.id));
@@ -299,12 +294,12 @@ export default function App() {
       });
     };
 
-    const qC = query(collection(db, pathC), orderBy('timestamp', 'desc'), limit(15));
+    const qC = query(collection(db, pathC), orderBy('timestamp', 'desc'), limit(50));
     const unsubC = onSnapshot(qC, (snap) => {
       mergeLogs(snap.docs.map(d => ({ ...d.data(), id: d.id, tipo: 'coberta' })), 'coberta');
     }, (err) => handleFirestoreError(err, OperationType.GET, pathC));
 
-    const qD = query(collection(db, pathD), orderBy('timestamp', 'desc'), limit(15));
+    const qD = query(collection(db, pathD), orderBy('timestamp', 'desc'), limit(50));
     const unsubD = onSnapshot(qD, (snap) => {
       mergeLogs(snap.docs.map(d => ({ ...d.data(), id: d.id, tipo: 'descoberta' })), 'descoberta');
     }, (err) => handleFirestoreError(err, OperationType.GET, pathD));
