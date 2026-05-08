@@ -166,6 +166,27 @@ export default function App() {
       seed();
     }
 
+    // Auto-inserir aulas de Fitness pedidas
+    if (!localStorage.getItem('cpx_seed_fitness')) {
+      const seedFitness = async () => {
+        try {
+          const agendaPath = `artifacts/${APP_ID}/public/data/agenda`;
+          const batch = writeBatch(db);
+          const aulas = [
+            { diaSemana: 1, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
+            { diaSemana: 4, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
+            { diaSemana: 6, horaInicio: '10:35', horaFim: '11:20', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' }
+          ];
+          aulas.forEach(a => batch.set(doc(collection(db, agendaPath)), a));
+          await batch.commit();
+          localStorage.setItem('cpx_seed_fitness', 'true');
+        } catch (e) {
+          console.warn("Seed fitness failed:", e);
+        }
+      };
+      seedFitness();
+    }
+
     return () => { unsub(); clearTimeout(timeout); };
   }, []);
 

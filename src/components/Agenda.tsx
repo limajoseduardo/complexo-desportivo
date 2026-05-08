@@ -384,6 +384,9 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                    className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none appearance-none"
                  >
                    <option value="Escola de Natação">Escola de Natação</option>
+                   <option value="Aulas Fitness">Aulas Fitness</option>
+                   <option value="Hidroginástica">Hidroginástica</option>
+                   <option value="Bebés / AMA">Bebés / AMA</option>
                  </select>
                </div>
 
