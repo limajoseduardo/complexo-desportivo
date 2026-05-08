@@ -8,7 +8,6 @@ import { APP_ID } from '../App';
 import { 
   collection, onSnapshot, query, addDoc, updateDoc, 
   deleteDoc, doc, orderBy, where
-} from 'firebase/firestore';
 import { Aula, UserRole, UserProfile } from '../types';
 
 interface AgendaModuleProps {
@@ -145,6 +144,25 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
         : [...inscritos, { id: user.id, nome: user.nome || user.n || 'Utente' }];
         
       await updateDoc(doc(db, path, aula.id), { inscritos: newInscritos });
+
+      // Notificar professor automaticamente no chat
+      if (aula.professor) {
+        const prof = professors.find(p => (p.n || p.nome) === aula.professor);
+        if (prof) {
+          const chatId = [user.id, prof.id].sort().join('_');
+          const actionText = !isEnrolled 
+            ? `✅ [NOVA INSCRIÇÃO]: Olá, inscrevi-me na sua aula de ${aula.modalidade} das ${aula.horaInicio}.`
+            : `❌ [CANCELAMENTO]: Olá, cancelei a minha inscrição na aula de ${aula.modalidade} das ${aula.horaInicio}.`;
+          
+          await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
+            senderId: user.id, senderEmail: user.email || '',
+            receiverId: prof.id, receiverEmail: prof.email || '',
+            participants: [user.id, prof.id], participantEmails: [user.email || '', prof.email || ''],
+            text: actionText,
+            createdAt: Timestamp.now(), read: false
+          }).catch(err => console.warn('Erro ao notificar prof:', err));
+        }
+      }
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'agenda');
     }
@@ -291,8 +309,15 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                  </div>
                  <div className="text-right flex flex-col items-end gap-2">
                     <div>
-                      <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">Inscritos / Vagas</p>
-                      <p className="text-[10px] font-black text-[#F7B500] uppercase">{((aula as any).inscritos || []).length} / {aula.vagas || '---'}</p>
+                      <p className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Ocupação</p>
+                      <div className="flex items-center gap-2 justify-end">
+                        <p className="text-[10px] font-black text-[#F7B500] uppercase">{((aula as any).inscritos || []).length} / {aula.vagas || '---'}</p>
+                        {aula.vagas > 0 && (
+                          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
+                            <div className={`h-full ${(((aula as any).inscritos || []).length / aula.vagas) >= 1 ? 'bg-red-500' : 'bg-[#F7B500]'}`} style={{ width: `${Math.min(100, (((aula as any).inscritos || []).length / aula.vagas) * 100)}%` }}/>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {userRole === 'utente' && (
                       <button 
