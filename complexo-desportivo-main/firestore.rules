@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Permissive access to artifacts for config/dev
+    match /artifacts/{appId}/{allPaths=**} {
+      allow read, write: if true;
+    }
+    
+    // 2. Collection Group match for messages (needed for unread count query)
+    match /{path=**}/messages/{msgDoc} {
+      allow read, write: if true;
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
