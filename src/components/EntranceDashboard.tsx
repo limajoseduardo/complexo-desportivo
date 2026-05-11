@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Users2, Dumbbell, Waves, Flame, Droplet, Activity,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Gauge, Star
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Gauge, Star, Target, Building2
 } from 'lucide-react';
 import { collection, onSnapshot, orderBy, query, where, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -157,6 +157,8 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
     { id: 'bebes',    label: 'Bebés / AMA',          icon: <Users2 size={28}/>,    color: 'text-indigo-400',  bg: 'bg-indigo-400/10' },
     { id: 'fit',      label: 'Aulas Fitness',        icon: <Activity size={28}/>,  color: 'text-purple-400',  bg: 'bg-purple-400/10' },
     { id: 'gym',      label: 'Ginásio',              icon: <Dumbbell size={28}/>,  color: 'text-[#F7B500]',   bg: 'bg-[#F7B500]/10' },
+    { id: 'padel',    label: 'Padel',                icon: <Target size={28}/>,    color: 'text-cyan-300',    bg: 'bg-cyan-300/10' },
+    { id: 'pavilhao', label: 'Pavilhão',             icon: <Building2 size={28}/>, color: 'text-indigo-300',  bg: 'bg-indigo-300/10' },
     { id: 'sauna',    label: 'Sauna',                icon: <Flame size={28}/>,     color: 'text-orange-400',  bg: 'bg-orange-400/10' },
   ], []);
 

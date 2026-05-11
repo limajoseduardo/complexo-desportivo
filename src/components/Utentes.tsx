@@ -348,39 +348,83 @@ export function UtentesList({
 
 export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => void, onResult: (u: UserProfile) => void, utentes: UserProfile[] }) {
   const [scanning, setScanning] = useState(false);
+  const [status, setStatus] = useState('Pronto para leitura');
+  const [cameraError, setCameraError] = useState('');
+  const scannerRegionId = 'qr-reader-region';
+
+  const processScanValue = async (scanValue: string) => {
+    const [portal, userId] = scanValue.split(':');
+    const utente = utentes.find(u => u.id === userId || u.qrToken === scanValue);
+
+    if (!utente) {
+      setStatus('QR inválido');
+      return;
+    }
+
+    const locationMap: {[key: string]: string} = {
+      'G_GINASIO': 'Ginásio',
+      'G_PISCINA': 'Piscina Coberta',
+      'G_MODALIDADE': utente.modalidade || 'Aula de Grupo',
+      'G_LIVRE': 'Ginásio'
+    };
+
+    const targetLocation = !utente.isInside ? (locationMap[portal] || 'Ginásio') : null;
+
+    if (!utente.isInside) {
+      await handleCheckIn(utente, targetLocation || 'Ginásio');
+      setStatus(`Entrada validada: ${utente.n || utente.nome}`);
+    } else {
+      await handleCheckOut(utente);
+      setStatus(`Saída validada: ${utente.n || utente.nome}`);
+    }
+
+    onResult({ ...utente, isInside: !utente.isInside, location: targetLocation || undefined });
+  };
+
+  const startRealCameraScan = async () => {
+    setScanning(true);
+    setStatus('A abrir câmara...');
+    setCameraError('');
+
+    let scanner: any;
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      scanner = new Html5Qrcode(scannerRegionId);
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 230, height: 230 } },
+        async (decodedText: string) => {
+          setStatus('QR detetado, a validar...');
+          await scanner.stop();
+          await scanner.clear();
+          await processScanValue(decodedText.trim());
+          setScanning(false);
+        },
+        () => {}
+      );
+      setStatus('Aponte para o QR do utente');
+    } catch (e) {
+      console.error(e);
+      setCameraError('Não foi possível usar a câmara. Verifica permissão e HTTPS.');
+      setStatus('Falha na câmara');
+      if (scanner) {
+        try { await scanner.stop(); } catch {}
+        try { await scanner.clear(); } catch {}
+      }
+      setScanning(false);
+    } finally {
+      // keep scanning state until successful detection or explicit fail
+    }
+  };
 
   const simulateScan = async () => {
     setScanning(true);
     try {
-      // Simulate reading a random utente with a random portal
       const sample = utentes.find(u => u.role === 'utente') || utentes[0];
       if (!sample) return;
-
       const portals = ['G_LIVRE', 'G_GINASIO', 'G_PISCINA', 'G_MODALIDADE'];
       const randomPortal = portals[Math.floor(Math.random() * portals.length)];
-      const scanValue = `${randomPortal}:${sample.id}`;
-
-      const [portal, userId] = scanValue.split(':');
-      const utente = utentes.find(u => u.id === userId);
-
-      if (utente) {
-        const locationMap: {[key: string]: string} = {
-          'G_GINASIO': 'Ginásio',
-          'G_PISCINA': 'Piscina Coberta',
-          'G_MODALIDADE': utente.modalidade || 'Aula de Grupo',
-          'G_LIVRE': 'Ginásio'
-        };
-
-        const targetLocation = !utente.isInside ? (locationMap[portal] || 'Ginásio') : null;
-
-        if (!utente.isInside) {
-          await handleCheckIn(utente, targetLocation || 'Ginásio');
-        } else {
-          await handleCheckOut(utente);
-        }
-        
-        onResult({ ...utente, isInside: !utente.isInside, location: targetLocation });
-      }
+      await processScanValue(`${randomPortal}:${sample.id}`);
     } catch (e) {
       console.error(e);
       alert("Erro ao processar leitura digital.");
@@ -397,17 +441,28 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
           <h2 className="text-2xl font-black uppercase tracking-tighter">Validador Vila de Rei</h2>
           <p className="text-sm opacity-60 max-w-xs mx-auto uppercase text-[10px] tracking-widest">Aponte para o QR Code do Utente</p>
        </div>
-       <div className="w-full max-w-[300px] aspect-square bg-black/40 rounded-[3rem] border-4 border-dashed border-[#F7B500] relative flex items-center justify-center overflow-hidden">
+       <div id={scannerRegionId} className="w-full max-w-[300px] aspect-square bg-black/40 rounded-[3rem] border-4 border-dashed border-[#F7B500] relative flex items-center justify-center overflow-hidden">
           <div className={`scan-line w-full h-[2px] absolute top-0 bg-[#F7B500] shadow-[0_0_15px_#F7B500] ${scanning ? 'animate-bounce' : ''}`}></div>
           <PicotoIcon size={40} className="text-white opacity-20" />
        </div>
+       <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-white/70">{status}</p>
+       {cameraError && <p className="mt-2 text-[10px] font-black text-red-300 uppercase">{cameraError}</p>}
+       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+       <button 
+         onClick={startRealCameraScan} 
+         disabled={scanning}
+         className="bg-[#F7B500] text-[#004D71] px-8 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
+       >
+         {scanning ? 'A VALIDAR...' : 'Ler com Câmara'}
+       </button>
        <button 
          onClick={simulateScan} 
          disabled={scanning}
-         className="mt-12 bg-white text-[#004D71] px-8 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
+         className="bg-white text-[#004D71] px-8 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
        >
-         {scanning ? 'A VALIDAR...' : 'Simular Leitura QR'}
+         Simular Leitura
        </button>
+       </div>
     </div>
   );
 }

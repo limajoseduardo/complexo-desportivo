@@ -18,6 +18,7 @@ import { isUserInZone } from '../lib/logic';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar } from 'recharts';
 
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -312,6 +313,19 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     return data;
   }, [filteredLogs]);
 
+  const todayAffluenceByLocation = React.useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const rows = filteredLogs.filter(l => l.date === today);
+    const counts: Record<string, number> = {};
+    rows.forEach((r) => {
+      const key = (r.modalidade || 'Outro / Geral').trim() || 'Outro / Geral';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([local, entradas]) => ({ local, entradas }))
+      .sort((a, b) => b.entradas - a.entradas);
+  }, [filteredLogs]);
+
   const downloadCSV = () => {
     let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
     filteredLogs.forEach(l => {
@@ -423,28 +437,28 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
             {onScan && (
               <button
                 onClick={onScan}
-                className="px-6 py-2.5 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 font-black uppercase text-[10px]"
+                className="px-6 py-3 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 font-black uppercase text-xs tracking-wide"
               >
                 <QrCode size={18}/> Ler QR
               </button>
             )}
             <button
               onClick={() => setShowManualModal(true)}
-              className="px-6 py-2.5 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 border-2 border-[#F7B500] font-black uppercase text-[10px]"
+              className="px-6 py-3 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 border-2 border-[#F7B500] font-black uppercase text-xs tracking-wide"
             >
               <Plus size={18}/> Registo Manual
             </button>
             <button 
               onClick={downloadCSV}
-              className="px-4 py-2.5 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+              className="px-4 py-3 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
             >
-              <Download size={18}/> <span className="text-[10px] font-black uppercase">CSV</span>
+              <Download size={18}/> <span className="text-xs font-black uppercase tracking-wide">CSV</span>
             </button>
             <button 
               onClick={downloadPDF}
-              className="px-4 py-2.5 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+              className="px-4 py-3 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
             >
-              <FileText size={18}/> <span className="text-[10px] font-black uppercase">PDF</span>
+              <FileText size={18}/> <span className="text-xs font-black uppercase tracking-wide">PDF</span>
             </button>
           </div>
         </div>
@@ -704,6 +718,30 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest">Afluência de Hoje por Local</h3>
+              <span className="text-[10px] font-black text-slate-400 uppercase">{new Date().toISOString().split('T')[0]}</span>
+            </div>
+            {todayAffluenceByLocation.length > 0 ? (
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={todayAffluenceByLocation} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="local" tick={{ fontSize: 11, fontWeight: 700 }} interval={0} angle={-15} textAnchor="end" height={60} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700 }} />
+                    <Tooltip />
+                    <Bar dataKey="entradas" fill="#004D71" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-32 flex items-center justify-center text-slate-300 font-black text-xs uppercase tracking-widest">
+                Sem registos de hoje
+              </div>
+            )}
           </div>
         </div>
 

@@ -72,6 +72,8 @@ export interface UserProfile {
   createdAt?: string;
   lastLogin?: string;
   email_verified?: boolean;
+  qrToken?: string;
+  rfidUid?: string;
 }
 
 export interface AccessLog {

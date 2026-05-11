@@ -213,40 +213,6 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-32 text-left font-sans max-w-full overflow-hidden px-1">
-      {canEdit && (
-        <div className="px-1 flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm gap-4">
-          <div>
-            <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter flex items-center gap-3">
-              <CalendarIcon className="text-[#F7B500]"/> Agenda de Aulas
-            </h2>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Horário semanal das atividades</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={removeDuplicates}
-              className="px-4 py-4 bg-orange-50 text-orange-500 rounded-2xl border-2 border-orange-50 hover:bg-orange-100 active:scale-95 transition-all flex items-center gap-2"
-              title="Remover Duplicados"
-            >
-              <Copy size={18}/>
-            </button>
-            <button
-              onClick={clearAgenda}
-              className="px-4 py-4 bg-red-50 text-red-600 rounded-2xl border-2 border-red-50 hover:bg-red-100 active:scale-95 transition-all flex items-center gap-2 group"
-              title="Limpar Agenda"
-            >
-              <Trash2 size={18}/>
-            </button>
-            <button
-              onClick={() => openEditor()}
-              className="px-6 py-4 bg-[#004D71] text-[#F7B500] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center gap-2 group"
-            >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform"/>
-              <span className="text-[10px] font-black uppercase">Nova Aula</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar snap-x px-1">
         {dias.map(d => (
           <button
@@ -259,6 +225,27 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
           </button>
         ))}
       </div>
+
+      {canEdit && (
+        <div className="px-1 flex justify-end">
+          <div className="inline-flex items-center gap-2 bg-white p-2 rounded-2xl border-2 border-slate-100 shadow-sm">
+            <button
+              onClick={clearAgenda}
+              className="h-10 w-10 bg-red-50 text-red-600 rounded-xl border border-red-100 hover:bg-red-100 active:scale-95 transition-all flex items-center justify-center"
+              title="Apagar Agenda"
+            >
+              <Trash2 size={16}/>
+            </button>
+            <button
+              onClick={() => openEditor()}
+              className="h-10 px-4 bg-[#004D71] text-[#F7B500] rounded-xl active:scale-95 transition-all flex items-center gap-2"
+            >
+              <Plus size={16}/>
+              <span className="text-[10px] font-black uppercase">Nova Aula</span>
+            </button>
+          </div>
+        </div>
+      )}
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-1">

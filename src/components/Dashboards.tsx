@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, LogOut
+  Activity, Plus, Check, Star, Shield, Target, Building2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -80,13 +80,13 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
          {zonesUsers.map(m => (
-           <button key={m.id} onClick={() => setSelected({label: m.label, target: m.target})} className="bg-white rounded-3xl p-4 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
+           <button key={m.id} onClick={() => setSelected({label: m.label, target: m.target})} className="bg-white rounded-3xl p-5 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
               <div className="flex items-center justify-between mb-3">
                  <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{m.icon}</div>
                  <div className={`w-2 h-2 rounded-full ${m.count > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-200'}`} />
               </div>
-              <h4 className="font-black text-[9px] text-slate-400 uppercase tracking-widest mb-0.5 line-clamp-1">{m.label}</h4>
-              <p className="text-lg font-black text-[#004D71]">{m.count} <span className="text-[9px] opacity-40 uppercase">Presentes</span></p>
+              <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-1 line-clamp-1">{m.label}</h4>
+              <p className="text-xl font-black text-[#004D71]">{m.count} <span className="text-[10px] opacity-40 uppercase">Presentes</span></p>
            </button>
          ))}
       </div>
@@ -275,6 +275,8 @@ const MODALITIES = [
   { id: 'bebes',    label: 'Bebés / AMA',           icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'            },
   { id: 'fit',      label: 'Aula Fitness',          icon: <Activity size={18}/>, dest: 'Aulas Fitness'        },
   { id: 'gym',      label: 'Ginásio',               icon: <Dumbbell size={18}/>, dest: 'Ginásio'              },
+  { id: 'padel',    label: 'Padel',                 icon: <Target size={18}/>,   dest: 'Padel'                },
+  { id: 'pavilhao', label: 'Pavilhão',              icon: <Building2 size={18}/>, dest: 'Pavilhão'             },
   { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
 ];
 
@@ -300,19 +302,6 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
             <div className="bg-[#F7B500] rounded-lg px-2.5 py-1 hidden sm:block">
               <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
             </div>
-            {onLogout && (
-              <button 
-                onClick={() => {
-                  if (window.confirm('Tem a certeza que deseja sair?')) {
-                    onLogout();
-                  }
-                }}
-                className="bg-red-500 text-white hover:bg-red-600 rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-95 shadow-md border border-red-400"
-              >
-                <LogOut size={12} />
-                <span className="text-[9px] font-black uppercase tracking-widest">Sair</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -333,9 +322,9 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
                   className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
                   <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90">{m.label}</p>
-                    <p className="text-[9px] font-bold text-white/50 mt-1 leading-none">
-                      tem <span className="text-white font-black text-xs">{count}</span> {count === 1 ? 'utente' : 'utentes'}
+                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
+                      tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
                     </p>
                   </div>
                   <ChevronRight size={14} className="text-white/30 shrink-0"/>

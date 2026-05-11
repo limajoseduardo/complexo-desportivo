@@ -46,6 +46,12 @@ export const isUserInZone = (user: UserProfile, zoneId: string) => {
   if (zoneId === 'livre') {
     return loc.includes('regime livre') || loc.includes('piscina livre') || loc.includes('livre/geral') || loc.includes('geral') || loc.includes('g_livre');
   }
+  if (zoneId === 'padel') {
+    return loc.includes('padel') || loc.includes('pádel') || loc.includes('campo padel') || loc.includes('campo pádel');
+  }
+  if (zoneId === 'pavilhao') {
+    return loc.includes('pavilhao') || loc.includes('pavilhão') || loc.includes('pavilhao municipal') || loc.includes('pavilhão municipal');
+  }
 
   return false;
 };
