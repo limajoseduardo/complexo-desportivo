@@ -493,8 +493,8 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
       })()}
 
       {/* Código antigo do utente abaixo (mantém compatibilidade) */}
-      {termsOk ? (
-        <div style={{display: 'none'}}>
+      <div style={{display: 'none'}}>
+        {termsOk ? (
           <>
             <div className="flex items-baseline justify-between mb-3">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
@@ -530,24 +530,24 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                   );
                 })}
               </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-4 py-6 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
-                <Shield size={26} className="text-red-300"/>
-              </div>
-              <div>
-                <p className="text-sm font-black text-white uppercase tracking-wide mb-1">Termos não aceites</p>
-                <p className="text-[10px] text-white/50 leading-relaxed max-w-[260px]">
-                  Para gerar o QR de acesso é necessário aceitar os dois termos de responsabilidade.<br/>
-                  Aceda ao separador <span className="text-[#F7B500] font-black">Perfil → Termos</span>.
-                </p>
-              </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
+              <Shield size={26} className="text-red-300"/>
             </div>
-          )}
-        </div>
-
+            <div>
+              <p className="text-sm font-black text-white uppercase tracking-wide mb-1">Termos não aceites</p>
+              <p className="text-[10px] text-white/50 leading-relaxed max-w-[260px]">
+                Para gerar o QR de acesso é necessário aceitar os dois termos de responsabilidade.<br/>
+                Aceda ao separador <span className="text-[#F7B500] font-black">Perfil → Termos</span>.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+    </div>
 
       {/* ── QR Full Screen ── */}
       {showQR && (
