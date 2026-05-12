@@ -8,5 +8,4 @@ coverage/
 !.env.example
 .claude/
 .local-java/
-local-data/*
 !local-data/.gitkeep
