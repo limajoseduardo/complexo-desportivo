@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "complexo-desportivo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,14 +7,7 @@
     "dev": "vite --port=3100 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
-    "firebase:local": "PATH=.local-java/bin:$PATH firebase emulators:start --only auth,firestore --import=./local-data/firebase --export-on-exit=./local-data/firebase",
-    "firebase:seed": "tsx scripts/seed-local.ts",
-    "dev:cloud": "vite --port=3100 --host=0.0.0.0",
-    "firebase:migrate": "tsx scripts/migrate-cloud-to-local.ts",
-    "firebase:migrate:retry": "bash scripts/migrate-retry.sh 600",
-    "test:local": "bash scripts/test-local.sh"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
