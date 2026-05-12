@@ -73,22 +73,43 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-24 px-2 text-left relative font-sans">
-      <div className="bg-white p-5 rounded-[2.5rem] shadow-sm flex items-center justify-between overflow-hidden relative border-2 border-slate-100">
-         <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Complexo Vila de Rei</p><h2 className="text-base font-black text-[#004D71] uppercase">{time.toLocaleDateString()}</h2></div>
-         <div className="text-right font-mono font-black text-xl text-[#004D71]">{time.toLocaleTimeString()}</div>
-      </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-         {zonesUsers.map(m => (
-           <button key={m.id} onClick={() => setSelected({label: m.label, target: m.target})} className="bg-white rounded-3xl p-5 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
-              <div className="flex items-center justify-between mb-3">
-                 <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{m.icon}</div>
-                 <div className={`w-2 h-2 rounded-full ${m.count > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-200'}`} />
-              </div>
-              <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-1 line-clamp-1">{m.label}</h4>
-              <p className="text-xl font-black text-[#004D71]">{m.count} <span className="text-[10px] opacity-40 uppercase">Presentes</span></p>
-           </button>
-         ))}
+      <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
+          <div>
+            <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
+            <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
+          </div>
+        </div>
+
+        <div className="px-6 pt-4 pb-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
+            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
+              Neste momento tem{' '}
+              <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
+              {' '}utentes
+            </p>
+          </div>
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {MODALITIES.map(m => {
+              const count = utentes.filter(u => isUserInZone(u, m.id)).length;
+              return (
+                <button key={m.id} onClick={() => setSelected({label: m.label, target: m.dest})}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
+                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
+                      tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
         <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-[#004D71]/5 p-6 font-sans">
@@ -389,10 +410,12 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
     ? JSON.stringify({ id: user.id, dest: selectedDest })
     : JSON.stringify({ id: user.id });
 
+  const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
 
-      {/* ── Cartão de Utente com seletor de destino integrado ── */}
+      {/* ── Card Azul VILA DE REI ── */}
       <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
 
         {/* topo do cartão */}
@@ -401,22 +424,79 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
             <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
             <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
           </div>
-          {termsOk ? (
-            <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
-              <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Utente Activo</p>
-            </div>
-          ) : (
-            <div className="bg-red-500/20 border border-red-400/30 rounded-lg px-2.5 py-1">
-              <p className="text-[7px] font-black text-red-300 uppercase tracking-widest">Termos Pendentes</p>
-            </div>
-          )}
         </div>
 
         {/* seletor de destino */}
         <div className="px-6 pt-4 pb-6">
-          {termsOk ? (
-            <>
-              <div className="flex items-baseline justify-between mb-3">
+          <div className="flex items-baseline justify-between mb-3">
+            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
+            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
+              Neste momento tem{' '}
+              <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
+              {' '}utentes
+            </p>
+          </div>
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {MODALITIES.map(m => {
+              const count = utentes.filter(u => isUserInZone(u, m.id)).length;
+              return (
+                <button key={m.id} onClick={() => setSelectedMod(m)}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
+                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
+                      tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {selectedMod && (() => {
+        const users = utentes.filter(u => isUserInZone(u, selectedMod.id));
+        return (
+          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4" onClick={() => setSelectedMod(null)}>
+            <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{selectedMod.icon}</div>
+                  <div>
+                    <h3 className="text-base font-black text-[#004D71] uppercase">{selectedMod.label}</h3>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                      {users.length} {users.length === 1 ? 'utente presente' : 'utentes presentes'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
+              </div>
+              <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
+                {users.map(u => (
+                  <button key={u.id}
+                    className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
+                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-[#F7B500] shrink-0"/>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Código antigo do utente abaixo (mantém compatibilidade) */}
+      {termsOk ? (
+        <div style={{display: 'none'}}>
+          <>
+            <div className="flex items-baseline justify-between mb-3">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
                 <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
                   Neste momento tem{' '}
