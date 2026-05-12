@@ -547,8 +547,6 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
         )}
       </div>
 
-    </div>
-
       {/* ── QR Full Screen ── */}
       {showQR && (
         <div className="fixed inset-0 z-[10000] bg-gradient-to-br from-[#004D71] to-[#002f47] flex flex-col animate-in fade-in duration-200">
