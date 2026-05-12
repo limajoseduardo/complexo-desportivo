@@ -20,12 +20,22 @@ import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar } from 'recharts';
 
+const formatDuration = (minutes: number | null | undefined): string => {
+  if (!minutes || minutes <= 0) return '---';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}min`;
+};
+
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [startDate, setStartDate] = useState('2024-01-01');
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const today = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
@@ -327,11 +337,11 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   }, [filteredLogs]);
 
   const downloadCSV = () => {
-    let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
+    let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração\n";
     filteredLogs.forEach(l => {
       const checkIn = l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString() : l.checkIn;
       const checkOut = l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString() : l.checkOut) : '---';
-      csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}\n`;
+      csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},"${formatDuration(l.durationMinutes)}"\n`;
     });
     
     csv += "\nResumo por Modalidade\nModalidade,Total de Entradas\n";
@@ -369,7 +379,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       l.modalidade || '---',
       l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
       l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
-      l.durationMinutes ? `${l.durationMinutes} min` : '---',
+      formatDuration(l.durationMinutes),
     ]);
 
     autoTable(doc, {
@@ -696,7 +706,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="text-sm font-black text-[#004D71]">{log.durationMinutes ? `${log.durationMinutes} min` : '---'}</span>
+                        <span className="text-sm font-black text-[#004D71]">{formatDuration(log.durationMinutes)}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <button

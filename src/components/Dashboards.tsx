@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
+import { ModalitiesGrid } from './ModalitiesGrid';
 import { UserProfile, OperationalLog } from '../types';
 import { APP_ID } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -77,6 +78,8 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
          <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Complexo Vila de Rei</p><h2 className="text-base font-black text-[#004D71] uppercase">{time.toLocaleDateString()}</h2></div>
          <div className="text-right font-mono font-black text-xl text-[#004D71]">{time.toLocaleTimeString()}</div>
       </div>
+
+      <ModalitiesGrid utentes={utentes} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
          {zonesUsers.map(m => (
@@ -292,6 +295,8 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
 
+      <ModalitiesGrid utentes={utentes} />
+
       <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
         <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
           <div>
@@ -391,6 +396,8 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
+
+      <ModalitiesGrid utentes={utentes} />
 
       {/* ── Cartão de Utente com seletor de destino integrado ── */}
       <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
