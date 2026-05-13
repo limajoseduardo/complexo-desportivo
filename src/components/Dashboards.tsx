@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, Target, Building2
+  Activity, Plus, Check, Star, Shield, Target, Building2,
+  Copy, Ticket, Loader, AlertCircle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -10,7 +11,7 @@ import { UserProfile, OperationalLog } from '../types';
 import { APP_ID } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { isUserInZone } from '../lib/logic';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs, doc, setDoc } from 'firebase/firestore';
 
 export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], utentes: UserProfile[] }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
@@ -301,6 +302,167 @@ const MODALITIES = [
   { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
 ];
 
+const generateCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const part = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  return `${part()}-${part()}`;
+};
+
+interface InviteCode {
+  id: string;
+  code: string;
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string;
+  used: boolean;
+  usedBy?: string;
+  usedAt?: string;
+}
+
+const InviteCodesPanel = ({ user }: { user: UserProfile }) => {
+  const [codes, setCodes] = useState<InviteCode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadCodes = async () => {
+      setLoading(true);
+      try {
+        const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
+        const q = query(
+          collection(db, invitePath),
+          where('createdBy', '==', user.email),
+          orderBy('createdAt', 'desc'),
+          limit(10)
+        );
+        const snap = await getDocs(q);
+        setCodes(snap.docs.map(d => ({ id: d.id, ...d.data() } as InviteCode)));
+      } catch (err: any) {
+        console.warn("Failed to load codes:", err);
+        setError('Erro ao carregar códigos');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCodes();
+  }, [user.email]);
+
+  const generateNewCode = async () => {
+    setGenerating(true);
+    setError('');
+    try {
+      const code = generateCode();
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
+      const docRef = doc(collection(db, invitePath));
+
+      const newCode: InviteCode = {
+        id: docRef.id,
+        code,
+        createdBy: user.email,
+        createdAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        used: false,
+      };
+
+      await setDoc(docRef, newCode);
+      setCodes(prev => [newCode, ...prev.slice(0, 9)]);
+    } catch (err: any) {
+      console.error("Error generating code:", err);
+      setError('Erro ao gerar código');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopied(code);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const getCodeStatus = (code: InviteCode): { label: string; color: string } => {
+    if (code.used) return { label: 'Usado', color: 'bg-red-100 text-red-700' };
+    const expiresAt = new Date(code.expiresAt);
+    if (expiresAt < new Date()) return { label: 'Expirado', color: 'bg-slate-100 text-slate-700' };
+    return { label: 'Ativo', color: 'bg-green-100 text-green-700' };
+  };
+
+  return (
+    <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-[#004D71]/5 p-6 font-sans">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+          <Ticket size={14} className="text-[#F7B500]"/> Convites de Acesso
+        </h3>
+        <button
+          onClick={generateNewCode}
+          disabled={generating}
+          className="bg-[#004D71] text-[#F7B500] px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
+        >
+          {generating ? <Loader size={14} className="animate-spin" /> : <Plus size={14}/>}
+          {generating ? 'Gerando...' : 'Novo'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 p-3 rounded-xl text-[9px] font-bold mb-4 flex items-center gap-2 border border-red-100">
+          <AlertCircle size={14}/> {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-12 text-center">
+          <Loader size={24} className="animate-spin text-[#F7B500] mx-auto mb-3"/>
+          <p className="text-[9px] font-black text-slate-400 uppercase">Carregando...</p>
+        </div>
+      ) : codes.length === 0 ? (
+        <div className="py-12 text-center">
+          <Ticket size={40} className="text-slate-200 mx-auto mb-3"/>
+          <p className="text-[10px] font-black text-slate-400 uppercase">Nenhum código gerado</p>
+          <p className="text-[8px] text-slate-300 mt-1">Clique em "Novo" para gerar um código</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {codes.map(codeObj => {
+            const status = getCodeStatus(codeObj);
+            const expiresAt = new Date(codeObj.expiresAt);
+            const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000));
+            return (
+              <div key={codeObj.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className={`text-[11px] font-black px-3 py-1 rounded-lg ${status.color}`}>
+                    {status.label}
+                  </div>
+                  <code className="text-[13px] font-black text-[#004D71] font-mono tracking-wider">
+                    {codeObj.code}
+                  </code>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-[8px] font-bold text-slate-400 text-right whitespace-nowrap">
+                    {!codeObj.used && daysLeft > 0 && <span>{daysLeft}d</span>}
+                    {codeObj.used && <span className="text-slate-300">Por {codeObj.usedBy}</span>}
+                  </div>
+                  <button
+                    onClick={() => copyCode(codeObj.code)}
+                    className={`p-2 rounded-lg transition-all ${copied === codeObj.code ? 'bg-green-100 text-green-600' : 'bg-white text-slate-400 hover:text-[#F7B500] border border-slate-100'}`}
+                    title="Copiar código"
+                  >
+                    {copied === codeObj.code ? <Check size={14}/> : <Copy size={14}/>}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onLogout }: {
   user: UserProfile;
   utentes?: UserProfile[];
@@ -355,6 +517,8 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           </div>
         </div>
       </div>
+
+      <InviteCodesPanel user={user} />
 
       {selectedMod && (() => {
         const users = utentes.filter(u => isUserInZone(u, selectedMod.id));

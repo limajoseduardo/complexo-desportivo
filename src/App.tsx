@@ -406,6 +406,97 @@ export default function App() {
     }
   }, []);
 
+  const handleRegister = React.useCallback(async (nome: string, email: string, pass: string, inviteCode: string) => {
+    setAuthError('');
+    setLoading(true);
+
+    try {
+      const emailLower = email.toLowerCase().trim();
+      const codeTrimmed = inviteCode.trim().toUpperCase();
+
+      const usersPath = `artifacts/${APP_ID}/public/data/users`;
+      const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
+
+      // 1. Validate email doesn't exist
+      const emailSnap = await getDocs(query(collection(db, usersPath), where('email', '==', emailLower), limit(1)));
+      if (!emailSnap.empty) {
+        throw new Error('Email já registado no sistema.');
+      }
+
+      // 2. Validate invite code
+      const codeSnap = await getDocs(query(collection(db, invitePath), where('code', '==', codeTrimmed), limit(1)));
+      if (codeSnap.empty) {
+        throw new Error('Código de convite inválido.');
+      }
+
+      const codeDoc = codeSnap.docs[0];
+      const codeData = codeDoc.data();
+
+      // 3. Check if code is already used
+      if (codeData.used) {
+        throw new Error('Código já foi utilizado.');
+      }
+
+      // 4. Check if code is expired
+      const expiresAt = new Date(codeData.expiresAt);
+      if (expiresAt < new Date()) {
+        throw new Error('Código expirado.');
+      }
+
+      // 5. Create user profile
+      const userId = emailLower.replace(/[^a-z0-9]/g, '_');
+      const finalProfile: UserProfile = {
+        id: userId,
+        email: emailLower,
+        nome: nome,
+        n: nome.split(' ')[0].toUpperCase(),
+        role: 'utente',
+        cargo: 'UTENTE',
+        img: `https://api.dicebear.com/7.x/avataaars/svg?seed=utente_${emailLower}`,
+        password: pass,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+
+      // 6. Save user and mark code as used
+      let fbUser = auth.currentUser;
+      if (!fbUser) {
+        try {
+          const cred = await signInAnonymously(auth);
+          fbUser = cred.user;
+        } catch (e) {
+          console.warn("Firebase Anonymous Auth failed.", e);
+        }
+      }
+
+      try {
+        const userDocRef = doc(db, usersPath, userId);
+        const codeDocRef = doc(db, invitePath, codeDoc.id);
+
+        const batch = writeBatch(db);
+        batch.set(userDocRef, finalProfile, { merge: true });
+        batch.update(codeDocRef, {
+          used: true,
+          usedBy: emailLower,
+          usedAt: new Date().toISOString(),
+        });
+        await batch.commit();
+      } catch (syncErr) {
+        console.warn("Cloud Sync Error:", syncErr);
+      }
+
+      // 7. Auto-login
+      setUser(finalProfile);
+      localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
+      setActiveTab('inicio');
+    } catch (err: any) {
+      console.error("Registration Error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleLogout = React.useCallback(async () => {
     try {
       await auth.signOut();
@@ -439,7 +530,7 @@ export default function App() {
   const isPublicDashboard = showPublicDashboard || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('view') === 'tv' || window.location.pathname.includes('/tv')));
   if (isPublicDashboard) return <EntranceDashboard appId={APP_ID} onBack={showPublicDashboard ? () => setShowPublicDashboard(false) : undefined} />;
 
-  if (!user) return <LoginScreen onLogin={handleLogin} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
+  if (!user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
 
   if (showModePicker) return (
     <ModePicker onSelect={(role) => {
