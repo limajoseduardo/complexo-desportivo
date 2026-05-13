@@ -290,9 +290,7 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 const MODALITIES = [
   { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,     dest: 'Piscina Regime Livre' },
   { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={18}/>,      dest: 'Piscina Exterior'     },
-  { id: 'nat1',     label: 'Natação Nível 1',      icon: <Waves size={18}/>,    dest: 'Natação Nível 1'      },
-  { id: 'nat2',     label: 'Natação Nível 2',      icon: <Waves size={18}/>,    dest: 'Natação Nível 2'      },
-  { id: 'nat3',     label: 'Natação Nível 3',      icon: <Waves size={18}/>,    dest: 'Natação Nível 3'      },
+  { id: 'natacao',  label: 'Natação',              icon: <Waves size={18}/>,    dest: 'Natação'              },
   { id: 'hidro',    label: 'Hidroginástica',        icon: <Droplets size={18}/>, dest: 'Hidroginástica'       },
   { id: 'bebes',    label: 'Bebés / AMA',           icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'            },
   { id: 'fit',      label: 'Aula Fitness',          icon: <Activity size={18}/>, dest: 'Aulas Fitness'        },
@@ -537,18 +535,26 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
                 </div>
                 <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
               </div>
-              <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
-                {users.map(u => (
-                  <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
-                    className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
-                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-[#F7B500] shrink-0"/>
-                  </button>
-                ))}
+              <div className="space-y-2 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
+                {users
+                  .sort((a, b) => {
+                    const timeA = new Date(a.lastLogin || 0).getTime();
+                    const timeB = new Date(b.lastLogin || 0).getTime();
+                    return timeA - timeB;
+                  })
+                  .map(u => {
+                    const entradaHora = u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                    return (
+                      <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
+                        className="w-full flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
+                        <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-lg border-2 border-green-400 shadow-sm shrink-0 object-cover"/>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Entrada: {entradaHora}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 {users.length === 0 && (
                   <div className="py-16 text-center">
                     <PicotoIcon className="mx-auto mb-4 opacity-10" size={50}/>
@@ -638,18 +644,26 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                 </div>
                 <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
               </div>
-              <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
-                {users.map(u => (
-                  <button key={u.id}
-                    className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
-                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-[#F7B500] shrink-0"/>
-                  </button>
-                ))}
+              <div className="space-y-2 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
+                {users
+                  .sort((a, b) => {
+                    const timeA = new Date(a.lastLogin || 0).getTime();
+                    const timeB = new Date(b.lastLogin || 0).getTime();
+                    return timeA - timeB;
+                  })
+                  .map(u => {
+                    const entradaHora = u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+                    return (
+                      <div key={u.id}
+                        className="w-full flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#004D71]/10 transition-all text-left">
+                        <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-lg border-2 border-green-400 shadow-sm shrink-0 object-cover"/>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Entrada: {entradaHora}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
