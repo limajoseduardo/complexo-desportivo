@@ -95,20 +95,22 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
           <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-              return (
-                <button key={m.id} onClick={() => setSelected({label: m.label, target: m.dest})}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
-                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
-                      tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
-                </button>
-              );
-            })}
+              return { m, count };
+            })
+            .sort((a, b) => b.count - a.count)
+            .map(({ m, count }) => (
+              <button key={m.id} onClick={() => setSelected({label: m.label, target: m.dest})}
+                className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
+                <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                  <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
+                    tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
+                  </p>
+                </div>
+                <ChevronRight size={14} className="text-white/30 shrink-0"/>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -498,20 +500,22 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {MODALITIES.map(m => {
               const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-              return (
-                <button key={m.id} onClick={() => setSelectedMod(m)}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
-                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
-                      tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
-                </button>
-              );
-            })}
+              return { m, count };
+            })
+            .sort((a, b) => b.count - a.count)
+            .map(({ m, count }) => (
+              <button key={m.id} onClick={() => setSelectedMod(m)}
+                className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
+                <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                  <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
+                    tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
+                  </p>
+                </div>
+                <ChevronRight size={14} className="text-white/30 shrink-0"/>
+              </button>
+            ))}
           </div>
         </div>
       </div>
