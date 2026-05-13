@@ -321,6 +321,7 @@ interface InviteCode {
 
 const InviteCodesPanel = ({ user }: { user: UserProfile }) => {
   const [codes, setCodes] = useState<InviteCode[]>([]);
+  const [allCodes, setAllCodes] = useState<InviteCode[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -331,14 +332,24 @@ const InviteCodesPanel = ({ user }: { user: UserProfile }) => {
       setLoading(true);
       try {
         const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
-        const q = query(
+
+        // Load user's codes
+        const qUser = query(
           collection(db, invitePath),
           where('createdBy', '==', user.email),
           orderBy('createdAt', 'desc'),
           limit(10)
         );
-        const snap = await getDocs(q);
-        setCodes(snap.docs.map(d => ({ id: d.id, ...d.data() } as InviteCode)));
+        const snapUser = await getDocs(qUser);
+        setCodes(snapUser.docs.map(d => ({ id: d.id, ...d.data() } as InviteCode)));
+
+        // Load all codes for daily totals
+        const qAll = query(
+          collection(db, invitePath),
+          orderBy('createdAt', 'desc')
+        );
+        const snapAll = await getDocs(qAll);
+        setAllCodes(snapAll.docs.map(d => ({ id: d.id, ...d.data() } as InviteCode)));
       } catch (err: any) {
         console.warn("Failed to load codes:", err);
         setError('Erro ao carregar códigos');
@@ -392,21 +403,44 @@ const InviteCodesPanel = ({ user }: { user: UserProfile }) => {
     return { label: 'Ativo', color: 'bg-green-100 text-green-700' };
   };
 
+  const today = new Date().toISOString().split('T')[0];
+  const todayCodesGenerated = allCodes.filter(c => c.createdAt.split('T')[0] === today).length;
+  const todayCodesUsed = allCodes.filter(c => c.used && c.usedAt && c.usedAt.split('T')[0] === today).length;
+  const todayCodesExpired = allCodes.filter(c => !c.used && new Date(c.expiresAt) < new Date() && c.createdAt.split('T')[0] === today).length;
+
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-[#004D71]/5 p-6 font-sans">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-          <Ticket size={14} className="text-[#F7B500]"/> Convites de Acesso
-        </h3>
-        <button
-          onClick={generateNewCode}
-          disabled={generating}
-          className="bg-[#004D71] text-[#F7B500] px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
-        >
-          {generating ? <Loader size={14} className="animate-spin" /> : <Plus size={14}/>}
-          {generating ? 'Gerando...' : 'Novo'}
-        </button>
+    <div className="font-sans space-y-4">
+      {/* Daily Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+          <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Gerados Hoje</p>
+          <p className="text-2xl font-black text-blue-700 mt-1">{todayCodesGenerated}</p>
+        </div>
+        <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
+          <p className="text-[8px] font-black text-green-400 uppercase tracking-widest">Usados Hoje</p>
+          <p className="text-2xl font-black text-green-700 mt-1">{todayCodesUsed}</p>
+        </div>
+        <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
+          <p className="text-[8px] font-black text-red-400 uppercase tracking-widest">Expirados Hoje</p>
+          <p className="text-2xl font-black text-red-700 mt-1">{todayCodesExpired}</p>
+        </div>
       </div>
+
+      {/* Panel */}
+      <div className="bg-white rounded-[2rem] shadow-sm border-2 border-[#004D71]/5 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <Ticket size={14} className="text-[#F7B500]"/> Meus Códigos
+          </h3>
+          <button
+            onClick={generateNewCode}
+            disabled={generating}
+            className="bg-[#004D71] text-[#F7B500] px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
+          >
+            {generating ? <Loader size={14} className="animate-spin" /> : <Plus size={14}/>}
+            {generating ? 'Gerando...' : 'Novo'}
+          </button>
+        </div>
 
       {error && (
         <div className="bg-red-50 text-red-700 p-3 rounded-xl text-[9px] font-bold mb-4 flex items-center gap-2 border border-red-100">
@@ -459,6 +493,7 @@ const InviteCodesPanel = ({ user }: { user: UserProfile }) => {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 };
@@ -470,6 +505,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   onLogout?: () => void;
 }) => {
   const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
+  const [showInviteCodes, setShowInviteCodes] = useState(false);
   const totalInside = utentes.filter(u => u.isInside).length;
 
   return (
@@ -482,6 +518,13 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
             <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowInviteCodes(!showInviteCodes)}
+              className="p-2 rounded-lg bg-white/10 border border-[#F7B500]/30 hover:bg-white/15 transition-all active:scale-90 text-[#F7B500]"
+              title="Gerador de códigos de convite"
+            >
+              <Ticket size={18} />
+            </button>
             <div className="bg-[#F7B500] rounded-lg px-2.5 py-1 hidden sm:block">
               <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
             </div>
@@ -519,8 +562,6 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           </div>
         </div>
       </div>
-
-      <InviteCodesPanel user={user} />
 
       {selectedMod && (() => {
         const users = utentes.filter(u => isUserInZone(u, selectedMod.id));
@@ -570,6 +611,24 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           </div>
         );
       })()}
+
+      {showInviteCodes && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4" onClick={() => setShowInviteCodes(false)}>
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-[#F7B500]/10 text-[#F7B500] rounded-xl"><Ticket size={20}/></div>
+                <div>
+                  <h3 className="text-base font-black text-[#004D71] uppercase">Códigos de Acesso</h3>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Gerador e histórico</p>
+                </div>
+              </div>
+              <button onClick={() => setShowInviteCodes(false)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
+            </div>
+            <InviteCodesPanel user={user} />
+          </div>
+        </div>
+      )}
     </div>
   );
 });
