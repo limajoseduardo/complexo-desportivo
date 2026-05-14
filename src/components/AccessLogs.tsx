@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, LogIn, LogOut, Calendar, Search,
   Download,
-  FileText, Plus, X, Edit2, Save, Trash2, QrCode, Ticket
+  FileText, Plus, X, Edit2, Save, Trash2, QrCode,
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets
 } from 'lucide-react';
 import { AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -28,10 +29,9 @@ const formatDuration = (minutes: number | null | undefined): string => {
   return `${hours}h ${mins}min`;
 };
 
-export function AccessLogsModule({ onScan, user }: { onScan?: () => void, user?: UserProfile } = {}) {
+export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showInviteCodes, setShowInviteCodes] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
   const [startDate, setStartDate] = useState(today);
@@ -443,7 +443,7 @@ export function AccessLogsModule({ onScan, user }: { onScan?: () => void, user?:
               />
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2">
             {onScan && (
               <button
                 onClick={onScan}
@@ -458,21 +458,13 @@ export function AccessLogsModule({ onScan, user }: { onScan?: () => void, user?:
             >
               <Plus size={18}/> Registo Manual
             </button>
-            {user && ['staff', 'admin', 'chefia'].includes(user.role) && (
-              <button
-                onClick={() => setShowInviteCodes(!showInviteCodes)}
-                className="px-6 py-3 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 font-black uppercase text-xs tracking-wide"
-              >
-                <Ticket size={18}/> Gerar Código
-              </button>
-            )}
-            <button
+            <button 
               onClick={downloadCSV}
               className="px-4 py-3 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
             >
               <Download size={18}/> <span className="text-xs font-black uppercase tracking-wide">CSV</span>
             </button>
-            <button
+            <button 
               onClick={downloadPDF}
               className="px-4 py-3 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
             >

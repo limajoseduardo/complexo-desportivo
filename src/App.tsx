@@ -594,7 +594,7 @@ export default function App() {
                 {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
-                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} user={user} />}
+                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                 {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                 {activeTab === 'perfil' && (
