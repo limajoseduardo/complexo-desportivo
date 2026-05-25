@@ -20,22 +20,12 @@ import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar } from 'recharts';
 
-const formatDuration = (minutes: number | null | undefined): string => {
-  if (!minutes || minutes <= 0) return '---';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours === 0) return `${mins} min`;
-  if (mins === 0) return `${hours}h`;
-  return `${hours}h ${mins}min`;
-};
-
 export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const today = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
+  const [startDate, setStartDate] = useState('2024-01-01');
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, UserProfile>>({});
@@ -51,19 +41,23 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const modalities = [
     'Piscina Regime Livre',
     'Piscina Exterior',
-    'Natação Nível 1',
-    'Natação Nível 2',
-    'Natação Nível 3',
+    'Natação',
     'Hidroginástica',
     'Bebés/AMA',
     'Aulas Fitness',
     'Ginásio',
     'Sauna'
   ];
+
+  const normalizeModality = (m: string) => {
+    if (m?.startsWith('Natação Nível')) return 'Natação';
+    return m;
+  };
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/users`;
@@ -86,25 +80,41 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     setLoading(true);
     const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
     
-    const q = query(collection(db, path), orderBy('checkIn', 'desc'), limit(500));
+    const q = query(
+      collection(db, path),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate)
+    );
 
     const unsub = onSnapshot(q, (snap) => {
-      const sorted = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as AccessLog))
-        .sort((a, b) => {
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AccessLog));
+      const sorted = list.sort((a, b) => {
+        const ta = a.checkIn instanceof Timestamp ? a.checkIn.seconds : (a.timestamp?.seconds || 0);
+        const tb = b.checkIn instanceof Timestamp ? b.checkIn.seconds : (b.timestamp?.seconds || 0);
+        return tb - ta;
+      });
+      setLogs(sorted);
+      setLoading(false);
+    }, (error) => {
+      console.warn("Firestore access log query range error, falling back to all:", error);
+      const qFallback = query(collection(db, path), limit(500));
+      onSnapshot(qFallback, (snapFallback) => {
+        const list = snapFallback.docs.map(doc => ({ id: doc.id, ...doc.data() } as AccessLog));
+        const sorted = list.sort((a, b) => {
           const ta = a.checkIn instanceof Timestamp ? a.checkIn.seconds : (a.timestamp?.seconds || 0);
           const tb = b.checkIn instanceof Timestamp ? b.checkIn.seconds : (b.timestamp?.seconds || 0);
           return tb - ta;
         });
-      setLogs(sorted);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
-      setLoading(false);
+        setLogs(sorted);
+        setLoading(false);
+      }, (e) => {
+        handleFirestoreError(e, OperationType.GET, path);
+        setLoading(false);
+      });
     });
 
     return () => unsub();
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     if (userSearchText.length < 2) {
@@ -288,15 +298,20 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     }
     const inRange = lDate >= startDate && lDate <= endDate;
     const matchSearch = (l.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return inRange && matchSearch;
+    
+    let matchStatus = true;
+    if (filterStatus === 'inside') matchStatus = !l.checkOut;
+    if (filterStatus === 'left') matchStatus = !!l.checkOut;
+
+    return inRange && matchSearch && matchStatus;
   });
 
   const statsByModality = modalities.map(m => ({
     label: m,
-    count: filteredLogs.filter(l => l.modalidade === m).length
+    count: filteredLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
   })).filter(s => s.count > 0);
   
-  const otherCount = filteredLogs.filter(l => !modalities.includes(l.modalidade || '')).length;
+  const otherCount = filteredLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
   if (otherCount > 0) {
     statsByModality.push({ label: 'Outro / Geral', count: otherCount });
   }
@@ -336,12 +351,40 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       .sort((a, b) => b.entradas - a.entradas);
   }, [filteredLogs]);
 
+  const leaderboardByModality = React.useMemo(() => {
+    const ranking: Record<string, Array<{ userId: string; userName: string; count: number }>> = {};
+
+    modalities.forEach(m => {
+      const modalityLogs = filteredLogs.filter(l => normalizeModality(l.modalidade || '') === m);
+      const userCounts: Record<string, { userName: string; count: number }> = {};
+      
+      modalityLogs.forEach(l => {
+        if (!l.userId) return;
+        if (!userCounts[l.userId]) {
+          userCounts[l.userId] = { userName: l.userName || 'Utente', count: 0 };
+        }
+        userCounts[l.userId].count++;
+      });
+
+      const sortedUsers = Object.entries(userCounts)
+        .map(([userId, { userName, count }]) => ({ userId, userName, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+      if (sortedUsers.length > 0) {
+        ranking[m] = sortedUsers;
+      }
+    });
+
+    return ranking;
+  }, [filteredLogs]);
+
   const downloadCSV = () => {
-    let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração\n";
+    let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
     filteredLogs.forEach(l => {
       const checkIn = l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString() : l.checkIn;
       const checkOut = l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString() : l.checkOut) : '---';
-      csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},"${formatDuration(l.durationMinutes)}"\n`;
+      csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}\n`;
     });
     
     csv += "\nResumo por Modalidade\nModalidade,Total de Entradas\n";
@@ -349,6 +392,14 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       csv += `"${s.label}",${s.count}\n`;
     });
     csv += `"TOTAL GERAL",${filteredLogs.length}\n`;
+
+    // Append Rankings
+    csv += "\nRanking de Presenças (Top 3 por Modalidade)\nModalidade,Classificação,Utente,Presenças\n";
+    Object.entries(leaderboardByModality).forEach(([modality, users]) => {
+      (users as any).forEach((u: any, i: number) => {
+        csv += `"${modality}",${i + 1}º Lugar,"${u.userName}",${u.count}\n`;
+      });
+    });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -379,7 +430,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       l.modalidade || '---',
       l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
       l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
-      formatDuration(l.durationMinutes),
+      l.durationMinutes ? `${l.durationMinutes} min` : '---',
     ]);
 
     autoTable(doc, {
@@ -409,6 +460,51 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       styles: { fontSize: 9, font: 'helvetica' }
     });
 
+    // Add rankings if exists
+    const rankTableData: string[][] = [];
+    Object.entries(leaderboardByModality).forEach(([modality, users]) => {
+      (users as any).forEach((u: any, index: number) => {
+        rankTableData.push([
+          modality,
+          `${index + 1}º Lugar`,
+          u.userName,
+          `${u.count} presenças`
+        ]);
+      });
+    });
+
+    if (rankTableData.length > 0) {
+      const rankY = (doc as any).lastAutoTable.finalY + 15;
+      
+      // Page break check if near the bottom
+      if (rankY > 240) {
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.setTextColor(0, 77, 113);
+        doc.text('Maiores Utilizadores (Top 3 por Modalidade)', 14, 22);
+        
+        autoTable(doc, {
+          startY: 28,
+          head: [['Modalidade', 'Posição', 'Utente', 'Presenças']],
+          body: rankTableData,
+          headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
+          styles: { fontSize: 8, font: 'helvetica' }
+        });
+      } else {
+        doc.setFontSize(14);
+        doc.setTextColor(0, 77, 113);
+        doc.text('Maiores Utilizadores (Top 3 por Modalidade)', 14, rankY);
+        
+        autoTable(doc, {
+          startY: rankY + 5,
+          head: [['Modalidade', 'Posição', 'Utente', 'Presenças']],
+          body: rankTableData,
+          headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
+          styles: { fontSize: 8, font: 'helvetica' }
+        });
+      }
+    }
+
     doc.save(`relatorio_acessos_${startDate}_a_${endDate}.pdf`);
   };
 
@@ -423,23 +519,23 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <div className="flex items-center gap-2">
-            <div className="relative w-32 md:w-40">
+            <div className="relative w-28 md:w-36">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input 
                 type="date" 
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="pl-9 pr-2 py-2.5 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
+                className="pl-9 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
               />
             </div>
             <span className="text-slate-400 font-bold text-[10px] uppercase">a</span>
-            <div className="relative w-32 md:w-40">
+            <div className="relative w-28 md:w-36">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input 
                 type="date" 
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="pl-9 pr-2 py-2.5 bg-white border-2 border-slate-100 rounded-xl text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
+                className="pl-9 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
               />
             </div>
           </div>
@@ -447,28 +543,28 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
             {onScan && (
               <button
                 onClick={onScan}
-                className="px-6 py-3 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 font-black uppercase text-xs tracking-wide"
+                className="px-4 py-2 bg-[#004D71] text-[#F7B500] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
               >
-                <QrCode size={18}/> Ler QR
+                <QrCode size={14}/> Ler QR
               </button>
             )}
             <button
               onClick={() => setShowManualModal(true)}
-              className="px-6 py-3 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2 border-2 border-[#F7B500] font-black uppercase text-xs tracking-wide"
+              className="px-4 py-2 bg-[#F7B500] text-[#004D71] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 border border-[#F7B500] font-black uppercase text-[10px] tracking-wide"
             >
-              <Plus size={18}/> Registo Manual
+              <Plus size={14}/> Registo Manual
             </button>
             <button 
               onClick={downloadCSV}
-              className="px-4 py-3 bg-[#004D71] text-[#F7B500] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+              className="px-3 py-2 bg-[#004D71] text-[#F7B500] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <Download size={18}/> <span className="text-xs font-black uppercase tracking-wide">CSV</span>
+              <Download size={14}/> <span className="text-[10px] font-black uppercase tracking-wide">CSV</span>
             </button>
             <button 
               onClick={downloadPDF}
-              className="px-4 py-3 bg-[#F7B500] text-[#004D71] rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+              className="px-3 py-2 bg-[#F7B500] text-[#004D71] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <FileText size={18}/> <span className="text-xs font-black uppercase tracking-wide">PDF</span>
+              <FileText size={14}/> <span className="text-[10px] font-black uppercase tracking-wide">PDF</span>
             </button>
           </div>
         </div>
@@ -620,33 +716,143 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         </div>
       )}
 
-      {/* Quadrados em tempo real (10 modalidades) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        {[
-          { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={16}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
-          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={16}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
-          { id: 'nat1',     label: 'Natação Nível 1',  icon: <Waves size={16}/>,     color: 'text-blue-200',   bg: 'bg-blue-500',     count: utentesInside.filter(u => isUserInZone(u, 'nat1')).length },
-          { id: 'nat2',     label: 'Natação Nível 2',  icon: <Waves size={16}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat2')).length },
-          { id: 'nat3',     label: 'Natação Nível 3',  icon: <Waves size={16}/>,     color: 'text-blue-400',   bg: 'bg-blue-700',     count: utentesInside.filter(u => isUserInZone(u, 'nat3')).length },
-          { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={16}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
-          { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={16}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
-          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={16}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
-          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={16}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
-          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={16}/>,     color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
-        ].map(z => (
-          <div key={z.id} className={`${z.bg} rounded-2xl p-3 text-white shadow-sm flex items-center justify-between gap-2 border border-white/10`}>
-            <div className="flex items-center gap-2 flex-1">
-              <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0`}>{z.icon}</span>
-              <p className="text-[9px] font-black uppercase tracking-wide text-white/90 leading-tight break-words line-clamp-2">{z.label}</p>
+      {/* Quadrados em tempo real */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        {React.useMemo(() => [
+          { id: 'livre',    label: 'Piscina Livre', icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
+          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
+          { id: 'nat',      label: 'Natação Nível',          icon: <Waves size={14}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat')).length },
+          { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={14}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
+          { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={14}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
+          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={14}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
+          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={14}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
+          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={14}/>,     color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
+        ].sort((a, b) => b.count - a.count), [utentesInside]).map(z => (
+          <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex items-center justify-between gap-1.5 border border-white/10`}>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className={`${z.color} bg-white/10 p-1 rounded-md shrink-0 shadow-sm`}>{z.icon}</span>
+              <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight break-words line-clamp-2 drop-shadow-sm truncate">{z.label}</p>
             </div>
-            <p className={`text-2xl font-black tabular-nums leading-none ${z.color} shrink-0`}>{z.count}</p>
+            <p className={`text-xl font-black tabular-nums leading-none ${z.color} shrink-0 drop-shadow-md`}>{z.count}</p>
           </div>
         ))}
       </div>
 
       <div className="flex flex-col gap-6 mt-6">
         <div className="space-y-6">
+          {/* Visual Podium Section */}
+          {Object.keys(leaderboardByModality).length > 0 && (
+            <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
+                    <Star className="text-[#F7B500]" size={18}/> Pódio de Assiduidade por Modalidade
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                    Os 3 utentes mais assíduos no período selecionado
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(leaderboardByModality).map(([modality, users]) => {
+                  const first = users[0];
+                  const second = users[1] || null;
+                  const third = users[2] || null;
+
+                  return (
+                    <div key={modality} className="bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-6 flex flex-col justify-between">
+                      <h4 className="text-xs font-black text-[#004D71] uppercase tracking-wider mb-6 text-center border-b pb-3 border-slate-100">
+                        {modality}
+                      </h4>
+
+                      {/* Visual Podium */}
+                      <div className="flex items-end justify-center gap-3 h-32 pt-2">
+                        {/* 2nd Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          {second ? (
+                            <>
+                              <span className="text-[10px] font-black text-[#004D71] truncate max-w-full text-center mb-1" title={second.userName}>
+                                {second.userName.split(' ')[0]}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 mb-1">{second.count} pres.</span>
+                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-xs rounded-t-xl h-12 flex items-center justify-center border-t-2 border-slate-300">
+                                2º
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full bg-slate-100 rounded-t-xl h-6" />
+                          )}
+                        </div>
+
+                        {/* 1st Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          <span className="text-xs font-black text-[#004D71] truncate max-w-full text-center mb-1 flex items-center gap-0.5" title={first.userName}>
+                            👑 {first.userName.split(' ')[0]}
+                          </span>
+                          <span className="text-[10px] font-black text-[#F7B500] mb-1">{first.count} pres.</span>
+                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-sm rounded-t-2xl h-20 flex items-center justify-center border-t-4 border-[#F7B500] shadow-md">
+                            1º
+                          </div>
+                        </div>
+
+                        {/* 3rd Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          {third ? (
+                            <>
+                              <span className="text-[10px] font-black text-[#004D71] truncate max-w-full text-center mb-1" title={third.userName}>
+                                {third.userName.split(' ')[0]}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 mb-1">{third.count} pres.</span>
+                              <div className="w-full bg-orange-100 text-orange-800 font-black text-xs rounded-t-xl h-8 flex items-center justify-center border-t-2 border-orange-200">
+                                3º
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full bg-slate-100 rounded-t-xl h-6" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 overflow-hidden shadow-sm">
+            <div className="p-4 border-b-2 border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50/50">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input 
+                  type="text"
+                  placeholder="Pesquisar utente na tabela..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-xs font-black uppercase text-[#004D71] outline-none focus:border-[#F7B500] transition-colors shadow-sm"
+                />
+              </div>
+              <div className="flex bg-slate-200 p-1 rounded-xl w-full sm:w-auto overflow-hidden">
+                <button
+                  onClick={() => setFilterStatus('all')}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'all' ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Todas Entradas
+                </button>
+                <button
+                  onClick={() => setFilterStatus('inside')}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'inside' ? 'bg-[#004D71] text-[#F7B500] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Ainda Dentro
+                </button>
+                <button
+                  onClick={() => setFilterStatus('left')}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'left' ? 'bg-slate-400 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Já Saíram
+                </button>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -706,7 +912,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="text-sm font-black text-[#004D71]">{formatDuration(log.durationMinutes)}</span>
+                        <span className="text-sm font-black text-[#004D71]">{log.durationMinutes ? `${log.durationMinutes} min` : '---'}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <button
@@ -727,6 +933,27 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
+                  <Activity className="text-[#F7B500]" size={18}/> Totais do Período por Modalidade
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                  Número de entradas no intervalo selecionado
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {[...statsByModality].sort((a, b) => b.count - a.count).map(s => (
+                <div key={s.label} className="bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 flex flex-col justify-center items-center gap-1">
+                  <p className="text-3xl font-black text-[#004D71] tabular-nums leading-none">{s.count}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">{s.label}</p>
+                </div>
+              ))}
             </div>
           </div>
 

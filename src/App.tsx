@@ -15,17 +15,22 @@ import { ChatModule } from './components/Chat';
 import { UtenteTrainingModule } from './components/UtenteTraining';
 import { AccessLogsModule } from './components/AccessLogs';
 import { AgendaModule } from './components/Agenda';
-import { QrCode, Shield } from 'lucide-react';
+import { KioskMode } from './components/KioskMode';
+import { SwimmingTeacherPortal, seedSwimmingData } from './components/SwimmingModule';
+import { seedUtentesTestData } from './lib/seedUtentes';
+import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
 import { PicotoIcon } from './components/Common';
 import { auth, db, handleFirestoreError, OperationType, APP_ID } from './lib/firebase';
 import { REAL_STAFF } from './lib/seed';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { useRfidScanner, playBeep } from './lib/accessListener';
+import { handleCheckIn, handleCheckOut } from './lib/access';
 import {
   doc, setDoc, onSnapshot, collection, query,
   where, limit, orderBy, getDocs, writeBatch,
-  collectionGroup
+  collectionGroup, getDoc
 } from 'firebase/firestore';
 
 export { APP_ID };
@@ -43,7 +48,7 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin:     ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
   chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'alunos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
@@ -104,9 +109,107 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<any[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
+  const [rfidToast, setRfidToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [latestAviso, setLatestAviso] = useState<{ id: string; titulo: string; mensagem: string; nomeProfessor: string } | null>(null);
+  const [avisoDismissed, setAvisoDismissed] = useState(false);
+  const [showRfidSimulator, setShowRfidSimulator] = useState(false);
+  const [simRfidUid, setSimRfidUid] = useState('');
+  const [showKioskMode, setShowKioskMode] = useState(false);
+  const [kioskScanResult, setKioskScanResult] = useState<{ type: 'success' | 'error'; user?: UserProfile; message: string } | null>(null);
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastScrollY = React.useRef(0);
+
+  // Clear RFID Toast after timeout
+  useEffect(() => {
+    if (rfidToast) {
+      const timer = setTimeout(() => setRfidToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [rfidToast]);
+
+  // Sync latest global announcement
+  useEffect(() => {
+    if (!user) return;
+    const path = `artifacts/${APP_ID}/public/data/avisos_globais`;
+    const q = query(collection(db, path), orderBy('dataCriacao', 'desc'), limit(1));
+    const unsub = onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        const id = snap.docs[0].id;
+        
+        const readId = localStorage.getItem('read_announcement_id');
+        if (readId === id) {
+          setAvisoDismissed(true);
+        } else {
+          setAvisoDismissed(false);
+        }
+
+        const dataCriacao = data.dataCriacao?.toDate ? data.dataCriacao.toDate() : new Date(data.dataCriacao || Date.now());
+        const ageHours = (Date.now() - dataCriacao.getTime()) / (1000 * 60 * 60);
+        if (ageHours < 48) {
+          setLatestAviso({
+            id,
+            titulo: data.titulo || 'Aviso Importante',
+            mensagem: data.mensagem || '',
+            nomeProfessor: data.nomeProfessor || 'Professor'
+          });
+        } else {
+          setLatestAviso(null);
+        }
+      } else {
+        setLatestAviso(null);
+      }
+    }, (err) => {
+      console.warn("Avisos sync err:", err);
+    });
+    return () => unsub();
+  }, [user?.id]);
+
+  const dismissAviso = () => {
+    if (latestAviso) {
+      localStorage.setItem('read_announcement_id', latestAviso.id);
+      setAvisoDismissed(true);
+    }
+  };
+
+  const processRfidScan = async (uid: string) => {
+    const foundUser = utentes.find(u => (u.rfidUid || '').trim() === uid.trim());
+    if (foundUser) {
+      try {
+        if (foundUser.isInside) {
+          await handleCheckOut(foundUser);
+          setRfidToast({ message: `Saída Validada: ${foundUser.nome || foundUser.n || 'Utente'}`, type: 'success' });
+          setKioskScanResult({ type: 'success', user: foundUser, message: 'Saída Validada' });
+          playBeep('success');
+        } else {
+          await handleCheckIn(foundUser, foundUser.modalidade || 'Ginásio');
+          const remaining = Math.max(0, (foundUser.entradas_disponiveis || 0) - 1);
+          setRfidToast({ message: `Entrada Validada: ${foundUser.nome || foundUser.n || 'Utente'} (${foundUser.modalidade || 'Ginásio'})`, type: 'success' });
+          setKioskScanResult({ type: 'success', user: foundUser, message: `Entradas Restantes: ${remaining}` });
+          playBeep('success');
+        }
+      } catch (e: any) {
+        console.error(e);
+        const errMsg = e.message || `Erro ao processar cartão para ${foundUser.nome || foundUser.n}`;
+        setRfidToast({ message: errMsg, type: 'error' });
+        setKioskScanResult({ type: 'error', user: foundUser, message: errMsg });
+        playBeep('error');
+      }
+    } else {
+      setRfidToast({ message: `Cartão RFID não registado: ${uid}`, type: 'error' });
+      setKioskScanResult({ type: 'error', message: `Cartão não encontrado no sistema` });
+      playBeep('error');
+    }
+    
+    // Auto-dismiss Kiosk screen after 4 seconds
+    setTimeout(() => {
+      setKioskScanResult(null);
+    }, 4000);
+  };
+
+  // Setup RFID key listener hook
+  useRfidScanner(processRfidScan);
 
   const handleMainScroll = React.useCallback((e: React.UIEvent<HTMLElement>) => {
     const currentScrollY = e.currentTarget.scrollTop;
@@ -150,16 +253,23 @@ export default function App() {
 
     const timeout = setTimeout(() => setLoading(false), 5000);
 
-    // One-time seeding — use localStorage so it survives F5
+    // One-time seeding — check database sentinel first
     if (!localStorage.getItem('cpx_init_seed')) {
       const seed = async () => {
         try {
+          const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'init');
+          const sentinelSnap = await getDoc(sentinelRef);
+          if (sentinelSnap.exists()) {
+            localStorage.setItem('cpx_init_seed', 'true');
+            return;
+          }
           const usersPath = `artifacts/${APP_ID}/public/data/users`;
           let batch = writeBatch(db);
           REAL_STAFF.forEach(staff => {
             batch.set(doc(db, usersPath, staff.id), staff, { merge: true });
           });
           await batch.commit();
+          await setDoc(sentinelRef, { seededAt: new Date().toISOString() });
           localStorage.setItem('cpx_init_seed', 'true');
         } catch (e) {
           console.warn("Seed failed:", e);
@@ -172,6 +282,12 @@ export default function App() {
     if (!localStorage.getItem('cpx_seed_fitness')) {
       const seedFitness = async () => {
         try {
+          const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'fitness');
+          const sentinelSnap = await getDoc(sentinelRef);
+          if (sentinelSnap.exists()) {
+            localStorage.setItem('cpx_seed_fitness', 'true');
+            return;
+          }
           const agendaPath = `artifacts/${APP_ID}/public/data/agenda`;
           const batch = writeBatch(db);
           const aulas = [
@@ -181,12 +297,23 @@ export default function App() {
           ];
           aulas.forEach(a => batch.set(doc(collection(db, agendaPath)), a));
           await batch.commit();
+          await setDoc(sentinelRef, { seededAt: new Date().toISOString() });
           localStorage.setItem('cpx_seed_fitness', 'true');
         } catch (e) {
           console.warn("Seed fitness failed:", e);
         }
       };
       seedFitness();
+    }
+
+    // Auto-inserir dados de natação Swim Track
+    if (!localStorage.getItem('cpx_seed_swimming_v3')) {
+      seedSwimmingData();
+    }
+
+    // Auto-inserir utentes de teste
+    if (!localStorage.getItem('cpx_seed_utentes_v3')) {
+      seedUtentesTestData();
     }
 
     return () => { unsub(); clearTimeout(timeout); };
@@ -406,97 +533,6 @@ export default function App() {
     }
   }, []);
 
-  const handleRegister = React.useCallback(async (nome: string, email: string, pass: string, inviteCode: string) => {
-    setAuthError('');
-    setLoading(true);
-
-    try {
-      const emailLower = email.toLowerCase().trim();
-      const codeTrimmed = inviteCode.trim().toUpperCase();
-
-      const usersPath = `artifacts/${APP_ID}/public/data/users`;
-      const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
-
-      // 1. Validate email doesn't exist
-      const emailSnap = await getDocs(query(collection(db, usersPath), where('email', '==', emailLower), limit(1)));
-      if (!emailSnap.empty) {
-        throw new Error('Email já registado no sistema.');
-      }
-
-      // 2. Validate invite code
-      const codeSnap = await getDocs(query(collection(db, invitePath), where('code', '==', codeTrimmed), limit(1)));
-      if (codeSnap.empty) {
-        throw new Error('Código de convite inválido.');
-      }
-
-      const codeDoc = codeSnap.docs[0];
-      const codeData = codeDoc.data();
-
-      // 3. Check if code is already used
-      if (codeData.used) {
-        throw new Error('Código já foi utilizado.');
-      }
-
-      // 4. Check if code is expired
-      const expiresAt = new Date(codeData.expiresAt);
-      if (expiresAt < new Date()) {
-        throw new Error('Código expirado.');
-      }
-
-      // 5. Create user profile
-      const userId = emailLower.replace(/[^a-z0-9]/g, '_');
-      const finalProfile: UserProfile = {
-        id: userId,
-        email: emailLower,
-        nome: nome,
-        n: nome.split(' ')[0].toUpperCase(),
-        role: 'utente',
-        cargo: 'UTENTE',
-        img: `https://api.dicebear.com/7.x/avataaars/svg?seed=utente_${emailLower}`,
-        password: pass,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
-
-      // 6. Save user and mark code as used
-      let fbUser = auth.currentUser;
-      if (!fbUser) {
-        try {
-          const cred = await signInAnonymously(auth);
-          fbUser = cred.user;
-        } catch (e) {
-          console.warn("Firebase Anonymous Auth failed.", e);
-        }
-      }
-
-      try {
-        const userDocRef = doc(db, usersPath, userId);
-        const codeDocRef = doc(db, invitePath, codeDoc.id);
-
-        const batch = writeBatch(db);
-        batch.set(userDocRef, finalProfile, { merge: true });
-        batch.update(codeDocRef, {
-          used: true,
-          usedBy: emailLower,
-          usedAt: new Date().toISOString(),
-        });
-        await batch.commit();
-      } catch (syncErr) {
-        console.warn("Cloud Sync Error:", syncErr);
-      }
-
-      // 7. Auto-login
-      setUser(finalProfile);
-      localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
-      setActiveTab('inicio');
-    } catch (err: any) {
-      console.error("Registration Error:", err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const handleLogout = React.useCallback(async () => {
     try {
       await auth.signOut();
@@ -530,7 +566,7 @@ export default function App() {
   const isPublicDashboard = showPublicDashboard || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('view') === 'tv' || window.location.pathname.includes('/tv')));
   if (isPublicDashboard) return <EntranceDashboard appId={APP_ID} onBack={showPublicDashboard ? () => setShowPublicDashboard(false) : undefined} />;
 
-  if (!user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
+  if (!user) return <LoginScreen onLogin={handleLogin} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
 
   if (showModePicker) return (
     <ModePicker onSelect={(role) => {
@@ -542,6 +578,12 @@ export default function App() {
 
   return (
     <div className="app-shell font-sans">
+      {showKioskMode && (
+        <KioskMode 
+          scanResult={kioskScanResult} 
+          onExit={() => setShowKioskMode(false)} 
+        />
+      )}
       {showScanner && (
         <ScannerScreen 
           utentes={utentes} 
@@ -557,11 +599,32 @@ export default function App() {
           onLogout={handleLogout} 
           user={user} 
           unreadCount={totalUnread}
+          onSimularRfid={() => setShowRfidSimulator(true)}
+          onKioskMode={() => setShowKioskMode(true)}
+          onTrocarModo={() => setShowModePicker(true)}
         />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header user={user} unreadCount={totalUnread} isVisible={isNavVisible} />
           <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
+          
+          {latestAviso && !avisoDismissed && (
+            <div className="bg-[#F7B500] text-[#004D71] px-6 py-4 flex items-center justify-between border-b-2 border-[#004D71]/10 shadow-sm shrink-0 animate-in slide-in-from-top duration-300">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">📢</span>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider">{latestAviso.titulo}</h4>
+                  <p className="text-xs font-medium opacity-90 mt-0.5">{latestAviso.mensagem} — <span className="font-bold">{latestAviso.nomeProfessor}</span></p>
+                </div>
+              </div>
+              <button 
+                onClick={dismissAviso}
+                className="p-2 hover:bg-[#004D71]/10 rounded-xl transition-colors text-[#004D71]"
+              >
+                <X size={16}/>
+              </button>
+            </div>
+          )}
           
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
             {viewingProfile ? (
@@ -590,7 +653,13 @@ export default function App() {
                   />
                 )}
                 {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'chefia'].includes(user.role)} />}
-                {activeTab === 'alunos' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={user.role === 'professor' || user.role === 'admin'} />}
+                {activeTab === 'alunos' && (
+                  ['professor', 'admin'].includes(user.role) ? (
+                    <SwimmingTeacherPortal user={user} utentes={utentes} />
+                  ) : (
+                    <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={false} />
+                  )
+                )}
                 {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
@@ -630,13 +699,86 @@ export default function App() {
             </button>
           )}
 
-          {user.email === 'informatica@cm-viladerei.pt' && (
-            <button
-              onClick={() => setShowModePicker(true)}
-              className="fixed bottom-24 left-6 bg-slate-800 text-[#F7B500] px-4 py-3 rounded-2xl shadow-2xl z-40 active:scale-95 flex items-center gap-2 text-[10px] font-black uppercase border-2 border-slate-700"
-            >
-              <Shield size={16}/> Trocar Modo
-            </button>
+          {/* RFID Scanner Simulator Dialog */}
+          {showRfidSimulator && (
+            <div className="fixed inset-0 z-[100000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+              <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative">
+                <button 
+                  onClick={() => { setShowRfidSimulator(false); setSimRfidUid(''); }} 
+                  className="absolute -top-4 -right-4 p-4 bg-white text-slate-400 rounded-2xl shadow-xl active:scale-90"
+                >
+                  <X size={20}/>
+                </button>
+                
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 bg-[#004D71]/5 text-[#004D71] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Radio size={40} className="animate-pulse"/>
+                  </div>
+                  <h3 className="text-xl font-black text-[#004D71] uppercase leading-none">Simulador RFID</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Introduza um UID de cartão ou escolha um utente</p>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">UID do Cartão</label>
+                    <input 
+                      type="text"
+                      placeholder="Ex: 12345678"
+                      value={simRfidUid}
+                      onChange={(e) => setSimRfidUid(e.target.value)}
+                      className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-6 py-4 font-black text-xs text-[#004D71] outline-none"
+                    />
+                  </div>
+
+                  {/* Quick-select registered RFID users */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Utentes com RFID</label>
+                    <div className="max-h-32 overflow-y-auto space-y-1.5 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
+                      {utentes.filter(u => u.rfidUid).map(u => (
+                        <button 
+                          key={u.id}
+                          onClick={() => setSimRfidUid(u.rfidUid || '')}
+                          className="w-full text-left px-3 py-2 bg-white rounded-xl border border-slate-100 hover:border-[#F7B500] text-[10px] font-black uppercase text-[#004D71] flex justify-between items-center"
+                        >
+                          <span>{u.n || u.nome}</span>
+                          <span className="text-[8px] font-mono text-slate-400 font-bold">{u.rfidUid}</span>
+                        </button>
+                      ))}
+                      {utentes.filter(u => u.rfidUid).length === 0 && (
+                        <p className="text-[9px] font-bold text-slate-400 uppercase text-center py-4">Nenhum utente tem RFID registado</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    if (simRfidUid.trim()) {
+                      processRfidScan(simRfidUid.trim());
+                      setShowRfidSimulator(false);
+                      setSimRfidUid('');
+                    }
+                  }}
+                  disabled={!simRfidUid.trim()}
+                  className="w-full bg-[#004D71] text-[#F7B500] rounded-2xl py-5 font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  Simular Leitura
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating RFID Toast */}
+          {rfidToast && (
+            <div className={`fixed bottom-24 right-6 z-[200000] p-4 rounded-2xl shadow-2xl border-2 flex items-center gap-3 animate-in slide-in-from-bottom duration-300 ${rfidToast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-red-500 border-red-400 text-white'}`}>
+              <div className="p-2 bg-white/20 rounded-xl">
+                {rfidToast.type === 'success' ? <Check size={18}/> : <X size={18}/>}
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-80">{rfidToast.type === 'success' ? 'Leitor RFID' : 'Erro RFID'}</p>
+                <p className="text-xs font-black uppercase mt-0.5">{rfidToast.message}</p>
+              </div>
+            </div>
           )}
         </div>
       </div>

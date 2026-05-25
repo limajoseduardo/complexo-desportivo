@@ -17,8 +17,10 @@ if (useEmulator && typeof window !== 'undefined') {
   };
 
   if (!globalState.__cpxFirebaseEmulatorConnected) {
-    connectFirestoreEmulator(db, import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || '127.0.0.1', Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || 8080));
-    connectAuthEmulator(auth, import.meta.env.VITE_AUTH_EMULATOR_URL || 'http://127.0.0.1:9099', { disableWarnings: true });
+    const host = window.location.hostname || '127.0.0.1';
+    const firestorePort = Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || 8080);
+    connectFirestoreEmulator(db, host, firestorePort);
+    connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
     globalState.__cpxFirebaseEmulatorConnected = true;
   }
 }

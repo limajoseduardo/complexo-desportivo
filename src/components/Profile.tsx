@@ -3,15 +3,17 @@ import {
   User, LogOut, Camera, Info, GraduationCap, Award, Clock, Star,
   Phone, Mail, FileText, ArrowLeft, Briefcase, Trophy, Target,
   AlertCircle, MapPin, Activity, LogIn, Calendar, TrendingUp, History,
-  Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users, X, Plus, Edit2, Check
+  Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users, X, Plus, Edit2, Check,
+  ArrowUp, ArrowDown, Youtube, Search
 } from 'lucide-react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { UserProfile, HealthMetric } from '../types';
+import { UserProfile, HealthMetric, Exercicio } from '../types';
 import { CVCard, FormInput, PicotoIcon, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
-import { doc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, Timestamp, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, Timestamp, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { handleCheckIn, handleCheckOut } from '../lib/access';
+import { QRCodeCanvas } from 'qrcode.react';
 
 const TERMO_IMAGENS =
   'Declaro que autorizo a utilização de imagens (fotos e vídeos) do próprio/meu educando para a utilização eventual em ações de divulgação de carácter diverso promovidos pelo Município de Vila de Rei.';
@@ -92,7 +94,7 @@ export function ProfileViewModule({
   const [formData, setFormData] = useState<UserProfile>({ ...user });
   const [saving, setSaving] = useState(false);
   const [accessLoading, setAccessLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'termos'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'treino' | 'termos'>('geral');
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [plan, setPlan] = useState<any | null>(null);
@@ -104,6 +106,27 @@ export function ProfileViewModule({
   const [newTensaoDia, setNewTensaoDia] = useState('');
   const [savingMetric, setSavingMetric] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [allExercises, setAllExercises] = useState<Exercicio[]>([]);
+  const [tempExecs, setTempExecs] = useState<any[]>([]);
+  const [searchExTerm, setSearchExTerm] = useState('');
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState('Todos');
+
+  useEffect(() => {
+    const q = query(collection(db, `artifacts/${APP_ID}/public/data/exercicios`));
+    const unsub = onSnapshot(q, (snap) => {
+      setAllExercises(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercicio)));
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (plan) {
+      setTempExecs(plan.exercicios || []);
+    } else {
+      setTempExecs([]);
+    }
+  }, [plan]);
 
   const readLocalOverrides = (): Record<string, UserProfile> => {
     try {
@@ -300,7 +323,7 @@ export function ProfileViewModule({
           <div className="flex flex-col items-center justify-center px-8 py-6 sm:border-r border-white/10 shrink-0">
             <div className="relative">
               <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-[2rem] overflow-hidden border-4 border-[#F7B500] shadow-2xl bg-white">
-                <AvatarImage src={formData.img || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} alt="Avatar" className="w-full h-full object-cover"/>
+                <AvatarImage src={formData.img || ''} alt="Avatar" className="w-full h-full object-cover"/>
                 {isEditing && (
                   <button onClick={() => fileRef.current?.click()} className="absolute inset-0 bg-black/50 flex items-center justify-center text-white backdrop-blur-sm rounded-[2rem]">
                     <Camera size={22}/>
@@ -421,7 +444,8 @@ export function ProfileViewModule({
           { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
           { id: 'saude',      label: 'Saúde & Metas',    icon: <Heart size={15}/> },
           { id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> },
-          ...(user.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
+          ...(formData.role === 'utente' ? [{ id: 'treino', label: 'Treino', icon: <Dumbbell size={15}/> }] : []),
+          ...(formData.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 rounded-[2rem] text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
@@ -433,6 +457,37 @@ export function ProfileViewModule({
       {/* TAB: Identificação */}
       {activeTab === 'geral' && (
         <div className="space-y-6 animate-in fade-in">
+
+          {/* Cartão Digital de Acesso */}
+          {formData.role === 'utente' && (
+            <div className="bg-[#004D71] rounded-[3rem] p-8 text-white relative overflow-hidden shadow-xl border-4 border-[#F7B500]/20 flex flex-col md:flex-row items-center gap-6">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#F7B500]/10 rounded-bl-[8rem] pointer-events-none" />
+              <div className="bg-white p-4 rounded-[2rem] shadow-2xl shrink-0 flex items-center justify-center border-4 border-[#F7B500]">
+                <QRCodeCanvas 
+                  value={formData.id} 
+                  size={120} 
+                  level="H" 
+                  includeMargin={false}
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left space-y-2">
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <PicotoIcon size={14} className="text-[#F7B500]"/>
+                  <span className="text-[8px] font-black text-[#F7B500]/80 uppercase tracking-[0.2em]">Passe de Acesso Digital</span>
+                </div>
+                <h3 className="text-xl font-black uppercase leading-tight">{formData.nome || formData.n}</h3>
+                <p className="text-[10px] font-mono font-black text-[#F7B500] tracking-widest">#{formData.id.slice(-8).toUpperCase()}</p>
+                <div className="pt-2">
+                  <span className="bg-[#F7B500] text-[#004D71] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider">
+                    QR Code Ativo
+                  </span>
+                </div>
+                <p className="text-[9px] text-white/50 leading-relaxed font-bold uppercase tracking-wider pt-2">
+                  Apresente este código QR na receção ou passe no leitor para validar a sua entrada/saída.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Dados Pessoais */}
           <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
@@ -492,6 +547,52 @@ export function ProfileViewModule({
                 onChange={v => set('municipio_cartao', v)} />
             </div>
           </div>
+
+          {/* Financeiro (Gestão de Entradas) */}
+          {['admin', 'staff', 'chefia'].includes(currentRole) && (
+            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+              <SectionTitle icon={<CreditCard size={16}/>} label="Gestão de Entradas (Carregamentos)" />
+              
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-full md:w-1/3 bg-slate-50 p-6 rounded-[2rem] text-center border-2 border-slate-100 flex flex-col items-center justify-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Saldo Atual</p>
+                  <h3 className={`text-6xl font-black tracking-tighter ${
+                    (formData.entradas_disponiveis || 0) > 0 ? 'text-emerald-500' : 'text-red-500'
+                  }`}>
+                    {formData.entradas_disponiveis || 0}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-400 mt-2">entradas</p>
+                </div>
+
+                <div className="w-full md:w-2/3 space-y-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregamento Rápido</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[1, 5, 15, 30].map(amount => (
+                      <button
+                        key={amount}
+                        type="button"
+                        disabled={!isEditing}
+                        onClick={() => set('entradas_disponiveis', (formData.entradas_disponiveis || 0) + amount)}
+                        className="bg-[#004D71]/5 hover:bg-[#004D71] hover:text-[#F7B500] text-[#004D71] transition-colors rounded-2xl py-4 font-black text-lg disabled:opacity-50 disabled:hover:bg-[#004D71]/5 disabled:hover:text-[#004D71]"
+                      >
+                        +{amount}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="pt-2">
+                    <FormInput label="Ajuste Manual do Saldo" icon={<CreditCard size={14}/>} type="number"
+                      value={formData.entradas_disponiveis || 0} disabled={!isEditing}
+                      onChange={v => set('entradas_disponiveis', parseInt(v) || 0)} />
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                Nota: A cada entrada no Quiosque será deduzida 1 entrada. Se o saldo for Zero, o acesso será bloqueado.
+              </p>
+            </div>
+          )}
 
           {/* Encarregado de Educação (apenas menores) */}
           {(isMinor || formData.encarregado_email) && (
@@ -822,6 +923,288 @@ export function ProfileViewModule({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: Treino */}
+      {activeTab === 'treino' && formData.role === 'utente' && (
+        <div className="space-y-6 animate-in fade-in">
+          {['admin', 'staff', 'professor'].includes(currentRole) ? (
+            /* WORKSPACE DO PROFESSOR (Prescrever) */
+            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+              <SectionTitle icon={<Dumbbell size={16}/>} label="Prescrever Plano de Treino" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest -mt-2">
+                Defina o plano de exercícios personalizado para este utente
+              </p>
+
+              {/* Procura de exercícios */}
+              <div className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                <p className="text-[10px] font-black text-[#004D71] uppercase tracking-widest">
+                  Adicionar Exercício ao Plano
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input 
+                      type="text"
+                      placeholder="Pesquisar exercícios..."
+                      value={searchExTerm}
+                      onChange={e => setSearchExTerm(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-5 font-bold text-xs text-[#004D71] placeholder:text-slate-300 outline-none"
+                    />
+                  </div>
+                  <select 
+                    value={selectedMuscleGroup}
+                    onChange={e => setSelectedMuscleGroup(e.target.value)}
+                    className="bg-white border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-xs text-[#004D71] outline-none"
+                  >
+                    <option value="Todos">Todos os Grupos</option>
+                    {["Peito", "Costas", "Pernas", "Ombros", "Bicep", "Tricep", "Abdominais", "Cardio", "Mobilidade", "Alongamentos"].map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Resultados da Pesquisa */}
+                <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
+                  {allExercises
+                    .filter(ex => {
+                      const matchGroup = selectedMuscleGroup === 'Todos' || ex.grupo === selectedMuscleGroup;
+                      const matchSearch = ex.nomePT.toLowerCase().includes(searchExTerm.toLowerCase()) || 
+                                          ex.nomeEN.toLowerCase().includes(searchExTerm.toLowerCase());
+                      return matchGroup && matchSearch;
+                    })
+                    .slice(0, 10)
+                    .map(ex => (
+                      <div key={ex.id} className="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black text-[#004D71] uppercase leading-none">{ex.nomePT}</p>
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mt-1">{ex.grupo} · {ex.primaryMuscles.join(', ')}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempExecs(prev => [
+                              ...prev,
+                              { exercicioId: ex.id, series: '3', reps: '10', descanso: '1 min' }
+                            ]);
+                          }}
+                          className="bg-[#004D71]/5 hover:bg-[#004D71] text-[#004D71] hover:text-[#F7B500] px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5"
+                        >
+                          <Plus size={12}/> Adicionar
+                        </button>
+                      </div>
+                    ))}
+                  {allExercises.length === 0 && (
+                    <p className="text-[9px] font-black text-slate-400 uppercase text-center py-4">Sem exercícios na enciclopédia</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Lista do Plano Atual */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-black text-[#004D71] uppercase tracking-widest">
+                  Exercícios Prescritos ({tempExecs.length})
+                </p>
+
+                {tempExecs.map((item, index) => {
+                  const details = allExercises.find(e => e.id === item.exercicioId);
+                  return (
+                    <div key={`${item.exercicioId}-${index}`} className="bg-slate-50/50 p-5 rounded-[2rem] border-2 border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                      <div className="flex-1 min-w-0 text-center md:text-left">
+                        <div className="flex items-center justify-center md:justify-start gap-2">
+                          <span className="w-5 h-5 bg-[#004D71] text-[#F7B500] rounded-full text-[9px] font-black flex items-center justify-center">{index + 1}</span>
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{details?.grupo || 'Exercício'}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-[#004D71] uppercase mt-1 truncate">
+                          {details?.nomePT || 'Exercício'}
+                        </h4>
+                      </div>
+
+                      {/* Inputs das variáveis */}
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <div className="w-20">
+                          <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest block mb-1 text-center">Séries</label>
+                          <input 
+                            type="text" 
+                            value={item.series} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setTempExecs(prev => prev.map((it, idx) => idx === index ? { ...it, series: val } : it));
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-center font-black text-xs text-[#004D71] outline-none"
+                            placeholder="3"
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest block mb-1 text-center">Reps</label>
+                          <input 
+                            type="text" 
+                            value={item.reps} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setTempExecs(prev => prev.map((it, idx) => idx === index ? { ...it, reps: val } : it));
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-center font-black text-xs text-[#004D71] outline-none"
+                            placeholder="10-12"
+                          />
+                        </div>
+                        <div className="w-24">
+                          <label className="text-[7px] font-black text-slate-400 uppercase tracking-widest block mb-1 text-center">Descanso</label>
+                          <input 
+                            type="text" 
+                            value={item.descanso} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              setTempExecs(prev => prev.map((it, idx) => idx === index ? { ...it, descanso: val } : it));
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-center font-black text-xs text-[#004D71] outline-none"
+                            placeholder="1 min"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Controlos de Ordem / Remoção */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => {
+                            setTempExecs(prev => {
+                              const list = [...prev];
+                              const temp = list[index];
+                              list[index] = list[index - 1];
+                              list[index - 1] = temp;
+                              return list;
+                            });
+                          }}
+                          className="p-2.5 bg-white border border-slate-100 hover:bg-slate-50 rounded-xl text-[#004D71] disabled:opacity-30"
+                        >
+                          <ArrowUp size={12}/>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === tempExecs.length - 1}
+                          onClick={() => {
+                            setTempExecs(prev => {
+                              const list = [...prev];
+                              const temp = list[index];
+                              list[index] = list[index + 1];
+                              list[index + 1] = temp;
+                              return list;
+                            });
+                          }}
+                          className="p-2.5 bg-white border border-slate-100 hover:bg-slate-50 rounded-xl text-[#004D71] disabled:opacity-30"
+                        >
+                          <ArrowDown size={12}/>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempExecs(prev => prev.filter((_, idx) => idx !== index));
+                          }}
+                          className="p-2.5 bg-red-50 hover:bg-red-100 rounded-xl text-red-500"
+                        >
+                          <X size={12}/>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {tempExecs.length === 0 && (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-[2rem] bg-slate-50/20">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Plano de treino vazio</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Botão de gravação */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const treinosPath = `artifacts/${APP_ID}/public/data/treinos`;
+                    await setDoc(doc(db, treinosPath, formData.id), {
+                      userId: formData.id,
+                      exercicios: tempExecs,
+                      updatedAt: new Date().toISOString()
+                    });
+                    alert("Plano de Treino gravado com sucesso!");
+                  } catch (e) {
+                    console.error("Error saving training plan:", e);
+                    alert("Erro ao gravar plano de treino.");
+                  }
+                }}
+                className="w-full bg-[#004D71] text-[#F7B500] rounded-2xl py-4 font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                <Check size={16}/> Gravar Plano de Treino
+              </button>
+            </div>
+          ) : (
+            /* VISTA DE UTENTE (Read-Only com links de YouTube) */
+            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+              <SectionTitle icon={<Dumbbell size={16}/>} label="O Meu Plano de Treino" />
+              
+              <div className="space-y-4">
+                {plan?.exercicios && plan.exercicios.map((item: any, index: number) => {
+                  const details = allExercises.find(e => e.id === item.exercicioId);
+                  return (
+                    <div key={`${item.exercicioId}-${index}`} className="bg-slate-50/50 p-5 rounded-[2rem] border-2 border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+                      <div className="flex-1 min-w-0 text-center md:text-left">
+                        <div className="flex items-center justify-center md:justify-start gap-2">
+                          <span className="w-5 h-5 bg-[#004D71] text-[#F7B500] rounded-full text-[9px] font-black flex items-center justify-center">{index + 1}</span>
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{details?.grupo || 'Exercício'}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-[#004D71] uppercase mt-1 truncate">
+                          {details?.nomePT || 'Exercício'}
+                        </h4>
+                        {details?.desc && (
+                          <p className="text-[10px] text-slate-400 font-bold mt-1 line-clamp-2 leading-relaxed">{details.desc}</p>
+                        )}
+                      </div>
+
+                      {/* Variáveis */}
+                      <div className="grid grid-cols-3 gap-6 bg-white border border-slate-100 rounded-2xl px-6 py-3 shrink-0">
+                        <div className="text-center">
+                          <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Séries</p>
+                          <p className="text-xs font-black text-[#004D71]">{item.series || '3'}</p>
+                        </div>
+                        <div className="text-center border-x border-slate-100 px-4">
+                          <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Reps</p>
+                          <p className="text-xs font-black text-[#004D71]">{item.reps || '10'}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Descanso</p>
+                          <p className="text-xs font-black text-[#004D71]">{item.descanso || '1 min'}</p>
+                        </div>
+                      </div>
+
+                      {/* Link Youtube */}
+                      {details?.link && (
+                        <a
+                          href={details.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-2 text-[9px] font-black uppercase tracking-wider"
+                        >
+                          <Youtube size={16}/> Vídeo
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {(!plan || !plan.exercicios || plan.exercicios.length === 0) && (
+                  <div className="text-center py-20 text-slate-300">
+                    <Dumbbell size={48} className="mx-auto mb-4 opacity-25"/>
+                    <p className="uppercase font-black text-[10px] tracking-[0.2em]">Sem plano de treino prescrito</p>
+                    <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold">Consulte o seu instrutor na sala de exercício.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

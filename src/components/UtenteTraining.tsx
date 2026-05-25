@@ -1,18 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Play, ChevronRight, Bookmark, Search, Filter, BookOpen, X, Plus } from 'lucide-react';
+import { Dumbbell, Play, ChevronRight, Bookmark, Search, Filter, BookOpen, X, Plus, Check } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
-import { collection, onSnapshot, query, where, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, addDoc, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { UserProfile, TreinoPlano, Exercicio } from '../types';
 import { ExerciseGallery } from './Exercises';
 
 export function UtenteTrainingModule({ user }: { user: UserProfile }) {
   const [activeTab, setActiveTab] = useState<'plano' | 'biblioteca'>('plano');
   const [plan, setPlan] = useState<TreinoPlano | null>(null);
+  const [exercises, setExercises] = useState<Exercicio[]>([]);
   const [showRequest, setShowRequest] = useState(false);
   const [professors, setProfessors] = useState<UserProfile[]>([]);
   const [selectedProf, setSelectedProf] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [scannedCode, setScannedCode] = useState('');
+  const [trainingLogs, setTrainingLogs] = useState<Record<string, {weight: number, reps: number, done: boolean}[]>>(user.treino_logs || {});
+
+  const saveTrainingLogs = async (newLogs: typeof trainingLogs) => {
+    try {
+      await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, user.id), {
+        treino_logs: newLogs
+      });
+    } catch (e) {
+      console.error('Failed to save training log:', e);
+    }
+  };
+
+  const updateLog = (exId: string, seriesIdx: number, field: string, value: any, targetReps: number) => {
+    setTrainingLogs(prev => {
+      const next = { ...prev };
+      if (!next[exId]) {
+        // Inicializa se vazio, adivinhando num de séries baseadas em targetReps (mock seguro)
+        next[exId] = Array(10).fill(null).map(() => ({ weight: 0, reps: targetReps, done: false }));
+      }
+      const currentArr = [...next[exId]];
+      currentArr[seriesIdx] = { ...currentArr[seriesIdx], [field]: value };
+      next[exId] = currentArr;
+      
+      // Auto-save
+      saveTrainingLogs(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const treinosPath = `artifacts/${APP_ID}/public/data/treinos`;
@@ -31,7 +62,14 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
       handleFirestoreError(error, OperationType.GET, usersPath);
     });
 
-    return () => { unsub(); unsubProfs(); };
+    const exPath = `artifacts/${APP_ID}/public/data/exercicios`;
+    const unsubEx = onSnapshot(collection(db, exPath), (snap) => {
+      setExercises(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercicio)));
+    }, (error) => {
+      console.warn("Error fetching exercises:", error);
+    });
+
+    return () => { unsub(); unsubProfs(); unsubEx(); };
   }, [user.id]);
 
   const handleRequestPlan = async () => {
@@ -107,33 +145,104 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
             </div>
           ) : (
             <div className="space-y-4">
-               {plan.exercicios.map((ex, idx) => (
-                 <div key={idx} className="bg-white rounded-[2.5rem] p-6 border-4 border-[#004D71]/5 shadow-sm group hover:border-[#F7B500]/20 transition-all">
-                    <div className="flex items-center gap-5">
-                       <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 text-[#004D71] font-black text-xl border-2 border-slate-100">{idx + 1}</div>
-                       <div className="flex-1 min-w-0">
-                          <h4 className="font-black text-[#004D71] uppercase text-sm mb-2 truncate">{ex.exercicioId}</h4>
-                          <div className="flex gap-3 overflow-x-auto pb-1">
-                             <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Séries</span>
-                                <span className="text-xs font-black text-[#004D71]">{ex.series}</span>
-                             </div>
-                             <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Reps</span>
-                                <span className="text-xs font-black text-[#004D71]">{ex.reps}</span>
-                             </div>
-                             <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Pause</span>
-                                <span className="text-xs font-black text-[#F7B500]">{ex.descanso}</span>
-                             </div>
-                          </div>
+               {plan.exercicios.map((ex, idx) => {
+                 const matchedEx = exercises.find(e => e.id === ex.exercicioId);
+                 const name = matchedEx ? matchedEx.nomePT : ex.exercicioId;
+                 const desc = matchedEx ? matchedEx.desc : '';
+                 const link = matchedEx ? matchedEx.link : '';
+                 
+                 const numSeries = parseInt(ex.series) || 1;
+                 const targetReps = parseInt(ex.reps) || 0;
+                 const seriesArray = Array.from({ length: numSeries });
+                 const exLogs = trainingLogs[ex.exercicioId] || Array(numSeries).fill({ weight: 0, reps: targetReps, done: false });
+
+                 return (
+                   <div key={idx} className="bg-white rounded-[2.5rem] p-6 border-4 border-[#004D71]/5 shadow-sm group hover:border-[#F7B500]/20 transition-all">
+                      <div className="flex items-start gap-5">
+                         <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 text-[#004D71] font-black text-xl border-2 border-slate-100 self-center">{idx + 1}</div>
+                         <div className="flex-1 min-w-0">
+                            <h4 className="font-black text-[#004D71] uppercase text-sm truncate">{name}</h4>
+                            {matchedEx && (
+                              <p className="text-[8px] font-black text-[#F7B500] uppercase tracking-wider mb-1">{matchedEx.grupo}</p>
+                            )}
+                            {desc && (
+                              <p className="text-[10px] text-slate-400 font-medium mb-3 leading-relaxed line-clamp-2">{desc}</p>
+                            )}
+                            <div className="flex gap-3 overflow-x-auto pb-1">
+                               <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
+                                  <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Séries</span>
+                                  <span className="text-xs font-black text-[#004D71]">{ex.series}</span>
+                               </div>
+                               <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
+                                  <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Reps</span>
+                                  <span className="text-xs font-black text-[#004D71]">{ex.reps}</span>
+                               </div>
+                               <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
+                                  <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Pause</span>
+                                  <span className="text-xs font-black text-[#F7B500]">{ex.descanso}</span>
+                               </div>
+                            </div>
+                         </div>
+                         {link ? (
+                           <a 
+                             href={link} 
+                             target="_blank" 
+                             rel="noopener noreferrer" 
+                             className="p-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl transition-all shrink-0 flex items-center justify-center self-center"
+                             title="Ver Execução no YouTube"
+                           >
+                             <Play size={20} fill="currentColor" />
+                           </a>
+                         ) : (
+                           <button 
+                             disabled 
+                             className="p-4 bg-slate-50 rounded-2xl text-slate-200 shrink-0 cursor-not-allowed self-center"
+                             title="Sem vídeo disponível"
+                           >
+                             <Play size={20} />
+                           </button>
+                         )}
                        </div>
-                       <button className="p-4 bg-slate-50 rounded-2xl text-slate-300 group-hover:bg-[#F7B500] group-hover:text-[#004D71] transition-all shrink-0">
-                          <Play size={20} />
-                       </button>
+
+                       {/* INTERACTIVE SERIES DIARY */}
+                       <div className="mt-5 space-y-2 border-t-2 border-slate-50 pt-4">
+                         {seriesArray.map((_, sIdx) => {
+                           const currentLog = exLogs[sIdx] || { weight: 0, reps: targetReps, done: false };
+                           return (
+                             <div key={sIdx} className={`flex items-center gap-3 p-3 rounded-[1.2rem] border-2 transition-all ${currentLog.done ? 'bg-green-50/50 border-green-200 shadow-sm' : 'bg-slate-50/50 border-slate-100 hover:border-[#004D71]/20'}`}>
+                                <div className={`w-6 font-black text-[10px] ${currentLog.done ? 'text-green-600' : 'text-slate-400'}`}>#{sIdx + 1}</div>
+                                <div className="flex-1 flex items-center gap-2">
+                                   <input 
+                                      type="number" 
+                                      value={currentLog.weight || ''} 
+                                      onChange={e => updateLog(ex.exercicioId, sIdx, 'weight', Number(e.target.value), targetReps)}
+                                      className="w-12 bg-white border-2 border-slate-200/50 rounded-xl px-2 py-2 text-[11px] font-black text-[#004D71] text-center focus:border-[#F7B500] outline-none transition-colors placeholder:text-slate-200"
+                                      placeholder="-"
+                                   />
+                                   <span className="text-[9px] font-black text-slate-400 uppercase">Kg</span>
+                                   
+                                   <input 
+                                      type="number" 
+                                      value={currentLog.reps || ''} 
+                                      onChange={e => updateLog(ex.exercicioId, sIdx, 'reps', Number(e.target.value), targetReps)}
+                                      className="w-12 bg-white border-2 border-slate-200/50 rounded-xl px-2 py-2 text-[11px] font-black text-[#004D71] text-center focus:border-[#F7B500] outline-none transition-colors placeholder:text-slate-200 ml-2"
+                                      placeholder="-"
+                                   />
+                                   <span className="text-[9px] font-black text-slate-400 uppercase">Reps</span>
+                                </div>
+                                <button 
+                                  onClick={() => updateLog(ex.exercicioId, sIdx, 'done', !currentLog.done, targetReps)}
+                                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90 ${currentLog.done ? 'bg-green-500 text-white shadow-md shadow-green-500/20 scale-105' : 'bg-white border-2 border-slate-200 text-slate-300 hover:text-slate-400'}`}>
+                                  <Check size={18} strokeWidth={currentLog.done ? 3 : 2} />
+                                </button>
+                             </div>
+                           );
+                         })}
+                       </div>
+
                     </div>
-                 </div>
-               ))}
+                  );
+                })}
             </div>
           )}
         </div>
@@ -191,6 +300,51 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
            </div>
         </div>
       )}
+
+       {/* Floating Button for QR Scanner */}
+       <div className="fixed bottom-24 right-4 z-[90]">
+         <button onClick={() => setShowQRScanner(true)} className="bg-[#004D71] text-[#F7B500] w-14 h-14 rounded-[1.5rem] shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-white/20 backdrop-blur-md hover:bg-[#003855] group">
+           <Search size={22} className="group-hover:scale-110 transition-transform"/>
+         </button>
+       </div>
+
+       {/* Mock QR Scanner Modal */}
+       {showQRScanner && (
+         <div className="fixed inset-0 z-[100000] bg-[#004D71]/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative">
+              <button onClick={() => setShowQRScanner(false)} className="absolute -top-4 -right-4 p-4 bg-white text-slate-400 rounded-2xl shadow-xl active:scale-90"><X size={20}/></button>
+              
+              <div className="text-center mb-6">
+                 <div className="w-24 h-24 bg-slate-50 border-4 border-dashed border-slate-200 text-slate-300 rounded-[2rem] flex items-center justify-center mx-auto mb-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[#F7B500]/10 animate-pulse"></div>
+                    <Search size={32}/>
+                 </div>
+                 <h3 className="text-xl font-black text-[#004D71] uppercase leading-none">Simulador de QR Code</h3>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">
+                   Imagine que leu o QR Code físico da máquina do ginásio. Insira o nome abaixo.
+                 </p>
+              </div>
+
+              <input 
+                type="text" 
+                value={scannedCode}
+                onChange={e => setScannedCode(e.target.value)}
+                placeholder="Ex: Leg Press"
+                className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl p-4 text-center font-black uppercase text-sm focus:border-[#F7B500] outline-none mb-4"
+              />
+
+              <button 
+                onClick={() => {
+                  alert(`Redirecionando para as instruções de: ${scannedCode || 'Desconhecido'}`);
+                  setShowQRScanner(false);
+                }}
+                className="w-full bg-[#F7B500] text-[#004D71] p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg"
+              >
+                Simular Leitura
+              </button>
+           </div>
+         </div>
+       )}
     </div>
   );
 }

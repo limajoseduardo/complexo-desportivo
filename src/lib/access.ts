@@ -7,6 +7,11 @@ import {
 import { UserProfile } from '../types';
 
 export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio') => {
+  const currentEntries = user.entradas_disponiveis || 0;
+  if (currentEntries <= 0) {
+    throw new Error("Sem entradas disponíveis. Por favor, carregue o seu cartão na receção.");
+  }
+
   const usersPath = `artifacts/${APP_ID}/public/data/users`;
   const logsPath = `artifacts/${APP_ID}/public/data/logs_acesso`;
   const userRef = doc(db, usersPath, user.id);
@@ -28,6 +33,8 @@ export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio'
   await updateDoc(userRef, {
     isInside: true,
     location: zone,
+    entradas_disponiveis: currentEntries - 1,
+    lastCheckInDate: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
 };

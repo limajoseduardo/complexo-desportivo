@@ -29,7 +29,7 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      port: 3001,
+      port: 3100,
       host: '0.0.0.0',
       allowedHosts: true,
       hmr: process.env.DISABLE_HMR !== 'true'

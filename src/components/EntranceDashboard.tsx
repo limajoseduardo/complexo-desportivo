@@ -7,6 +7,7 @@ import { collection, onSnapshot, orderBy, query, where, limit } from 'firebase/f
 import { db } from '../lib/firebase';
 import { Aula, UserProfile } from '../types';
 import { isUserInZone } from '../lib/logic';
+import { useWeather } from '../lib/weather';
 
 interface EntranceDashboardProps {
   appId: string;
@@ -56,58 +57,11 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   const [cobertaLogs, setCobertaLogs] = useState<any[]>([]);
   const [descobertaLogs, setDescobertaLogs] = useState<any[]>([]);
   const [agenda, setAgenda] = useState<Aula[]>([]);
-  const [weather, setWeather] = useState<{
-    temperature: number;
-    humidity: number;
-    weatherCode: number;
-    windSpeed: number;
-    apparentTemp: number;
-  } | null>(null);
-  const [aqi, setAqi] = useState<number | null>(null);
+  const { weather, aqi } = useWeather();
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(interval);
-  }, []);
-
-  // Meteorologia + humidade (Open-Meteo)
-  useEffect(() => {
-    const fetchWeather = () => {
-      fetch(
-        'https://api.open-meteo.com/v1/forecast?latitude=39.67&longitude=-8.14' +
-        '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m'
-      )
-        .then(r => r.json())
-        .then(data => {
-          const c = data.current;
-          setWeather({
-            temperature:   Math.round(c.temperature_2m),
-            humidity:      c.relative_humidity_2m,
-            weatherCode:   c.weather_code,
-            windSpeed:     Math.round(c.wind_speed_10m),
-            apparentTemp:  Math.round(c.apparent_temperature),
-          });
-        })
-        .catch(() => {});
-    };
-    fetchWeather();
-    const t = setInterval(fetchWeather, 5 * 60 * 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  // Qualidade do ar (Open-Meteo Air Quality)
-  useEffect(() => {
-    const fetchAqi = () => {
-      fetch(
-        'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=39.67&longitude=-8.14&current=european_aqi'
-      )
-        .then(r => r.json())
-        .then(data => setAqi(Math.round(data.current?.european_aqi ?? 0)))
-        .catch(() => {});
-    };
-    fetchAqi();
-    const t = setInterval(fetchAqi, 10 * 60 * 1000);
-    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -150,9 +104,7 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   const zones = useMemo(() => [
     { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={28}/>,      color: 'text-sky-400',     bg: 'bg-sky-400/10' },
     { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={28}/>,       color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-    { id: 'nat1',     label: 'Natação Nível 1',      icon: <Waves size={28}/>,     color: 'text-blue-300',    bg: 'bg-blue-300/10' },
-    { id: 'nat2',     label: 'Natação Nível 2',      icon: <Waves size={28}/>,     color: 'text-blue-400',    bg: 'bg-blue-400/10' },
-    { id: 'nat3',     label: 'Natação Nível 3',      icon: <Waves size={28}/>,     color: 'text-blue-500',    bg: 'bg-blue-500/10' },
+    { id: 'nat',      label: 'Natação Nível 1-2-3',  icon: <Waves size={28}/>,     color: 'text-blue-400',    bg: 'bg-blue-400/10' },
     { id: 'hidro',    label: 'Hidroginástica',       icon: <Droplets size={28}/>,  color: 'text-teal-400',    bg: 'bg-teal-400/10' },
     { id: 'bebes',    label: 'Bebés / AMA',          icon: <Users2 size={28}/>,    color: 'text-indigo-400',  bg: 'bg-indigo-400/10' },
     { id: 'fit',      label: 'Aulas Fitness',        icon: <Activity size={28}/>,  color: 'text-purple-400',  bg: 'bg-purple-400/10' },
@@ -163,7 +115,8 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   ], []);
 
   const zoneCounts = useMemo(() =>
-    zones.map(z => ({ ...z, count: utentesInside.filter(u => isUserInZone(u, z.id)).length })),
+    zones.map(z => ({ ...z, count: utentesInside.filter(u => isUserInZone(u, z.id)).length }))
+         .sort((a, b) => b.count - a.count),
     [utentesInside, zones]
   );
 
@@ -213,7 +166,7 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
             <div className="flex items-center gap-3 sm:gap-4 border-r border-white/10 pr-3 sm:pr-5">
               {/* Ícone + temperatura (sempre visível) */}
               <div className="flex flex-col items-center gap-0.5">
-                <WeatherIcon code={weather.weatherCode} size={window.innerWidth < 640 ? 22 : 32} />
+                <WeatherIcon code={weather.weatherCode} size={28} />
                 <p className="text-[8px] sm:text-[9px] font-black text-white/40 uppercase text-center leading-none hidden sm:block">
                   {weatherLabel(weather.weatherCode)}
                 </p>

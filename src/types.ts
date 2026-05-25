@@ -56,6 +56,13 @@ export interface UserProfile {
   modalidade?: string;
   iban?: string;
 
+  // Financeiro (Carregamentos)
+  entradas_disponiveis?: number;
+
+  // Assiduidade e Treino Dinâmico
+  lastCheckInDate?: string;
+  treino_logs?: Record<string, { weight: number, reps: number, done: boolean }[]>; // chave: ID do exercício
+
   // Staff / Professor
   profissao?: string;
   formacao?: string;
@@ -160,4 +167,34 @@ export interface Aula {
   vagas?: number;
   sala?: string;
   color?: string;
+}
+
+export interface SwimmingClass {
+  id: string;
+  nome: string;
+  horario: string;
+  nivel: 'Natação Nível 1' | 'Natação Nível 2' | 'Natação Nível 3' | 'Bebés/AMA' | 'Hidroginástica' | string;
+  professorId: string;
+  alunos: string[];
+  objetivos: string[];
+}
+
+export interface SwimmingLog {
+  id: string;
+  turmaId: string;
+  data: string;
+  sumario: string;
+  presencas: string[];
+  distancias: Record<string, number>;
+  observacoes: Record<string, string>;
+  professorId: string;
+}
+
+export interface SwimmingEvaluation {
+  id: string;
+  studentId: string;
+  lastUpdated: string;
+  skills: Record<string, 'não_iniciado' | 'em_desenvolvimento' | 'adquirido'>;
+  feedback?: string;
+  nivelProposto?: string;
 }

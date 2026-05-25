@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, Target, Building2,
-  Copy, Ticket, Loader, AlertCircle
+  Activity, Plus, Check, Star, Shield, Target, Building2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -11,16 +10,14 @@ import { UserProfile, OperationalLog } from '../types';
 import { APP_ID } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { isUserInZone } from '../lib/logic';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { SwimmingStudentPortal } from './SwimmingModule';
 
 export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], utentes: UserProfile[] }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
   const latestDescoberta = logs.find(l => l.tipo === 'descoberta') || {} as OperationalLog;
 
   const [selected, setSelected] = useState<{label: string, target: string} | null>(null);
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
 
   const zones = React.useMemo(() => [
     { id: 'gym', label: "Ginásio", icon: <Dumbbell size={14}/>, target: "Ginásio" },
@@ -74,45 +71,17 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-24 px-2 text-left relative font-sans">
-
-      <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
-        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
-          <div>
-            <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
-            <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
-          </div>
-        </div>
-
-        <div className="px-6 pt-4 pb-6">
-          <div className="flex items-baseline justify-between mb-3">
-            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
-            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
-              Neste momento tem{' '}
-              <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
-              {' '}utentes
-            </p>
-          </div>
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {MODALITIES.map(m => {
-              const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-              return { m, count };
-            })
-            .sort((a, b) => b.count - a.count)
-            .map(({ m, count }) => (
-              <button key={m.id} onClick={() => setSelected({label: m.label, target: m.dest})}
-                className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
-                <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                  <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
-                    tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
-                  </p>
-                </div>
-                <ChevronRight size={14} className="text-white/30 shrink-0"/>
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+         {zonesUsers.map(m => (
+           <button key={m.id} onClick={() => setSelected({label: m.label, target: m.target})} className="bg-white rounded-3xl p-5 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
+              <div className="flex items-center justify-between mb-3">
+                 <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{m.icon}</div>
+                 <div className={`w-2 h-2 rounded-full ${m.count > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-200'}`} />
+              </div>
+              <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-1 line-clamp-1">{m.label}</h4>
+              <p className="text-xl font-black text-[#004D71]">{m.count} <span className="text-[10px] opacity-40 uppercase">Presentes</span></p>
+           </button>
+         ))}
       </div>
 
         <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-[#004D71]/5 p-6 font-sans">
@@ -292,7 +261,7 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
 const MODALITIES = [
   { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,     dest: 'Piscina Regime Livre' },
   { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={18}/>,      dest: 'Piscina Exterior'     },
-  { id: 'natacao',  label: 'Natação',              icon: <Waves size={18}/>,    dest: 'Natação'              },
+  { id: 'nat',      label: 'Natação Nível 1-2-3',  icon: <Waves size={18}/>,    dest: 'Natação'              },
   { id: 'hidro',    label: 'Hidroginástica',        icon: <Droplets size={18}/>, dest: 'Hidroginástica'       },
   { id: 'bebes',    label: 'Bebés / AMA',           icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'            },
   { id: 'fit',      label: 'Aula Fitness',          icon: <Activity size={18}/>, dest: 'Aulas Fitness'        },
@@ -302,202 +271,6 @@ const MODALITIES = [
   { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
 ];
 
-const generateCode = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const part = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
-  return `${part()}-${part()}`;
-};
-
-interface InviteCode {
-  id: string;
-  code: string;
-  createdBy: string;
-  createdAt: string;
-  expiresAt: string;
-  used: boolean;
-  usedBy?: string;
-  usedAt?: string;
-}
-
-const InviteCodesPanel = ({ user }: { user: UserProfile }) => {
-  const [codes, setCodes] = useState<InviteCode[]>([]);
-  const [allCodes, setAllCodes] = useState<InviteCode[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const loadCodes = async () => {
-      setLoading(true);
-      try {
-        const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
-
-        // Load user's codes
-        const qUser = query(
-          collection(db, invitePath),
-          where('createdBy', '==', user.email),
-          orderBy('createdAt', 'desc'),
-          limit(10)
-        );
-        const snapUser = await getDocs(qUser);
-        setCodes(snapUser.docs.map(d => ({ id: d.id, ...d.data() } as InviteCode)));
-
-        // Load all codes for daily totals
-        const qAll = query(
-          collection(db, invitePath),
-          orderBy('createdAt', 'desc')
-        );
-        const snapAll = await getDocs(qAll);
-        setAllCodes(snapAll.docs.map(d => ({ id: d.id, ...d.data() } as InviteCode)));
-      } catch (err: any) {
-        console.warn("Failed to load codes:", err);
-        setError('Erro ao carregar códigos');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadCodes();
-  }, [user.email]);
-
-  const generateNewCode = async () => {
-    setGenerating(true);
-    setError('');
-    try {
-      const code = generateCode();
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-      const invitePath = `artifacts/${APP_ID}/public/data/invite_codes`;
-      const docRef = doc(collection(db, invitePath));
-
-      const newCode: InviteCode = {
-        id: docRef.id,
-        code,
-        createdBy: user.email,
-        createdAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-        used: false,
-      };
-
-      await setDoc(docRef, newCode);
-      setCodes(prev => [newCode, ...prev.slice(0, 9)]);
-    } catch (err: any) {
-      console.error("Error generating code:", err);
-      setError('Erro ao gerar código');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopied(code);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  const getCodeStatus = (code: InviteCode): { label: string; color: string } => {
-    if (code.used) return { label: 'Usado', color: 'bg-red-100 text-red-700' };
-    const expiresAt = new Date(code.expiresAt);
-    if (expiresAt < new Date()) return { label: 'Expirado', color: 'bg-slate-100 text-slate-700' };
-    return { label: 'Ativo', color: 'bg-green-100 text-green-700' };
-  };
-
-  const today = new Date().toISOString().split('T')[0];
-  const todayCodesGenerated = allCodes.filter(c => c.createdAt.split('T')[0] === today).length;
-  const todayCodesUsed = allCodes.filter(c => c.used && c.usedAt && c.usedAt.split('T')[0] === today).length;
-  const todayCodesExpired = allCodes.filter(c => !c.used && new Date(c.expiresAt) < new Date() && c.createdAt.split('T')[0] === today).length;
-
-  return (
-    <div className="font-sans space-y-4">
-      {/* Daily Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-          <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Gerados Hoje</p>
-          <p className="text-2xl font-black text-blue-700 mt-1">{todayCodesGenerated}</p>
-        </div>
-        <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
-          <p className="text-[8px] font-black text-green-400 uppercase tracking-widest">Usados Hoje</p>
-          <p className="text-2xl font-black text-green-700 mt-1">{todayCodesUsed}</p>
-        </div>
-        <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
-          <p className="text-[8px] font-black text-red-400 uppercase tracking-widest">Expirados Hoje</p>
-          <p className="text-2xl font-black text-red-700 mt-1">{todayCodesExpired}</p>
-        </div>
-      </div>
-
-      {/* Panel */}
-      <div className="bg-white rounded-[2rem] shadow-sm border-2 border-[#004D71]/5 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Ticket size={14} className="text-[#F7B500]"/> Meus Códigos
-          </h3>
-          <button
-            onClick={generateNewCode}
-            disabled={generating}
-            className="bg-[#004D71] text-[#F7B500] px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
-          >
-            {generating ? <Loader size={14} className="animate-spin" /> : <Plus size={14}/>}
-            {generating ? 'Gerando...' : 'Novo'}
-          </button>
-        </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-xl text-[9px] font-bold mb-4 flex items-center gap-2 border border-red-100">
-          <AlertCircle size={14}/> {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-12 text-center">
-          <Loader size={24} className="animate-spin text-[#F7B500] mx-auto mb-3"/>
-          <p className="text-[9px] font-black text-slate-400 uppercase">Carregando...</p>
-        </div>
-      ) : codes.length === 0 ? (
-        <div className="py-12 text-center">
-          <Ticket size={40} className="text-slate-200 mx-auto mb-3"/>
-          <p className="text-[10px] font-black text-slate-400 uppercase">Nenhum código gerado</p>
-          <p className="text-[8px] text-slate-300 mt-1">Clique em "Novo" para gerar um código</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {codes.map(codeObj => {
-            const status = getCodeStatus(codeObj);
-            const expiresAt = new Date(codeObj.expiresAt);
-            const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000));
-            return (
-              <div key={codeObj.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className={`text-[11px] font-black px-3 py-1 rounded-lg ${status.color}`}>
-                    {status.label}
-                  </div>
-                  <code className="text-[13px] font-black text-[#004D71] font-mono tracking-wider">
-                    {codeObj.code}
-                  </code>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-[8px] font-bold text-slate-400 text-right whitespace-nowrap">
-                    {!codeObj.used && daysLeft > 0 && <span>{daysLeft}d</span>}
-                    {codeObj.used && <span className="text-slate-300">Por {codeObj.usedBy}</span>}
-                  </div>
-                  <button
-                    onClick={() => copyCode(codeObj.code)}
-                    className={`p-2 rounded-lg transition-all ${copied === codeObj.code ? 'bg-green-100 text-green-600' : 'bg-white text-slate-400 hover:text-[#F7B500] border border-slate-100'}`}
-                    title="Copiar código"
-                  >
-                    {copied === codeObj.code ? <Check size={14}/> : <Copy size={14}/>}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      </div>
-    </div>
-  );
-};
-
 export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onLogout }: {
   user: UserProfile;
   utentes?: UserProfile[];
@@ -505,8 +278,43 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   onLogout?: () => void;
 }) => {
   const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
-  const [showInviteCodes, setShowInviteCodes] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<{user: UserProfile, count: number}[]>([]);
   const totalInside = utentes.filter(u => u.isInside).length;
+
+  useEffect(() => {
+    if (utentes.length === 0 || leaderboard.length > 0) return;
+    const fetchTop = async () => {
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const q = query(
+          collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
+          where('date', '>=', thirtyDaysAgo.toISOString().split('T')[0])
+        );
+        const snap = await getDocs(q);
+        const counts: Record<string, number> = {};
+        snap.forEach(d => {
+          const userId = d.data().userId;
+          if (userId) counts[userId] = (counts[userId] || 0) + 1;
+        });
+        
+        const top = Object.entries(counts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([id, count]) => {
+            const u = utentes.find(u => u.id === id);
+            return u ? { user: u, count } : null;
+          })
+          .filter(Boolean) as {user: UserProfile, count: number}[];
+          
+        setLeaderboard(top);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchTop();
+  }, [utentes.length]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
@@ -518,13 +326,6 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
             <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowInviteCodes(!showInviteCodes)}
-              className="p-2 rounded-lg bg-white/10 border border-[#F7B500]/30 hover:bg-white/15 transition-all active:scale-90 text-[#F7B500]"
-              title="Gerador de códigos de convite"
-            >
-              <Ticket size={18} />
-            </button>
             <div className="bg-[#F7B500] rounded-lg px-2.5 py-1 hidden sm:block">
               <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
             </div>
@@ -541,26 +342,47 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
             </p>
           </div>
           <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {MODALITIES.map(m => {
-              const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-              return { m, count };
-            })
-            .sort((a, b) => b.count - a.count)
-            .map(({ m, count }) => (
-              <button key={m.id} onClick={() => setSelectedMod(m)}
-                className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
-                <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                  <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
-                    tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
-                  </p>
-                </div>
-                <ChevronRight size={14} className="text-white/30 shrink-0"/>
-              </button>
+            {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })).sort((a, b) => b.count - a.count), [utentes]).map(m => (
+                <button key={m.id} onClick={() => setSelectedMod(m)}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
+                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
+                      tem <span className="text-white font-black text-sm">{m.count}</span> {m.count === 1 ? 'utente' : 'utentes'}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
+                </button>
             ))}
           </div>
         </div>
+
+        {/* PÓDIO DE ASSIDUIDADE */}
+        {leaderboard.length > 0 && (
+          <div className="mx-6 mb-6 bg-white/5 rounded-3xl p-6 border border-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+              <Star size={100} />
+            </div>
+            <h3 className="text-[10px] font-black text-[#F7B500] uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
+              <Target size={14}/> Top Assiduidade (Últimos 30 Dias)
+            </h3>
+            <div className="flex gap-4 relative z-10 overflow-x-auto hide-scrollbar pb-2">
+              {leaderboard.map((item, idx) => (
+                <button key={item.user.id} onClick={() => onUserClick(item.user)} className="bg-black/20 hover:bg-black/40 transition-all rounded-2xl p-4 flex flex-col items-center min-w-[120px] max-w-[140px] active:scale-95 border border-white/5">
+                  <div className="relative mb-3">
+                    <AvatarImage src={item.user.img} alt={item.user.nome} className="w-16 h-16 rounded-full border-2 border-[#F7B500] object-cover" />
+                    <div className="absolute -top-2 -right-2 w-7 h-7 bg-[#F7B500] text-[#004D71] rounded-full flex items-center justify-center font-black text-xs shadow-lg">
+                      #{idx + 1}
+                    </div>
+                  </div>
+                  <p className="font-black text-white text-[11px] uppercase text-center line-clamp-1 w-full">{item.user.n || item.user.nome}</p>
+                  <p className="text-[9px] font-bold text-white/50 uppercase mt-1">{item.count} presenças</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedMod && (() => {
@@ -580,26 +402,18 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
                 </div>
                 <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
               </div>
-              <div className="space-y-2 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
-                {users
-                  .sort((a, b) => {
-                    const timeA = new Date(a.lastLogin || 0).getTime();
-                    const timeB = new Date(b.lastLogin || 0).getTime();
-                    return timeA - timeB;
-                  })
-                  .map(u => {
-                    const entradaHora = u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
-                    return (
-                      <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
-                        className="w-full flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
-                        <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-lg border-2 border-green-400 shadow-sm shrink-0 object-cover"/>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
-                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Entrada: {entradaHora}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
+              <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
+                {users.map(u => (
+                  <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
+                    className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
+                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-[#F7B500] shrink-0"/>
+                  </button>
+                ))}
                 {users.length === 0 && (
                   <div className="py-16 text-center">
                     <PicotoIcon className="mx-auto mb-4 opacity-10" size={50}/>
@@ -611,24 +425,6 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           </div>
         );
       })()}
-
-      {showInviteCodes && (
-        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4" onClick={() => setShowInviteCodes(false)}>
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#F7B500]/10 text-[#F7B500] rounded-xl"><Ticket size={20}/></div>
-                <div>
-                  <h3 className="text-base font-black text-[#004D71] uppercase">Códigos de Acesso</h3>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Gerador e histórico</p>
-                </div>
-              </div>
-              <button onClick={() => setShowInviteCodes(false)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
-            </div>
-            <InviteCodesPanel user={user} />
-          </div>
-        </div>
-      )}
     </div>
   );
 });
@@ -638,17 +434,16 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
   const [showQR, setShowQR] = useState(false);
 
   const termsOk = !!(user.termo_imagens && user.termo_responsabilidade);
+  const totalInside = utentes.filter(u => u.isInside).length;
 
   const qrValue = selectedDest
     ? JSON.stringify({ id: user.id, dest: selectedDest })
     : JSON.stringify({ id: user.id });
 
-  const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
 
-      {/* ── Card Azul VILA DE REI ── */}
+      {/* ── Cartão de Utente com seletor de destino integrado ── */}
       <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
 
         {/* topo do cartão */}
@@ -657,98 +452,31 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
             <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
             <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
           </div>
+          {termsOk ? (
+            <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
+              <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Utente Activo</p>
+            </div>
+          ) : (
+            <div className="bg-red-500/20 border border-red-400/30 rounded-lg px-2.5 py-1">
+              <p className="text-[7px] font-black text-red-300 uppercase tracking-widest">Termos Pendentes</p>
+            </div>
+          )}
         </div>
 
         {/* seletor de destino */}
         <div className="px-6 pt-4 pb-6">
-          <div className="flex items-baseline justify-between mb-3">
-            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
-            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
-              Neste momento tem{' '}
-              <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
-              {' '}utentes
-            </p>
-          </div>
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {MODALITIES.map(m => {
-              const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-              return (
-                <button key={m.id} onClick={() => setSelectedMod(m)}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
-                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
-                      tem <span className="text-white font-black text-sm">{count}</span> {count === 1 ? 'utente' : 'utentes'}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {selectedMod && (() => {
-        const users = utentes.filter(u => isUserInZone(u, selectedMod.id));
-        return (
-          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4" onClick={() => setSelectedMod(null)}>
-            <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{selectedMod.icon}</div>
-                  <div>
-                    <h3 className="text-base font-black text-[#004D71] uppercase">{selectedMod.label}</h3>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                      {users.length} {users.length === 1 ? 'utente presente' : 'utentes presentes'}
-                    </p>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
-              </div>
-              <div className="space-y-2 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
-                {users
-                  .sort((a, b) => {
-                    const timeA = new Date(a.lastLogin || 0).getTime();
-                    const timeB = new Date(b.lastLogin || 0).getTime();
-                    return timeA - timeB;
-                  })
-                  .map(u => {
-                    const entradaHora = u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
-                    return (
-                      <div key={u.id}
-                        className="w-full flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#004D71]/10 transition-all text-left">
-                        <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-lg border-2 border-green-400 shadow-sm shrink-0 object-cover"/>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
-                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Entrada: {entradaHora}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Código antigo do utente abaixo (mantém compatibilidade) */}
-      <div style={{display: 'none'}}>
-        {termsOk ? (
-          <>
-            <div className="flex items-baseline justify-between mb-3">
+          {termsOk ? (
+            <>
+              <div className="flex items-baseline justify-between mb-3">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
                 <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
                   Neste momento tem{' '}
-                  <span className="text-[#F7B500] text-sm font-black">{utentes.filter(u => u.isInside).length}</span>
-                  {' '}{utentes.filter(u => u.isInside).length === 1 ? 'utente' : 'utentes'}
+                  <span className="text-[#F7B500] text-sm font-black">{totalInside}</span>
+                  {' '}{totalInside === 1 ? 'utente' : 'utentes'}
                 </p>
               </div>
               <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {MODALITIES.map(m => {
-                  const count = utentes.filter(u => isUserInZone(u, m.id)).length;
-                  return (
+                {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })).sort((a, b) => b.count - a.count), [utentes]).map(m => (
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDest(m.dest); setShowQR(true); }}
@@ -763,30 +491,34 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                         </p>
                         <p className="text-[9px] font-bold text-white/50 mt-1 leading-none">
                           tem{' '}
-                          <span className="text-white font-black text-xs">{count}</span>
-                          {' '}{count === 1 ? 'utente' : 'utentes'}
+                          <span className="text-white font-black text-xs">{m.count}</span>
+                          {' '}{m.count === 1 ? 'utente' : 'utentes'}
                         </p>
                       </div>
                     </button>
-                  );
-                })}
+                  ))}
               </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-4 py-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
-              <Shield size={26} className="text-red-300"/>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
+                <Shield size={26} className="text-red-300"/>
+              </div>
+              <div>
+                <p className="text-sm font-black text-white uppercase tracking-wide mb-1">Termos não aceites</p>
+                <p className="text-[10px] text-white/50 leading-relaxed max-w-[260px]">
+                  Para gerar o QR de acesso é necessário aceitar os dois termos de responsabilidade.<br/>
+                  Aceda ao separador <span className="text-[#F7B500] font-black">Perfil → Termos</span>.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-black text-white uppercase tracking-wide mb-1">Termos não aceites</p>
-              <p className="text-[10px] text-white/50 leading-relaxed max-w-[260px]">
-                Para gerar o QR de acesso é necessário aceitar os dois termos de responsabilidade.<br/>
-                Aceda ao separador <span className="text-[#F7B500] font-black">Perfil → Termos</span>.
-              </p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
+
+      {/* Módulo de Natação Swim Track */}
+      <SwimmingStudentPortal user={user} />
 
       {/* ── QR Full Screen ── */}
       {showQR && (

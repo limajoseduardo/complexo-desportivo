@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as UserIcon, Activity, Mail, Smartphone, Shield, Calendar, MapPin, Scan } from 'lucide-react';
+import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as UserIcon, Activity, Mail, Smartphone, Shield, Calendar, MapPin, Scan, UserX } from 'lucide-react';
 import { UserProfile } from '../types';
 import { PicotoIcon, FormInput, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -52,6 +52,7 @@ export function UtentesList({
   canAdd?: boolean 
 }) {
   const [search, setSearch] = useState("");
+  const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -76,16 +77,26 @@ export function UtentesList({
     role: 'utente' as const
   });
 
-  const filtered = useMemo(() =>
-    utentes
+  const filtered = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    return utentes
       .filter(u => {
         const r = (u.role || '').toLowerCase();
         return !['admin', 'staff', 'chefia', 'professor'].includes(r);
       })
       .filter(u => (u.n || u.nome || '').toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => (a.n || a.nome || '').localeCompare(b.n || b.nome || '', 'pt')),
-    [search, utentes]
-  );
+      .filter(u => {
+        if (filterMode === 'all') return true;
+        if (filterMode === 'at_risk') {
+          if (!u.lastCheckInDate) return true; // Contas sem acessos recentes
+          return new Date(u.lastCheckInDate) < thirtyDaysAgo;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.n || a.nome || '').localeCompare(b.n || b.nome || '', 'pt'));
+  }, [search, utentes, filterMode]);
 
   const groups = useMemo(() => {
     const inside = filtered.filter(u => u.isInside);
@@ -180,6 +191,19 @@ export function UtentesList({
           onChange={e => setSearch(e.target.value)} 
           className="w-full bg-white border-4 border-[#004D71]/5 p-5 pl-14 rounded-[2rem] font-black focus:border-[#004D71]/20 shadow-sm uppercase text-[10px] outline-none" 
         />
+      </div>
+
+      <div className="flex px-1">
+        <button
+          onClick={() => setFilterMode(prev => prev === 'all' ? 'at_risk' : 'all')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+            filterMode === 'at_risk' 
+              ? 'bg-red-50 text-red-600 border-red-200' 
+              : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
+          }`}
+        >
+          <UserX size={14}/> {filterMode === 'at_risk' ? 'Mostrar Todos' : 'Ver Risco de Desistência (> 30 dias)'}
+        </button>
       </div>
 
       <div className="space-y-3">

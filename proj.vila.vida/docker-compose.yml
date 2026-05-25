@@ -1,0 +1,310 @@
+version: '3.9'
+
+services:
+  # PostgreSQL 16 - Primary Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: complexo-postgres
+    environment:
+      POSTGRES_USER: complexo_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-securePassword123}
+      POSTGRES_DB: complexo_desportivo
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=pt_PT.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U complexo_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis 7.x - Caching & Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: complexo-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redisSecure123}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Elasticsearch 8 - Logging & Search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: complexo-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - "ES_SETTING_INGEST_GEOIP_CACHE_SIZE=10000"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Kibana - Elasticsearch Visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: complexo-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Logstash - Log Processing Pipeline
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: complexo-logstash
+    ports:
+      - "5000:5000/udp"
+      - "5000:5000/tcp"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    volumes:
+      - ./config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - logstash_data:/usr/share/logstash/data
+    depends_on:
+      - elasticsearch
+    networks:
+      - complexo-network
+    restart: unless-stopped
+
+  # Prometheus - Monitoring & Metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: complexo-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9090/-/healthy >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Grafana - Monitoring Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: complexo-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: http://buildlab.pt/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning/:/etc/grafana/provisioning/:ro
+    depends_on:
+      - prometheus
+    networks:
+      - complexo-network
+    restart: unless-stopped
+
+  # Node.js Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: complexo-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://complexo_user:${DB_PASSWORD:-securePassword123}@postgres:5432/complexo_desportivo
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redisSecure123}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-complexoDesportivo2024SecureKey}
+      JWT_EXPIRY: 24h
+      API_URL: https://api.buildlab.pt
+      FRONTEND_URL: https://www.buildlab.pt
+      ENABLE_RFID: ${ENABLE_RFID:-true}
+      LOG_LEVEL: info
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./logs/backend:/app/logs
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:3001/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Frontend React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: complexo-frontend
+    environment:
+      VITE_API_URL: https://api.buildlab.pt
+      VITE_APP_NAME: Complexo Desportivo
+      VITE_DOMAIN: buildlab.pt
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    networks:
+      - complexo-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy with SSL/TLS
+  nginx:
+    image: nginx:alpine
+    container_name: complexo-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+      - kibana
+      - grafana
+    networks:
+      - complexo-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # RFID Service - Hardware Integration
+  rfid-service:
+    build:
+      context: ./services/rfid-service
+      dockerfile: Dockerfile
+    container_name: complexo-rfid
+    environment:
+      BACKEND_URL: http://backend:3001
+      SERIAL_PORT: ${RFID_SERIAL_PORT:-/dev/ttyUSB0}
+      BAUDRATE: 9600
+      LOG_LEVEL: info
+    depends_on:
+      - backend
+    volumes:
+      - /dev:/dev
+      - ./logs/rfid:/app/logs
+    networks:
+      - complexo-network
+    privileged: true
+    restart: unless-stopped
+
+  # Notification Service - Email & Alerts
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: complexo-notifications
+    environment:
+      BACKEND_URL: http://backend:3001
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: noreply@buildlab.pt
+      LOG_LEVEL: info
+    depends_on:
+      - backend
+    volumes:
+      - ./logs/notifications:/app/logs
+    networks:
+      - complexo-network
+    restart: unless-stopped
+
+  # Reports Service - PDF Generation & Analytics
+  reports-service:
+    build:
+      context: ./services/reports-service
+      dockerfile: Dockerfile
+    container_name: complexo-reports
+    environment:
+      BACKEND_URL: http://backend:3001
+      DATABASE_URL: postgresql://complexo_user:${DB_PASSWORD:-securePassword123}@postgres:5432/complexo_desportivo
+      OUTPUT_PATH: /reports
+      LOG_LEVEL: info
+    depends_on:
+      - postgres
+      - backend
+    volumes:
+      - reports_data:/reports
+      - ./logs/reports:/app/logs
+    networks:
+      - complexo-network
+    restart: unless-stopped
+
+networks:
+  complexo-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  logstash_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  reports_data:
+    driver: local

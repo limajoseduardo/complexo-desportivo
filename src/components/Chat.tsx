@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, Search, X, Trash2, 
-  ChevronLeft, ChevronDown, User, Plus
+  ChevronLeft, ChevronDown, User, Plus, Bell
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { 
   collection, addDoc, onSnapshot, query, where, 
   orderBy, Timestamp, limit, deleteDoc, doc, getDocs,
-  collectionGroup, updateDoc, writeBatch
+  collectionGroup, updateDoc, writeBatch, setDoc
 } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import { AvatarImage } from './Common';
@@ -145,8 +145,47 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
   const [recentConvos, setRecentConvos] = useState<{userId: string, lastMsg: string, lastTime: any}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const [activeSegment, setActiveSegment] = useState<'conversas' | 'avisos'>('conversas');
+  const [avisos, setAvisos] = useState<any[]>([]);
+  const [showNovoAvisoModal, setShowNovoAvisoModal] = useState(false);
+  const [novoAvisoTitulo, setNovoAvisoTitulo] = useState('');
+  const [novoAvisoMensagem, setNovoAvisoMensagem] = useState('');
+
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
+    const q = query(collection(db, avisosPath), orderBy('dataCriacao', 'desc'), limit(50));
+    const unsub = onSnapshot(q, (snap) => {
+      setAvisos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.warn("Error fetching avisos:", err);
+    });
+    return () => unsub();
+  }, []);
+
+  const handlePostAviso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!novoAvisoTitulo.trim() || !novoAvisoMensagem.trim()) return;
+    const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
+    try {
+      const docId = `aviso_${Date.now()}`;
+      await setDoc(doc(db, avisosPath, docId), {
+        id: docId,
+        titulo: novoAvisoTitulo.trim(),
+        mensagem: novoAvisoMensagem.trim(),
+        professorId: user.id,
+        nomeProfessor: user.nome || user.n || 'Professor',
+        dataCriacao: Timestamp.now()
+      });
+      setNovoAvisoTitulo('');
+      setNovoAvisoMensagem('');
+      setShowNovoAvisoModal(false);
+    } catch (err) {
+      console.error("Error posting aviso:", err);
+    }
   };
 
   // Listen for recent conversations via collectionGroup
@@ -368,7 +407,7 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
 
   return (
     <div className="relative h-full">
-      <div className="space-y-4 animate-in fade-in pb-24 text-left font-sans">
+      <div className="space-y-6 animate-in fade-in pb-24 text-left font-sans">
         <div className="px-1 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter flex items-center gap-3">
@@ -378,50 +417,113 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
           </div>
         </div>
 
-        {/* Lista de conversas estilo WhatsApp */}
-        <div className="bg-white rounded-[2.5rem] border-4 border-[#004D71]/5 overflow-hidden divide-y divide-[#004D71]/5 shadow-sm">
-          {recentConvos.length === 0 && (
-            <div className="text-center py-16">
-              <MessageSquare size={40} className="mx-auto mb-3 text-slate-200" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Sem conversas ainda</p>
-              <p className="text-[9px] text-slate-300 mt-1">Carrega no + para iniciar</p>
-            </div>
-          )}
-          {recentConvos.map(c => {
-            const other = users.find(u => u.id === c.userId);
-            if (!other) return null;
-            const unread = unreadCounts[other.id] || 0;
-            const time = c.lastTime?.toDate ? c.lastTime.toDate().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
-            return (
-              <button key={c.userId} onClick={() => setSelectedUser(other)} className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 active:bg-blue-50 transition-all text-left">
-                <div className="relative shrink-0">
-                  <AvatarImage src={other.img} alt={other.n || other.nome} className={`w-14 h-14 rounded-2xl border-2 shadow-sm ${other.isInside ? 'border-green-400' : 'border-white'}`} />
-                  {other.isInside && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />}
-                  {unread > 0 && (
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">{unread}</div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className={`font-black text-sm uppercase leading-none truncate ${unread > 0 ? 'text-[#004D71]' : 'text-[#004D71]/70'}`}>{other.n || other.nome}</h4>
-                    <span className="text-[8px] text-slate-400 shrink-0 ml-2">{time}</span>
-                  </div>
-                  <p className={`text-xs mt-1 truncate ${unread > 0 ? 'font-bold text-[#004D71]' : 'text-slate-400'}`}>{c.lastMsg}</p>
-                </div>
-                {unread > 0 && <div className="w-2.5 h-2.5 bg-red-500 rounded-full shrink-0" />}
-              </button>
-            );
-          })}
+        {/* Segmented Tab Bar */}
+        <div className="flex bg-[#004D71]/5 p-1 rounded-2xl w-full border border-slate-100 shrink-0">
+          <button
+            onClick={() => setActiveSegment('conversas')}
+            className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${activeSegment === 'conversas' ? 'bg-[#004D71] text-[#F7B500] shadow-md' : 'text-[#004D71]/60 hover:text-[#004D71]'}`}
+          >
+            Conversas
+          </button>
+          <button
+            onClick={() => setActiveSegment('avisos')}
+            className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${activeSegment === 'avisos' ? 'bg-[#004D71] text-[#F7B500] shadow-md' : 'text-[#004D71]/60 hover:text-[#004D71]'}`}
+          >
+            Mural de Avisos
+          </button>
         </div>
+
+        {activeSegment === 'conversas' ? (
+          /* Lista de conversas estilo WhatsApp */
+          <div className="bg-white rounded-[2.5rem] border-4 border-[#004D71]/5 overflow-hidden divide-y divide-[#004D71]/5 shadow-sm">
+            {recentConvos.length === 0 && (
+              <div className="text-center py-16">
+                <MessageSquare size={40} className="mx-auto mb-3 text-slate-200" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Sem conversas ainda</p>
+                <p className="text-[9px] text-slate-300 mt-1">Carrega no + para iniciar</p>
+              </div>
+            )}
+            {recentConvos.map(c => {
+              const other = users.find(u => u.id === c.userId);
+              if (!other) return null;
+              const unread = unreadCounts[other.id] || 0;
+              const time = c.lastTime?.toDate ? c.lastTime.toDate().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
+              return (
+                <button key={c.userId} onClick={() => setSelectedUser(other)} className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 active:bg-blue-50 transition-all text-left">
+                  <div className="relative shrink-0">
+                    <AvatarImage src={other.img} alt={other.n || other.nome} className={`w-14 h-14 rounded-2xl border-2 shadow-sm ${other.isInside ? 'border-green-400' : 'border-white'}`} />
+                    {other.isInside && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />}
+                    {unread > 0 && (
+                      <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">{unread}</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h4 className={`font-black text-sm uppercase leading-none truncate ${unread > 0 ? 'text-[#004D71]' : 'text-[#004D71]/70'}`}>{other.n || other.nome}</h4>
+                      <span className="text-[8px] text-slate-400 shrink-0 ml-2">{time}</span>
+                    </div>
+                    <p className={`text-xs mt-1 truncate ${unread > 0 ? 'font-bold text-[#004D71]' : 'text-slate-400'}`}>{c.lastMsg}</p>
+                  </div>
+                  {unread > 0 && <div className="w-2.5 h-2.5 bg-red-500 rounded-full shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          /* Mural de Avisos Globais */
+          <div className="space-y-4">
+            {avisos.length === 0 && (
+              <div className="text-center py-16 bg-white rounded-[2.5rem] border-4 border-[#004D71]/5 shadow-sm">
+                <Bell size={40} className="mx-auto mb-3 text-slate-200" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Sem comunicados ainda</p>
+              </div>
+            )}
+            {avisos.map(a => {
+              const data = a.dataCriacao?.toDate ? a.dataCriacao.toDate() : new Date(a.dataCriacao || Date.now());
+              const dateStr = data.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+              return (
+                <div key={a.id} className="bg-white rounded-[2.5rem] border-4 border-[#004D71]/5 p-6 shadow-sm relative overflow-hidden flex flex-col gap-3">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#F7B500]/10 rounded-bl-[4rem] flex items-start justify-end p-5 text-[#004D71]">
+                    <Bell size={18} />
+                  </div>
+                  <div className="pr-12">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{dateStr}</span>
+                    <h3 className="text-sm font-black text-[#004D71] uppercase mt-1 leading-tight">{a.titulo}</h3>
+                  </div>
+                  <p className="text-xs font-semibold text-[#004D71]/80 mt-1 whitespace-pre-wrap leading-relaxed">
+                    {a.mensagem}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-3">
+                    <div className="w-6 h-6 rounded-lg bg-[#004D71] text-[#F7B500] flex items-center justify-center text-[10px] font-black uppercase">
+                      {(a.nomeProfessor || 'P')[0]}
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Publicado por <strong className="text-[#004D71]">{a.nomeProfessor}</strong></span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Floating Action Button */}
-      <button 
-        onClick={() => setShowPicker(true)}
-        className="fixed bottom-24 right-6 w-16 h-16 bg-[#004D71] text-[#F7B500] rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all z-[50] group"
-      >
-        <Plus size={32} className="group-hover:rotate-90 transition-transform duration-300" />
-      </button>
+      {/* Floating Action Button based on segment */}
+      {activeSegment === 'conversas' ? (
+        <button 
+          onClick={() => setShowPicker(true)}
+          className="fixed bottom-24 right-6 w-16 h-16 bg-[#004D71] text-[#F7B500] rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all z-[50] group"
+        >
+          <Plus size={32} className="group-hover:rotate-90 transition-transform duration-300" />
+        </button>
+      ) : (
+        ['admin', 'chefia', 'professor'].includes(user.role) && (
+          <button 
+            onClick={() => setShowNovoAvisoModal(true)}
+            className="fixed bottom-24 right-6 w-16 h-16 bg-[#004D71] text-[#F7B500] rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all z-[50] group"
+          >
+            <Plus size={32} className="group-hover:rotate-90 transition-transform duration-300" />
+          </button>
+        )
+      )}
 
       {/* User Picker Modal */}
       {showPicker && (
@@ -433,6 +535,61 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
           onSelect={(u) => { setSelectedUser(u); setShowPicker(false); setPickerSearch(''); }}
           onClose={() => { setShowPicker(false); setPickerSearch(''); }}
         />
+      )}
+
+      {/* Novo Comunicado Modal */}
+      {showNovoAvisoModal && (
+        <div className="fixed inset-0 z-[100000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl relative">
+            <button 
+              onClick={() => { setShowNovoAvisoModal(false); setNovoAvisoTitulo(''); setNovoAvisoMensagem(''); }} 
+              className="absolute -top-4 -right-4 p-4 bg-white text-slate-400 rounded-2xl shadow-xl active:scale-90 border border-slate-100"
+            >
+              <X size={20}/>
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-[#004D71]/5 text-[#004D71] rounded-full flex items-center justify-center mx-auto mb-3">
+                <Bell size={28}/>
+              </div>
+              <h3 className="text-xl font-black text-[#004D71] uppercase leading-none">Novo Comunicado</h3>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">Publicar aviso para todos os utentes</p>
+            </div>
+
+            <form onSubmit={handlePostAviso} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Título do Aviso</label>
+                <input 
+                  type="text"
+                  required
+                  placeholder="Ex: Alteração de Horário de Piscina"
+                  value={novoAvisoTitulo}
+                  onChange={(e) => setNovoAvisoTitulo(e.target.value)}
+                  className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-6 py-4 font-black text-xs text-[#004D71] outline-none focus:border-[#F7B500]/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Mensagem</label>
+                <textarea 
+                  required
+                  rows={4}
+                  placeholder="Escreva aqui os detalhes do aviso..."
+                  value={novoAvisoMensagem}
+                  onChange={(e) => setNovoAvisoMensagem(e.target.value)}
+                  className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-6 py-4 font-bold text-xs text-[#004D71] outline-none focus:border-[#F7B500]/50 resize-none"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-[#004D71] text-[#F7B500] rounded-2xl py-5 font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all mt-4"
+              >
+                Publicar Comunicado
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -33,10 +33,17 @@ html, body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 120px; 
+  scroll-behavior: smooth;
 }
 
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+button, a, input, select {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
 
 @keyframes scan-anim {
   0% { transform: translateY(0); }

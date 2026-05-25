@@ -1,49 +1,29 @@
 import React from 'react';
-import { User, Camera } from 'lucide-react';
+import { User } from 'lucide-react';
 
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 
-export const AvatarImage = React.memo(({ src, alt, className = "" }: { src: string, alt: string, className?: string }) => {
-  const [isLoading, setIsLoading] = React.useState(true);
+export const AvatarImage = React.memo(({ src, alt, className = "" }: { src?: string, alt: string, className?: string }) => {
   const [error, setError] = React.useState(false);
+  const hasSrc = !!(src && src.trim());
 
   return (
-    <div className={`relative ${className} bg-slate-50 flex items-center justify-center overflow-hidden`}>
-      <AnimatePresence>
-        {isLoading && (
-          <motion.div 
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-slate-100 flex items-center justify-center"
-          >
-            <div className="w-full h-full animate-pulse bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 bg-[length:200%_100%] animate-shimmer flex items-center justify-center">
-               <User size={32} className="text-slate-300 opacity-50" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <motion.img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        onLoad={() => setIsLoading(false)}
-        onError={() => {
-          setIsLoading(false);
-          setError(true);
-        }}
-        initial={{ opacity: 0, scale: 1.1 }}
-        animate={{ 
-          opacity: isLoading ? 0 : 1,
-          scale: isLoading ? 1.1 : 1
-        }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className={`w-full h-full object-cover ${error ? 'hidden' : 'block'}`}
-      />
-      {error && (
-        <div className="flex flex-col items-center justify-center text-slate-300 gap-2">
+    <div className={`relative ${className} bg-slate-100 flex items-center justify-center overflow-hidden`}>
+      {hasSrc && !error ? (
+        <motion.img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setError(true)}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center text-slate-300 gap-1">
           <User size={32} />
-          <span className="text-[8px] font-black uppercase tracking-tighter opacity-50 text-center">N/D</span>
         </div>
       )}
     </div>

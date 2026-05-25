@@ -22,5 +22,18 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src/**/*",
+    "global.d.ts",
+    "react-shims.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "complexo_desportivo-main",
+    "complexo-desportivo-main - v1.0",
+    "src (1)",
+    "proj.vila.vida"
+  ]
 }

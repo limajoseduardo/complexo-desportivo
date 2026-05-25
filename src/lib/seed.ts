@@ -9,7 +9,7 @@ export const REAL_STAFF: UserProfile[] = [
     role: 'admin',
     cargo: 'Administrador de Sistema',
     password: '123456',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Informatica'
+    img: ''
   },
   {
     id: 'eduardo_oliveira',
@@ -18,7 +18,7 @@ export const REAL_STAFF: UserProfile[] = [
     email: 'eduardo.oliveira@cm-viladerei.pt',
     role: 'professor',
     cargo: 'Professor de Natação',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Eduardo'
+    img: ''
   },
   {
     id: 'claudia_rechena',
@@ -27,7 +27,7 @@ export const REAL_STAFF: UserProfile[] = [
     email: 'claudia.rechena@cm-viladerei.pt',
     role: 'professor',
     cargo: 'Professora de Fitness',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Claudia'
+    img: ''
   },
   {
     id: 'nelson_rolo',
@@ -36,7 +36,7 @@ export const REAL_STAFF: UserProfile[] = [
     email: 'nelson.rolo@cm-viladerei.pt',
     role: 'professor',
     cargo: 'Professor de Atividade Física',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Nelson'
+    img: ''
   },
   {
     id: 'tiago_lopes',
@@ -45,7 +45,7 @@ export const REAL_STAFF: UserProfile[] = [
     email: 'tiago.lopes@cm-viladerei.pt',
     role: 'staff',
     cargo: 'Receção / Administrativo',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Tiago'
+    img: ''
   },
   {
     id: 'patricia_novo',
@@ -54,7 +54,7 @@ export const REAL_STAFF: UserProfile[] = [
     email: 'patricia.novo@cm-viladerei.pt',
     role: 'staff',
     cargo: 'Receção / Bilheteira',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Patricia'
+    img: ''
   },
   {
     id: 'josemaria_silva',
@@ -63,7 +63,7 @@ export const REAL_STAFF: UserProfile[] = [
     email: 'josemaria.silva@cm-viladerei.pt',
     role: 'staff',
     cargo: 'Assistente Operacional',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JoseMaria'
+    img: ''
   },
   {
     id: 'carlos_luis',
@@ -73,7 +73,7 @@ export const REAL_STAFF: UserProfile[] = [
     role: 'chefia',
     cargo: 'Direção Municipal',
     password: '123456',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CarlosLuis'
+    img: ''
   },
   {
     id: 'sandra_carvalho',
@@ -83,6 +83,6 @@ export const REAL_STAFF: UserProfile[] = [
     role: 'chefia',
     cargo: 'Direção Municipal',
     password: '123456',
-    img: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SandraCarvalho'
+    img: ''
   }
 ];
