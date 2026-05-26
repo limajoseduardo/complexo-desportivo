@@ -740,85 +740,6 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
 
       <div className="flex flex-col gap-6 mt-6">
         <div className="space-y-6">
-          {/* Visual Podium Section */}
-          {Object.keys(leaderboardByModality).length > 0 && (
-            <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
-                    <Star className="text-[#F7B500]" size={18}/> Pódio de Assiduidade por Modalidade
-                  </h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                    Os 3 utentes mais assíduos no período selecionado
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Object.entries(leaderboardByModality).map(([modality, users]) => {
-                  const first = users[0];
-                  const second = users[1] || null;
-                  const third = users[2] || null;
-
-                  return (
-                    <div key={modality} className="bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-6 flex flex-col justify-between">
-                      <h4 className="text-xs font-black text-[#004D71] uppercase tracking-wider mb-6 text-center border-b pb-3 border-slate-100">
-                        {modality}
-                      </h4>
-
-                      {/* Visual Podium */}
-                      <div className="flex items-end justify-center gap-3 h-32 pt-2">
-                        {/* 2nd Place */}
-                        <div className="flex-1 flex flex-col items-center">
-                          {second ? (
-                            <>
-                              <span className="text-[10px] font-black text-[#004D71] truncate max-w-full text-center mb-1" title={second.userName}>
-                                {second.userName.split(' ')[0]}
-                              </span>
-                              <span className="text-[9px] font-bold text-slate-400 mb-1">{second.count} pres.</span>
-                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-xs rounded-t-xl h-12 flex items-center justify-center border-t-2 border-slate-300">
-                                2º
-                              </div>
-                            </>
-                          ) : (
-                            <div className="w-full bg-slate-100 rounded-t-xl h-6" />
-                          )}
-                        </div>
-
-                        {/* 1st Place */}
-                        <div className="flex-1 flex flex-col items-center">
-                          <span className="text-xs font-black text-[#004D71] truncate max-w-full text-center mb-1 flex items-center gap-0.5" title={first.userName}>
-                            👑 {first.userName.split(' ')[0]}
-                          </span>
-                          <span className="text-[10px] font-black text-[#F7B500] mb-1">{first.count} pres.</span>
-                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-sm rounded-t-2xl h-20 flex items-center justify-center border-t-4 border-[#F7B500] shadow-md">
-                            1º
-                          </div>
-                        </div>
-
-                        {/* 3rd Place */}
-                        <div className="flex-1 flex flex-col items-center">
-                          {third ? (
-                            <>
-                              <span className="text-[10px] font-black text-[#004D71] truncate max-w-full text-center mb-1" title={third.userName}>
-                                {third.userName.split(' ')[0]}
-                              </span>
-                              <span className="text-[9px] font-bold text-slate-400 mb-1">{third.count} pres.</span>
-                              <div className="w-full bg-orange-100 text-orange-800 font-black text-xs rounded-t-xl h-8 flex items-center justify-center border-t-2 border-orange-200">
-                                3º
-                              </div>
-                            </>
-                          ) : (
-                            <div className="w-full bg-slate-100 rounded-t-xl h-6" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 overflow-hidden shadow-sm">
             <div className="p-4 border-b-2 border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50/50">
@@ -935,6 +856,86 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
               </table>
             </div>
           </div>
+
+          {/* Visual Podium Section */}
+          {Object.keys(leaderboardByModality).length > 0 && (
+            <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-sm font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
+                    <Star className="text-[#F7B500]" size={18}/> Pódio de Assiduidade por Modalidade
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                    Os 3 utentes mais assíduos no período selecionado
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(leaderboardByModality).map(([modality, users]) => {
+                  const first = users[0];
+                  const second = users[1] || null;
+                  const third = users[2] || null;
+
+                  return (
+                    <div key={modality} className="bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-6 flex flex-col justify-between">
+                      <h4 className="text-xs font-black text-[#004D71] uppercase tracking-wider mb-6 text-center border-b pb-3 border-slate-100">
+                        {modality}
+                      </h4>
+
+                      {/* Visual Podium */}
+                      <div className="flex items-end justify-center gap-3 h-32 pt-2">
+                        {/* 2nd Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          {second ? (
+                            <>
+                              <span className="text-[10px] font-black text-[#004D71] truncate max-w-full text-center mb-1" title={second.userName}>
+                                {second.userName.split(' ')[0]}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 mb-1">{second.count} pres.</span>
+                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-xs rounded-t-xl h-12 flex items-center justify-center border-t-2 border-slate-300">
+                                2º
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full bg-slate-100 rounded-t-xl h-6" />
+                          )}
+                        </div>
+
+                        {/* 1st Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          <span className="text-xs font-black text-[#004D71] truncate max-w-full text-center mb-1 flex items-center gap-0.5" title={first.userName}>
+                            👑 {first.userName.split(' ')[0]}
+                          </span>
+                          <span className="text-[10px] font-black text-[#F7B500] mb-1">{first.count} pres.</span>
+                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-sm rounded-t-2xl h-20 flex items-center justify-center border-t-4 border-[#F7B500] shadow-md">
+                            1º
+                          </div>
+                        </div>
+
+                        {/* 3rd Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          {third ? (
+                            <>
+                              <span className="text-[10px] font-black text-[#004D71] truncate max-w-full text-center mb-1" title={third.userName}>
+                                {third.userName.split(' ')[0]}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 mb-1">{third.count} pres.</span>
+                              <div className="w-full bg-orange-100 text-orange-800 font-black text-xs rounded-t-xl h-8 flex items-center justify-center border-t-2 border-orange-200">
+                                3º
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full bg-slate-100 rounded-t-xl h-6" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="bg-white rounded-[2.5rem] border-4 border-slate-100 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
