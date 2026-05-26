@@ -82,23 +82,7 @@ export default function App() {
     } catch (e) {}
     return null;
   });
-  const [activeTabState, setActiveTabState] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cpx_v33_session');
-      const savedTab = localStorage.getItem('cpx_active_tab');
-      if (saved && savedTab) {
-        const parsed = JSON.parse(saved);
-        const role = normalizeRole(parsed.role, parsed.email);
-        const valid = TABS_BY_ROLE[role] || ['inicio'];
-        if (valid.includes(savedTab)) return savedTab;
-      }
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return 'inicio';
-      }
-    } catch (e) {}
-    return 'inicio';
-  });
+  const [activeTabState, setActiveTabState] = useState('acessos');
   const activeTab = activeTabState;
   const setActiveTab = (tab: string) => { setActiveTabState(tab); localStorage.setItem('cpx_active_tab', tab); };
   const [authError, setAuthError] = useState('');

@@ -41,7 +41,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('inside');
 
   const modalities = [
     'Piscina Regime Livre',
