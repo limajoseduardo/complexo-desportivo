@@ -721,7 +721,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
         {React.useMemo(() => [
           { id: 'livre',    label: 'Piscina Livre', icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
           { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
-          { id: 'nat',      label: 'Natação Nível',          icon: <Waves size={14}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat')).length },
+          { id: 'nat',      label: 'Natação Nível 1-2-3',          icon: <Waves size={14}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat')).length },
           { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={14}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
           { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={14}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
           { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={14}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
