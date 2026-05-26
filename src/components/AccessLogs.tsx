@@ -857,8 +857,8 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b-2 border-slate-100">
-                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Data</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Utente</th>
+                    <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Data</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Modalidade</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Entrada</th>
                     <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Saída</th>
@@ -872,9 +872,6 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                     return (
                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="text-sm font-bold text-slate-500">{log.date}</span>
-                      </td>
-                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <AvatarImage
                             src={profile?.img}
@@ -883,6 +880,9 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                           />
                           <span className="text-sm font-black text-[#004D71] uppercase leading-tight">{log.userName}</span>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-slate-500">{log.date}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-bold text-slate-500 uppercase">{log.modalidade || '---'}</span>
