@@ -13,6 +13,7 @@ import { MapsManager } from './components/Maps';
 import { ExerciseGallery } from './components/Exercises';
 import { ChatModule } from './components/Chat';
 import { UtenteTrainingModule } from './components/UtenteTraining';
+import { TrainerTrainingModule } from './components/TrainerTrainingPlans';
 import { AccessLogsModule } from './components/AccessLogs';
 import { AgendaModule } from './components/Agenda';
 import { KioskMode } from './components/KioskMode';
@@ -48,10 +49,10 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
   chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'alunos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  professor: ['inicio', 'alunos', 'planos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
   utente:    ['inicio', 'treino', 'mensagens', 'agenda', 'perfil'],
 };
 
@@ -660,6 +661,7 @@ export default function App() {
                     <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={false} />
                   )
                 )}
+                {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
                 {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}

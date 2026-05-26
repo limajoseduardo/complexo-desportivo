@@ -3,12 +3,13 @@ import { Dumbbell, Play, ChevronRight, Bookmark, Search, Filter, BookOpen, X, Pl
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { collection, onSnapshot, query, where, addDoc, Timestamp, doc, updateDoc } from 'firebase/firestore';
-import { UserProfile, TreinoPlano, Exercicio } from '../types';
+import { UserProfile, Exercicio, WorkoutSession } from '../types';
 import { ExerciseGallery } from './Exercises';
 
 export function UtenteTrainingModule({ user }: { user: UserProfile }) {
   const [activeTab, setActiveTab] = useState<'plano' | 'biblioteca'>('plano');
-  const [plan, setPlan] = useState<TreinoPlano | null>(null);
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [selectedSessionIdx, setSelectedSessionIdx] = useState<number>(0);
   const [exercises, setExercises] = useState<Exercicio[]>([]);
   const [showRequest, setShowRequest] = useState(false);
   const [professors, setProfessors] = useState<UserProfile[]>([]);
@@ -46,11 +47,12 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
   };
 
   useEffect(() => {
-    const treinosPath = `artifacts/${APP_ID}/public/data/treinos`;
-    const unsub = onSnapshot(query(collection(db, treinosPath), where('userId', '==', user.id)), (snap) => {
-      if (!snap.empty) {
-        setPlan({ id: snap.docs[0].id, ...snap.docs[0].data() } as TreinoPlano);
-      }
+    const treinosPath = `artifacts/${APP_ID}/public/data/treinos_assigned`;
+    const unsub = onSnapshot(query(collection(db, treinosPath), where('assignedStudentId', '==', user.id)), (snap) => {
+      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() } as WorkoutSession));
+      // Sort sessions by title alphabetically (e.g. Treino A, Treino B)
+      loaded.sort((a,b) => (a.title || '').localeCompare(b.title || ''));
+      setSessions(loaded);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, treinosPath);
     });
@@ -129,7 +131,7 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
             </div>
           </div>
 
-          {!plan ? (
+          {sessions.length === 0 ? (
             <div className="bg-white rounded-[3rem] p-12 text-center border-4 border-[#004D71]/5 shadow-sm">
               <div className="w-20 h-20 bg-[#004D71]/5 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Dumbbell size={40} className="text-[#004D71]/20" />
@@ -145,16 +147,32 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
             </div>
           ) : (
             <div className="space-y-4">
-               {plan.exercicios.map((ex, idx) => {
-                 const matchedEx = exercises.find(e => e.id === ex.exercicioId);
-                 const name = matchedEx ? matchedEx.nomePT : ex.exercicioId;
+               {/* Seletor de Sessões (ex: Treino A, Treino B) */}
+               <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                 {sessions.map((session, sIdx) => (
+                    <button 
+                       key={sIdx}
+                       onClick={() => setSelectedSessionIdx(sIdx)}
+                       className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap shrink-0 border-2 ${selectedSessionIdx === sIdx ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-[#004D71]/20'}`}
+                    >
+                       {session.title || `Treino ${sIdx + 1}`}
+                    </button>
+                 ))}
+               </div>
+
+               {sessions[selectedSessionIdx]?.exercises?.map((ex: any, idx: number) => {
+                 // Try to match with existing library to get video/group
+                 const matchedEx = exercises.find(e => e.nomePT?.toLowerCase() === ex.name?.toLowerCase() || e.id === ex.name);
+                 const name = ex.name;
                  const desc = matchedEx ? matchedEx.desc : '';
                  const link = matchedEx ? matchedEx.link : '';
                  
-                 const numSeries = parseInt(ex.series) || 1;
-                 const targetReps = parseInt(ex.reps) || 0;
-                 const seriesArray = Array.from({ length: numSeries });
-                 const exLogs = trainingLogs[ex.exercicioId] || Array(numSeries).fill({ weight: 0, reps: targetReps, done: false });
+                 const numSeries = ex.sets?.length || 1;
+                 const targetReps = ex.sets?.[0]?.reps || 0;
+                 const seriesArray = ex.sets || [];
+                 // Save logs using session ID + exercise index to avoid collisions
+                 const logKey = `${sessions[selectedSessionIdx].id}_${idx}`;
+                 const exLogs = trainingLogs[logKey] || Array(numSeries).fill({ weight: 0, reps: targetReps, done: false });
 
                  return (
                    <div key={idx} className="bg-white rounded-[2.5rem] p-6 border-4 border-[#004D71]/5 shadow-sm group hover:border-[#F7B500]/20 transition-all">
@@ -171,15 +189,7 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
                             <div className="flex gap-3 overflow-x-auto pb-1">
                                <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
                                   <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Séries</span>
-                                  <span className="text-xs font-black text-[#004D71]">{ex.series}</span>
-                               </div>
-                               <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                  <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Reps</span>
-                                  <span className="text-xs font-black text-[#004D71]">{ex.reps}</span>
-                               </div>
-                               <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 shrink-0">
-                                  <span className="text-[8px] font-black text-slate-400 block uppercase mb-0.5">Pause</span>
-                                  <span className="text-xs font-black text-[#F7B500]">{ex.descanso}</span>
+                                  <span className="text-xs font-black text-[#004D71]">{numSeries}</span>
                                </div>
                             </div>
                          </div>
@@ -206,8 +216,8 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
 
                        {/* INTERACTIVE SERIES DIARY */}
                        <div className="mt-5 space-y-2 border-t-2 border-slate-50 pt-4">
-                         {seriesArray.map((_, sIdx) => {
-                           const currentLog = exLogs[sIdx] || { weight: 0, reps: targetReps, done: false };
+                         {seriesArray.map((setInfo: any, sIdx: number) => {
+                           const currentLog = exLogs[sIdx] || { weight: setInfo.weight || 0, reps: setInfo.reps || 0, done: false };
                            return (
                              <div key={sIdx} className={`flex items-center gap-3 p-3 rounded-[1.2rem] border-2 transition-all ${currentLog.done ? 'bg-green-50/50 border-green-200 shadow-sm' : 'bg-slate-50/50 border-slate-100 hover:border-[#004D71]/20'}`}>
                                 <div className={`w-6 font-black text-[10px] ${currentLog.done ? 'text-green-600' : 'text-slate-400'}`}>#{sIdx + 1}</div>
@@ -215,7 +225,7 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
                                    <input 
                                       type="number" 
                                       value={currentLog.weight || ''} 
-                                      onChange={e => updateLog(ex.exercicioId, sIdx, 'weight', Number(e.target.value), targetReps)}
+                                      onChange={e => updateLog(logKey, sIdx, 'weight', Number(e.target.value), setInfo.reps)}
                                       className="w-12 bg-white border-2 border-slate-200/50 rounded-xl px-2 py-2 text-[11px] font-black text-[#004D71] text-center focus:border-[#F7B500] outline-none transition-colors placeholder:text-slate-200"
                                       placeholder="-"
                                    />
@@ -224,14 +234,14 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
                                    <input 
                                       type="number" 
                                       value={currentLog.reps || ''} 
-                                      onChange={e => updateLog(ex.exercicioId, sIdx, 'reps', Number(e.target.value), targetReps)}
+                                      onChange={e => updateLog(logKey, sIdx, 'reps', Number(e.target.value), setInfo.reps)}
                                       className="w-12 bg-white border-2 border-slate-200/50 rounded-xl px-2 py-2 text-[11px] font-black text-[#004D71] text-center focus:border-[#F7B500] outline-none transition-colors placeholder:text-slate-200 ml-2"
                                       placeholder="-"
                                    />
                                    <span className="text-[9px] font-black text-slate-400 uppercase">Reps</span>
                                 </div>
                                 <button 
-                                  onClick={() => updateLog(ex.exercicioId, sIdx, 'done', !currentLog.done, targetReps)}
+                                  onClick={() => updateLog(logKey, sIdx, 'done', !currentLog.done, setInfo.reps)}
                                   className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90 ${currentLog.done ? 'bg-green-500 text-white shadow-md shadow-green-500/20 scale-105' : 'bg-white border-2 border-slate-200 text-slate-300 hover:text-slate-400'}`}>
                                   <Check size={18} strokeWidth={currentLog.done ? 3 : 2} />
                                 </button>

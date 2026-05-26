@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  ChevronRight, Monitor, Radio,
+  ChevronRight, Monitor, Radio, BookOpen,
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
@@ -260,6 +260,7 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'utentes',   icon: <Users />,         label: 'Utentes',    mobileLabel: 'UTENTES', roles: ['admin', 'staff', 'chefia'] },
   { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    mobileLabel: 'ACESSOS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'alunos',    icon: <Users />,         label: 'Alunos',     mobileLabel: 'ALUNOS', roles: ['professor', 'admin'] },
+  { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
   { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios', mobileLabel: 'EXERCÍCIOS', roles: ['admin', 'professor', 'chefia'] },
   { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: ['utente'] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },

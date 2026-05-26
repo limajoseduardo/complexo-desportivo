@@ -9,3 +9,4 @@ coverage/
 .claude/
 .local-java/
 !local-data/.gitkeep
+.vercel

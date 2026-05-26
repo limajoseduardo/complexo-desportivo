@@ -198,3 +198,78 @@ export interface SwimmingEvaluation {
   feedback?: string;
   nivelProposto?: string;
 }
+
+// ==========================================
+// NOVOS MODELOS DE TREINO (IMPORTADOS DA COLEGA)
+// ==========================================
+
+export interface WorkoutSet {
+  id: string;
+  reps?: number;
+  weight?: number;
+  time?: string; // For Cárdio
+  intensity?: number; // For Cárdio (1-5)
+  notes?: string; // Student notes for the set (e.g. cardio notes)
+  completed: boolean;
+  trackingMode?: 'reps' | 'seconds';
+}
+
+export interface Exercise {
+  id: string;
+  name: string;
+  type?: 'STRENGTH' | 'CARDIO';
+  exerciseLibraryId?: string; // Link to global library for PR tracking
+  sets: WorkoutSet[];
+  notes?: string;
+  restTime?: string;
+  isHeader?: boolean; // New property for grouping
+  isSuperset?: boolean; // New property for supersets
+  trackingMode?: 'reps' | 'seconds';
+  parent_exercise_id?: string; // For alternative exercises
+  alternatives?: Exercise[];
+}
+
+export interface WorkoutSession {
+  id: string;
+  title: string;
+  description: string;
+  exercises: Exercise[];
+  originalExercises?: Exercise[];
+  completed: boolean;
+  durationSeconds: number;
+  plannedDurationMinutes?: number; // New field for specified duration
+  date?: string;
+  assignedStudentId?: string; // Optional for linking to student
+}
+
+export interface WorkoutTemplate {
+  id: string;
+  trainer_id: string;
+  name: string;
+  description?: string;
+  category?: string; // e.g. "Hypertrophy", "Beginner"
+  split_count: number;
+  data: {
+    sessions: {
+      day_label: string;
+      title: string;
+      exercises: {
+        name: string;
+        type: 'STRENGTH' | 'CARDIO';
+        isHeader?: boolean;
+        isSuperset?: boolean;
+        notes?: string;
+        restTime?: string;
+        sets: {
+          reps?: number;
+          weight?: number;
+          time?: string;
+          intensity?: number;
+          notes?: string;
+        }[];
+      }[];
+    }[];
+  };
+  created_at: string;
+}
+

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>FITVLRPRO</title>
+    <base href="/" />
+    
+    <!-- PWA Config (Relative Paths) -->
+    <meta name="theme-color" content="#0a0f1e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FITVLR" />
+    
+    <!-- Favicon & Touch Icon -->
+    <link rel="icon" type="image/png" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: "rgba(var(--color-primary), <alpha-value>)",
+              background: "rgba(var(--color-background), <alpha-value>)",
+              surface: "rgba(var(--color-surface), <alpha-value>)",
+              card: "rgba(var(--color-card), <alpha-value>)",
+              main: "rgba(var(--color-main), <alpha-value>)",
+              muted: "rgba(var(--color-muted), <alpha-value>)",
+              "muted-foreground": "rgba(var(--color-muted-foreground), <alpha-value>)",
+            },
+            fontFamily: {
+              sans: ["Lexend", "sans-serif"],
+              display: ["Lexend", "sans-serif"],
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+        --sar: env(safe-area-inset-right);
+      }
+      .pt-safe { padding-top: var(--sat); }
+      .pb-safe { padding-bottom: var(--sab); }
+      .pl-safe { padding-left: var(--sal); }
+      .pr-safe { padding-right: var(--sar); }
+
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        background-color: rgba(var(--color-background), 1);
+        color: rgba(var(--color-main), 1);
+        -webkit-font-smoothing: antialiased;
+        overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile PWA */
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      /* Global scrollbar hiding */
+      ::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
+      }
+      * {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

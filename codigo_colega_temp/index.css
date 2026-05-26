@@ -1,0 +1,213 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: 37, 99, 235; /* #2563EB */
+  --color-background: 241, 245, 255; /* #F1F5FF */
+  --color-surface: 255, 255, 255; /* White */
+  --color-card: 255, 255, 255; /* White */
+  --color-main: 24, 24, 27; /* Zinc 900 (mais escuro para melhor leitura) */
+  --color-muted: 82, 82, 91; /* Zinc 600 (mais escuro que o original) */
+  --color-muted-foreground: 113, 113, 122; /* Zinc 500 */
+  --glass-bg: rgba(255, 255, 255, 0.85); /* For strong glass */
+  --glass-border: rgba(0, 0, 0, 0.05);
+  color-scheme: light;
+}
+
+.dark {
+  --color-primary: 96, 165, 250; /* #60A5FA Lighter blue for dark theme contrast */
+  --color-background: 10, 15, 30; /* Darker navy for cohesive look */
+  --color-surface: 18, 25, 45; /* Surface navy */
+  --color-card: 25, 35, 60; /* Card navy */
+  --color-main: 255, 255, 255; /* white */
+  --color-muted: 161, 161, 170; /* #a1a1aa zinc-400 */
+  --color-muted-foreground: 212, 212, 216; /* zinc-300 */
+  --glass-bg: rgba(30, 30, 30, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Lexend', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: rgba(var(--color-background), 1);
+  color: rgba(var(--color-main), 1);
+  /* Prevent root scroll which triggers pull-to-refresh */
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Optimize touch targets for mobile */
+button, a, [role="button"] {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Remove hover effects on mobile where they might stick */
+@media (hover: none) {
+  .hover\:bg-main\/5:hover {
+    background-color: transparent;
+  }
+}
+
+/* --- ANIMATIONS --- */
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideRightFade {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utility Classes for Animations */
+.animate-enter {
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0; /* Start hidden */
+}
+
+/* Safe Area Utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mt-safe {
+  margin-top: env(safe-area-inset-top);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+.h-screen-safe {
+  height: calc(100vh - (env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+}
+
+.animate-enter-right {
+  animation: slideRightFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.animate-scale {
+  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+/* Stagger Delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Glass Effect */
+.glass {
+  background: rgba(var(--color-surface), 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-strong {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* GLOBAL SCROLLBAR HIDING */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
+}
+
+/* Base scroll safe container */
+.scroll-container {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove spin buttons from number inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}

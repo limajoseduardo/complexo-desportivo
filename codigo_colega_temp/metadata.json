@@ -1,0 +1,8 @@
+{
+  "name": "Remix: FITVLRPRO New 8",
+  "description": "Uma aplicação de fitness completa para alunos e personal trainers, com acompanhamento de treinos, planos alimentares, visualização de progresso e chat em tempo real.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}
