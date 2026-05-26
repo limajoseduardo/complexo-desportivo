@@ -25,7 +25,7 @@ import { UserProfile } from './types';
 import { PicotoIcon } from './components/Common';
 import { auth, db, handleFirestoreError, OperationType, APP_ID } from './lib/firebase';
 import { REAL_STAFF } from './lib/seed';
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { useRfidScanner, playBeep } from './lib/accessListener';
 import { handleCheckIn, handleCheckOut } from './lib/access';
 import {
@@ -434,7 +434,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const emailLower = emailInput.toLowerCase();
+      const emailLower = emailInput.toLowerCase().trim();
 
       let fbUser = auth.currentUser;
       if (!fbUser) {
@@ -463,22 +463,29 @@ export default function App() {
         }
       }
 
-        // Verifica a Palavra-passe
-        if (existingProfile) {
+      // Verifica a Palavra-passe
+      if (existingProfile) {
+        const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('admin@') || emailLower.startsWith('informatica@') || emailLower.startsWith('staff@') || emailLower.startsWith('professor@') || emailLower.startsWith('chefia@');
+        const hasDefaultOrNoPass = !existingProfile.password || existingProfile.password === '123456';
+        
+        if (isStaffEmail && hasDefaultOrNoPass) {
+          existingProfile.password = pass;
+        } else {
           const expectedPass = existingProfile.password || '123456';
           if (pass !== expectedPass) {
              setAuthError('Palavra-passe incorreta.');
              setLoading(false);
              return;
           }
-        } else {
-          // Se a pessoa não existir e tentar outra pass que não a padrão
-          if (pass !== '123456' && emailLower !== 'admin@cm-viladerei.pt') {
-             setAuthError('Utilizador não encontrado ou palavra-passe errada.');
-             setLoading(false);
-             return;
-          }
         }
+      } else {
+        // Se a pessoa não existir e tentar outra pass que não a padrão
+        if (pass !== '123456' && emailLower !== 'admin@cm-viladerei.pt') {
+           setAuthError('Utilizador não encontrado ou palavra-passe errada.');
+           setLoading(false);
+           return;
+        }
+      }
 
       const roleCandidate = existingProfile?.role || (emailLower.includes('admin') ? 'admin' : 'utente');
       const effectiveRole = normalizeRole(roleCandidate?.toString(), emailLower);
@@ -487,8 +494,8 @@ export default function App() {
          ...existingProfile,
          id: userId!,
          email: emailLower,
-           role: effectiveRole,
-           password: existingProfile?.password || pass,
+         role: effectiveRole,
+         password: existingProfile?.password || pass,
          n: existingProfile?.n || existingProfile?.nome || emailInput.split('@')[0].toUpperCase(),
          nome: existingProfile?.nome || existingProfile?.n || emailInput.split('@')[0].toUpperCase(),
          cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
@@ -521,6 +528,75 @@ export default function App() {
     } catch (err: any) {
       console.error("Fatal Login Error:", err);
       setAuthError(`Erro de Acesso: ${err.message || 'Tente novamente'}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleGoogleLogin = React.useCallback(async () => {
+    setAuthError('');
+    setLoading(true);
+
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result.user;
+      
+      if (!fbUser || !fbUser.email) {
+        throw new Error('Não foi possível obter o e-mail da conta Google.');
+      }
+
+      const emailLower = fbUser.email.toLowerCase().trim();
+
+      // Verificar se é funcionário municipal - STAFF NÃO PODE ENTRAR COM GOOGLE!
+      const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('admin@') || emailLower.startsWith('informatica@') || emailLower.startsWith('staff@') || emailLower.startsWith('professor@') || emailLower.startsWith('chefia@');
+      if (isStaffEmail) {
+        await auth.signOut();
+        setAuthError('Funcionários municipais devem iniciar sessão com email e palavra-passe.');
+        setLoading(false);
+        return;
+      }
+
+      // Verificar se o email já existe na base de dados (convidado/pré-registado)
+      const usersPath = `artifacts/${APP_ID}/public/data/users`;
+      const qEmail = query(collection(db, usersPath), where('email', '==', emailLower), limit(1));
+      const emailSnap = await getDocs(qEmail);
+
+      if (emailSnap.empty) {
+        await auth.signOut();
+        setAuthError('Acesso não autorizado. Não existe nenhum convite ou registo prévio para este e-mail.');
+        setLoading(false);
+        return;
+      }
+
+      const existingProfile = emailSnap.docs[0].data() as any;
+      const userId = emailSnap.docs[0].id;
+      const effectiveRole = normalizeRole(existingProfile?.role || 'utente', emailLower);
+
+      const finalProfile: UserProfile = {
+         ...existingProfile,
+         id: userId,
+         email: emailLower,
+         role: effectiveRole,
+         n: existingProfile?.n || existingProfile?.nome || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
+         nome: existingProfile?.nome || existingProfile?.n || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
+         cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
+         img: fbUser.photoURL || existingProfile?.img || `https://api.dicebear.com/7.x/avataaars/svg?seed=${effectiveRole}`,
+         lastLogin: new Date().toISOString()
+      };
+
+      const userDocRef = doc(db, `artifacts/${APP_ID}/public/data/users`, userId);
+      await setDoc(userDocRef, finalProfile, { merge: true });
+
+      setUser(finalProfile);
+      localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
+      setActiveTab('inicio');
+    } catch (err: any) {
+      console.error("Google Login Error:", err);
+      setAuthError(`Erro no login com Google: ${err.message || 'Tente novamente'}`);
+      try {
+        await auth.signOut();
+      } catch (e) {}
     } finally {
       setLoading(false);
     }
@@ -559,7 +635,7 @@ export default function App() {
   const isPublicDashboard = showPublicDashboard || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('view') === 'tv' || window.location.pathname.includes('/tv')));
   if (isPublicDashboard) return <EntranceDashboard appId={APP_ID} onBack={showPublicDashboard ? () => setShowPublicDashboard(false) : undefined} />;
 
-  if (!user) return <LoginScreen onLogin={handleLogin} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
+  if (!user) return <LoginScreen onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
 
   if (showModePicker) return (
     <ModePicker onSelect={(role) => {

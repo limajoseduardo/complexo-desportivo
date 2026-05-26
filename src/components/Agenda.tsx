@@ -26,6 +26,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const [professors, setProfessors] = useState<UserProfile[]>([]);
   const [viewingInscritos, setViewingInscritos] = useState<any[] | null>(null);
   const [viewingAulaNome, setViewingAulaNome] = useState('');
+  const [activeHorarioImg, setActiveHorarioImg] = useState<string | null>(null);
 
   const canEdit = ['admin', 'staff', 'chefia', 'professor'].includes(userRole);
 
@@ -213,6 +214,35 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-32 text-left font-sans max-w-full overflow-hidden px-1">
+      {/* Horários Completos em Imagem */}
+      <div className="bg-white rounded-[2.5rem] p-6 border-4 border-slate-100 shadow-sm space-y-4">
+        <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
+          📅 Horários Oficiais do Complexo
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button 
+            onClick={() => setActiveHorarioImg('/horario_1.jpg')}
+            className="p-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 rounded-3xl text-left flex items-center justify-between group transition-all cursor-pointer"
+          >
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento Oficial</p>
+              <h4 className="text-xs font-black text-[#004D71] uppercase mt-1">Horário Geral & Atividades</h4>
+            </div>
+            <span className="text-[9px] font-black uppercase text-[#004D71] bg-[#F7B500] px-3 py-1.5 rounded-xl group-hover:scale-105 transition-transform">Ver Horário</span>
+          </button>
+          <button 
+            onClick={() => setActiveHorarioImg('/horario_2.jpg')}
+            className="p-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 rounded-3xl text-left flex items-center justify-between group transition-all cursor-pointer"
+          >
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento Oficial</p>
+              <h4 className="text-xs font-black text-[#004D71] uppercase mt-1">Horário Piscina & Época Desportiva</h4>
+            </div>
+            <span className="text-[9px] font-black uppercase text-[#004D71] bg-[#F7B500] px-3 py-1.5 rounded-xl group-hover:scale-105 transition-transform">Ver Horário</span>
+          </button>
+        </div>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar snap-x px-1">
         {dias.map(d => (
           <button
@@ -538,6 +568,22 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                  </button>
                </div>
              </form>
+          </div>
+        </div>
+      )}
+
+      {activeHorarioImg && (
+        <div className="fixed inset-0 z-[20000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setActiveHorarioImg(null)}>
+          <div className="relative max-w-5xl w-full bg-white rounded-[2rem] p-4 shadow-2xl animate-in zoom-in" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setActiveHorarioImg(null)}
+              className="absolute top-4 right-4 p-3 bg-white text-slate-800 rounded-full shadow-lg active:scale-95 z-50 border border-slate-100 cursor-pointer"
+            >
+              <X size={20}/>
+            </button>
+            <div className="w-full max-h-[85vh] overflow-auto rounded-xl flex items-center justify-center bg-slate-50">
+              <img src={activeHorarioImg} alt="Horário Oficial" className="w-full h-auto object-contain max-h-[80vh]" />
+            </div>
           </div>
         </div>
       )}

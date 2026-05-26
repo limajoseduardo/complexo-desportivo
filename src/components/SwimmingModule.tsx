@@ -13,7 +13,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
   collection, doc, setDoc, onSnapshot, query, where, 
-  orderBy, limit, getDocs, writeBatch, addDoc, getDoc 
+  orderBy, limit, getDocs, writeBatch, addDoc, getDoc, deleteDoc 
 } from 'firebase/firestore';
 import { UserProfile, SwimmingClass, SwimmingLog, SwimmingEvaluation } from '../types';
 import { AvatarImage, FormInput, PicotoIcon } from './Common';
@@ -872,15 +872,37 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
                           <Calendar size={12}/> Horário: {selectedClass.horario}
                         </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          setLiveClassId(selectedClass.id);
-                          setActiveSubTab('live');
-                        }}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-wider flex items-center gap-2 active:scale-95 shadow-md shadow-emerald-500/10"
-                      >
-                        <Play size={12}/> Dar Aula Hoje
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {user.role === 'admin' && (
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`Tem a certeza que deseja apagar a turma "${selectedClass.nome}"? Esta ação não pode ser desfeita.`)) {
+                                try {
+                                  await deleteDoc(doc(db, classesPath, selectedClass.id));
+                                  alert("Turma apagada com sucesso.");
+                                  setSelectedClassId(null);
+                                } catch (err) {
+                                  console.error("Erro ao apagar turma:", err);
+                                  alert("Erro ao apagar turma.");
+                                }
+                              }
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-2xl font-black text-[9px] uppercase tracking-wider flex items-center gap-2 active:scale-95 shadow-md"
+                            title="Apagar Turma"
+                          >
+                            <Trash2 size={12}/> Apagar Turma
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setLiveClassId(selectedClass.id);
+                            setActiveSubTab('live');
+                          }}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-wider flex items-center gap-2 active:scale-95 shadow-md shadow-emerald-500/10"
+                        >
+                          <Play size={12}/> Dar Aula Hoje
+                        </button>
+                      </div>
                     </div>
 
                     {/* Metodologia / Objetivos da Turma */}
