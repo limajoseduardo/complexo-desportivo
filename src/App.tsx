@@ -38,10 +38,18 @@ export { APP_ID };
 
 const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
   const e = (email || '').toLowerCase().trim();
-  if (e.includes('admin@') || e.includes('informatica@')) return 'admin';
-  if (e.includes('patricia.novo') || e.includes('tiago.lopes') || e.includes('jose.silva') || e.includes('staff@')) return 'staff';
+  
+  // ADMIN & DIREÇÃO TÉCNICA
+  if (e.includes('admin@') || e.includes('informatica@') || e === 'eduardo.oliveira@cm-viladerei.pt') return 'admin';
+  
+  // STAFF E RECEÇÃO
+  if (e === 'josemaria.silva@cm-viladerei.pt' || e === 'patricia.novo@cm-viladerei.pt' || e === 'tiago.lopes@cm-viladerei.pt' || e.includes('staff@')) return 'staff';
+  
+  // PROFESSORES
+  if (e === 'nelson.rolo@cm-viladerei.pt' || e === 'claudia.rechena@cm-viladerei.pt' || e.includes('professor@')) return 'professor';
+  
   if (e.includes('chefia@')) return 'chefia';
-  if (e.includes('professor@')) return 'professor';
+  
   const normalized = (role || 'utente').toString().toLowerCase();
   return ['admin', 'staff', 'chefia', 'professor', 'utente'].includes(normalized)
     ? normalized as UserProfile['role']
