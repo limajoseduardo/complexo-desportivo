@@ -214,32 +214,34 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-32 text-left font-sans max-w-full overflow-hidden px-1">
-      {/* Horários Completos em Imagem */}
+      {/* Regime Livre & Ginásio (Hoje) */}
       <div className="bg-white rounded-[2.5rem] p-6 border-4 border-slate-100 shadow-sm space-y-4">
-        <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
-          📅 Horários Oficiais do Complexo
-        </h3>
+        <div className="flex items-center gap-3">
+          <Clock className="text-[#F7B500] shrink-0" size={24}/>
+          <div>
+            <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest leading-none">
+              🕒 Regime Livre & Ginásio ({dias.find(d => d.id === selectedDay)?.label})
+            </h3>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Horário de acesso livre para utentes e sócios</p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button 
-            onClick={() => setActiveHorarioImg('/horario_1.jpg')}
-            className="p-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 rounded-3xl text-left flex items-center justify-between group transition-all cursor-pointer"
-          >
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento Oficial</p>
-              <h4 className="text-xs font-black text-[#004D71] uppercase mt-1">Horário Geral & Atividades</h4>
-            </div>
-            <span className="text-[9px] font-black uppercase text-[#004D71] bg-[#F7B500] px-3 py-1.5 rounded-xl group-hover:scale-105 transition-transform">Ver Horário</span>
-          </button>
-          <button 
-            onClick={() => setActiveHorarioImg('/horario_2.jpg')}
-            className="p-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-100 rounded-3xl text-left flex items-center justify-between group transition-all cursor-pointer"
-          >
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento Oficial</p>
-              <h4 className="text-xs font-black text-[#004D71] uppercase mt-1">Horário Piscina & Época Desportiva</h4>
-            </div>
-            <span className="text-[9px] font-black uppercase text-[#004D71] bg-[#F7B500] px-3 py-1.5 rounded-xl group-hover:scale-105 transition-transform">Ver Horário</span>
-          </button>
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-3xl">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Ginásio</span>
+            <p className="text-sm font-black text-[#004D71] mt-1 uppercase">
+              {selectedDay === 7 ? 'ENCERRADO' : (selectedDay === 6 ? '09:00 às 13:00' : '08:00 às 20:00')}
+            </p>
+          </div>
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-3xl">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Piscina (Regime Livre)</span>
+            <p className="text-sm font-black text-[#004D71] mt-1 uppercase">
+              {selectedDay === 7 ? 'ENCERRADO' : 
+               selectedDay === 1 ? '17:45 às 19:15' : 
+               (selectedDay === 2 || selectedDay === 3) ? '09:00 às 12:30 | 17:00 às 19:15' : 
+               (selectedDay === 4 || selectedDay === 5) ? '09:00 às 12:30 | 16:30 às 19:15' : 
+               '09:00 às 12:30'}
+            </p>
+          </div>
         </div>
       </div>
 

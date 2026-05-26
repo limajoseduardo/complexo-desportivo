@@ -271,32 +271,71 @@ export default function App() {
       seed();
     }
 
-    // Auto-inserir aulas de Fitness pedidas
-    if (!localStorage.getItem('cpx_seed_fitness')) {
-      const seedFitness = async () => {
+    // Auto-inserir agenda oficial extraída das imagens
+    if (!localStorage.getItem('cpx_seed_official_agenda_v2')) {
+      const seedOfficialAgenda = async () => {
         try {
-          const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'fitness');
+          const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'official_agenda_v2');
           const sentinelSnap = await getDoc(sentinelRef);
           if (sentinelSnap.exists()) {
-            localStorage.setItem('cpx_seed_fitness', 'true');
+            localStorage.setItem('cpx_seed_official_agenda_v2', 'true');
             return;
           }
           const agendaPath = `artifacts/${APP_ID}/public/data/agenda`;
+          
+          // Limpar a agenda de teste antiga para não duplicar
+          try {
+            const oldDocs = await getDocs(collection(db, agendaPath));
+            if (!oldDocs.empty) {
+              const deleteBatch = writeBatch(db);
+              oldDocs.docs.forEach(d => deleteBatch.delete(d.ref));
+              await deleteBatch.commit();
+            }
+          } catch (e) {
+            console.warn("Could not clear old agenda:", e);
+          }
+
           const batch = writeBatch(db);
           const aulas = [
+            // Aulas Fitness
             { diaSemana: 1, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
             { diaSemana: 4, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
-            { diaSemana: 6, horaInicio: '10:35', horaFim: '11:20', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' }
+            { diaSemana: 6, horaInicio: '10:35', horaFim: '11:20', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
+            
+            // Hidroginástica
+            { diaSemana: 2, horaInicio: '09:15', horaFim: '10:00', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
+            { diaSemana: 4, horaInicio: '09:15', horaFim: '10:00', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
+            { diaSemana: 3, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
+            { diaSemana: 5, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
+            { diaSemana: 6, horaInicio: '09:30', horaFim: '10:15', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
+            
+            // Natação Nível 1 e 2
+            { diaSemana: 2, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
+            { diaSemana: 3, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
+            { diaSemana: 4, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
+            { diaSemana: 5, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
+            
+            // Natação Nível 3
+            { diaSemana: 2, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Natação Nível 3', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0369a1' },
+            { diaSemana: 4, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Natação Nível 3', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0369a1' },
+            
+            // Bebés / AMA
+            { diaSemana: 1, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
+            { diaSemana: 3, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
+            { diaSemana: 5, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
+            { diaSemana: 2, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
+            { diaSemana: 3, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
+            { diaSemana: 6, horaInicio: '10:30', horaFim: '11:20', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' }
           ];
           aulas.forEach(a => batch.set(doc(collection(db, agendaPath)), a));
           await batch.commit();
           await setDoc(sentinelRef, { seededAt: new Date().toISOString() });
-          localStorage.setItem('cpx_seed_fitness', 'true');
+          localStorage.setItem('cpx_seed_official_agenda_v2', 'true');
         } catch (e) {
-          console.warn("Seed fitness failed:", e);
+          console.warn("Seed official agenda failed:", e);
         }
       };
-      seedFitness();
+      seedOfficialAgenda();
     }
 
     // Auto-inserir dados de natação Swim Track
