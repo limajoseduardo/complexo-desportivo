@@ -446,10 +446,10 @@ export default function App() {
 
       // Verifica a Palavra-passe
       if (existingProfile) {
-        const isStaffEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt';
+        const isTeamEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt' || emailLower === 'nelson.rolo@cm-viladerei.pt' || emailLower === 'claudia.rechena@cm-viladerei.pt' || emailLower === 'eduardo.oliveira@cm-viladerei.pt';
         const hasDefaultOrNoPass = !existingProfile.password || existingProfile.password === '123456';
         
-        if (isStaffEmail && hasDefaultOrNoPass && emailLower !== 'informatica@cm-viladerei.pt') {
+        if (isTeamEmail && hasDefaultOrNoPass && emailLower !== 'informatica@cm-viladerei.pt') {
           existingProfile.password = pass;
         } else {
           const expectedPass = emailLower === 'informatica@cm-viladerei.pt' ? 'JvTs*061416' : (existingProfile.password || '123456');
@@ -460,15 +460,15 @@ export default function App() {
           }
         }
       } else {
-        // Agora exigimos que a pessoa exista para fazer login, a menos que seja admin ou staff
-        const isStaffEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt';
+        // Agora exigimos que a pessoa exista para fazer login, a menos que seja admin ou equipa
+        const isTeamEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt' || emailLower === 'nelson.rolo@cm-viladerei.pt' || emailLower === 'claudia.rechena@cm-viladerei.pt' || emailLower === 'eduardo.oliveira@cm-viladerei.pt';
         if (emailLower === 'informatica@cm-viladerei.pt') {
            if (pass !== 'JvTs*061416') {
               setAuthError('Palavra-passe incorreta para conta de administração.');
               setLoading(false);
               return;
            }
-        } else if (isStaffEmail) {
+        } else if (isTeamEmail) {
            if (pass !== '123456') {
               setAuthError('As novas contas de equipa usam a password 123456 para primeiro acesso.');
               setLoading(false);
