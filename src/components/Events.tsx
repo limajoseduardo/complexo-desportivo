@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus, Award } from 'lucide-react';
+import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus, Award, GraduationCap } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
@@ -17,6 +17,7 @@ interface Evento {
   descricao: string;
   maxParticipantes?: number;
   inscritos: { id: string; nome: string; email: string; dataInscricao: string; provas: string[] }[];
+  professoresAcompanhantes?: string[]; // Up to 5 teachers
   criadoPor: string;
   criadoEm: any;
 }
@@ -55,15 +56,22 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     titulo: '',
     data: '',
     hora: '',
-    local: 'Piscina Coberta',
+    local: 'Piscina Municipal de Vila de Rei',
     descricao: '',
     maxParticipantes: ''
   });
 
+  // Selected accompanying teachers for new event creation
+  const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
+
   const isStaff = ['admin', 'staff', 'chefia', 'professor'].includes(user.role);
-  const isProfessor = user.role === 'professor';
 
   const ESTILOS = ['Crawl', 'Costas', 'Bruços', 'Mariposa'];
+
+  // Get list of professors/teachers
+  const professorsList = React.useMemo(() => {
+    return utentes.filter(u => u.role === 'professor');
+  }, [utentes]);
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/eventos`;
@@ -108,21 +116,23 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
         descricao: formData.descricao,
         maxParticipantes: formData.maxParticipantes ? Number(formData.maxParticipantes) : undefined,
         inscritos: [],
+        professoresAcompanhantes: selectedTeachers,
         criadoPor: user.nome || user.n || 'Staff',
         criadoEm: Timestamp.now()
       };
 
       await addDoc(collection(db, path), newEvent);
-      alert("Evento de natação/prova criado com sucesso!");
+      alert("Evento/Prova criada com sucesso!");
       setShowAddModal(false);
       setFormData({
         titulo: '',
         data: '',
         hora: '',
-        local: 'Piscina Coberta',
+        local: 'Piscina Municipal de Vila de Rei',
         descricao: '',
         maxParticipantes: ''
       });
+      setSelectedTeachers([]);
     } catch (error) {
       console.error("Erro ao criar evento:", error);
       alert("Erro ao criar o evento. Tente novamente.");
@@ -145,12 +155,10 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     const isRegistered = evento.inscritos.some(i => i.id === (targetUtente ? targetUtente.id : user.id));
     
     if (isRegistered) {
-      // If already registered, directly toggle (which asks to unsubscribe)
       handleToggleUnsubscribe(evento, targetUtente ? targetUtente.id : user.id, targetUtente ? targetUtente.nome : (user.nome || user.n));
       return;
     }
 
-    // Set styling target
     setSelectingStyles({
       evento,
       utenteId: targetUtente ? targetUtente.id : user.id,
@@ -159,7 +167,6 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
       isStaffAction
     });
 
-    // Reset styles selections
     setSelectedProvas({
       Crawl: false,
       Costas: false,
@@ -196,7 +203,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     const path = `artifacts/${APP_ID}/public/data/eventos`;
 
     const newInscritos = [
-      ...evento.inscritos.filter(i => i.id !== utenteId), // prevent duplicates
+      ...evento.inscritos.filter(i => i.id !== utenteId),
       {
         id: utenteId,
         nome: utenteNome,
@@ -210,11 +217,24 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
       await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
       alert(`Inscrição de "${utenteNome.toUpperCase()}" gravada com sucesso nos estilos: ${chosenStyles.join(', ')}.`);
       setSelectingStyles(null);
-      setSearchUtente(''); // Clear search if staff added manually
+      setSearchUtente('');
     } catch (error) {
       console.error("Erro ao guardar inscrição com provas:", error);
       alert("Ocorreu um erro ao guardar a inscrição.");
     }
+  };
+
+  const handleTeacherCheckboxChange = (teacherName: string) => {
+    setSelectedTeachers(prev => {
+      if (prev.includes(teacherName)) {
+        return prev.filter(t => t !== teacherName);
+      }
+      if (prev.length >= 5) {
+        alert("Pode selecionar no máximo 5 professores acompanhantes!");
+        return prev;
+      }
+      return [...prev, teacherName];
+    });
   };
 
   // Filter utentes who are NOT enrolled and match search query
@@ -244,7 +264,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
         </div>
         {['admin', 'staff', 'chefia'].includes(user.role) && (
           <button 
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setShowAddModal(true); setSelectedTeachers([]); }}
             className="bg-[#004D71] text-[#F7B500] p-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
           >
             <Plus size={20}/>
@@ -301,6 +321,17 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                       <MapPin size={12} className="text-[#F7B500]"/>
                       <span className="text-[10px] text-slate-600 font-bold">{evento.local}</span>
                     </div>
+
+                    {/* Accompanying teachers list display */}
+                    {evento.professoresAcompanhantes && evento.professoresAcompanhantes.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <GraduationCap size={12} className="text-[#004D71] shrink-0 mt-0.5"/>
+                        <div className="text-[10px] text-slate-600 font-bold">
+                          Acompanhantes: <span className="text-[#004D71] font-black">{evento.professoresAcompanhantes.join(', ')}</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                       <Users size={12} className="text-[#004D71]"/>
                       <span className="text-[10px] text-slate-600 font-bold">
@@ -416,7 +447,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                     value={formData.local}
                     onChange={e => setFormData({...formData, local: e.target.value})}
                     className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none"
-                    placeholder="Ex: Piscina Coberta"
+                    placeholder="Ex: Piscina Municipal de Vila de Rei"
                   />
                 </div>
                 <div className="space-y-2">
@@ -430,6 +461,34 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                   />
                 </div>
               </div>
+
+              {/* Accompanying teachers selector (Up to 5) */}
+              {professorsList.length > 0 && (
+                <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block">Professores / Treinadores Acompanhantes (Máx. 5)</label>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase ml-1 tracking-wider mb-2">Quem irá acompanhar os atletas na prova</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {professorsList.map(prof => {
+                      const name = prof.nome || prof.n || '';
+                      const isChecked = selectedTeachers.includes(name);
+                      return (
+                        <label 
+                          key={prof.id}
+                          className="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer text-xs font-black uppercase text-[#004D71] hover:border-[#004D71]/20 select-none"
+                        >
+                          <input 
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleTeacherCheckboxChange(name)}
+                            className="w-4 h-4 accent-[#004D71] rounded"
+                          />
+                          <span>{name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Descrição / Regulamento</label>
