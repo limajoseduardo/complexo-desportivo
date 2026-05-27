@@ -27,6 +27,7 @@ const DietModule = React.lazy(() => import('./components/DietModule').then(m => 
 const EventsModule = React.lazy(() => import('./components/Events').then(m => ({ default: m.EventsModule })));
 import { seedUtentesTestData } from './lib/seedUtentes';
 import { seedExerciseLibrary } from './lib/seedExercises';
+import { seedWorkoutTemplates } from './lib/seedTemplates';
 import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
@@ -290,6 +291,11 @@ export default function App() {
     // Auto-inserir enciclopédia de exercícios
     if (!localStorage.getItem('cpx_seed_exercises_v1')) {
       seedExerciseLibrary();
+    }
+
+    // Auto-inserir modelos de treino base
+    if (!localStorage.getItem('cpx_seed_templates_v1')) {
+      seedWorkoutTemplates();
     }
 
     return () => { unsub(); clearTimeout(timeout); };
