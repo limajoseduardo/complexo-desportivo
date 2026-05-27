@@ -49,7 +49,7 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
   if (e === 'informatica@cm-viladerei.pt') return 'admin';
   
   // STAFF E RECEÇÃO
-  if (e === 'josemaria.silva@cm-viladerei.pt' || e === 'patricia.novo@cm-viladerei.pt' || e === 'tiago.lopes@cm-viladerei.pt' || e.includes('staff@')) return 'staff';
+  if (e === 'josemaria.silva@cm-viladerei.pt' || e === 'patricia.novo@cm-viladerei.pt' || e === 'tiago.lopes@cm-viladerei.pt') return 'staff';
   
   // PROFESSORES
   if (e === 'nelson.rolo@cm-viladerei.pt' || e === 'claudia.rechena@cm-viladerei.pt' || e === 'eduardo.oliveira@cm-viladerei.pt') return 'professor';
@@ -446,7 +446,7 @@ export default function App() {
 
       // Verifica a Palavra-passe
       if (existingProfile) {
-        const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('informatica@') || emailLower.startsWith('staff@');
+        const isStaffEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt';
         const hasDefaultOrNoPass = !existingProfile.password || existingProfile.password === '123456';
         
         if (isStaffEmail && hasDefaultOrNoPass && emailLower !== 'informatica@cm-viladerei.pt') {
@@ -461,7 +461,7 @@ export default function App() {
         }
       } else {
         // Agora exigimos que a pessoa exista para fazer login, a menos que seja admin ou staff
-        const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('staff@');
+        const isStaffEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt';
         if (emailLower === 'informatica@cm-viladerei.pt') {
            if (pass !== 'JvTs*061416') {
               setAuthError('Palavra-passe incorreta para conta de administração.');
