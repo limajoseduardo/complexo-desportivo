@@ -24,6 +24,7 @@ const AgendaModule = React.lazy(() => import('./components/Agenda').then(m => ({
 const KioskMode = React.lazy(() => import('./components/KioskMode').then(m => ({ default: m.KioskMode })));
 const SwimmingTeacherPortal = React.lazy(() => import('./components/SwimmingModule').then(m => ({ default: m.SwimmingTeacherPortal })));
 const DietModule = React.lazy(() => import('./components/DietModule').then(m => ({ default: m.DietModule })));
+const EventsModule = React.lazy(() => import('./components/Events').then(m => ({ default: m.EventsModule })));
 import { seedUtentesTestData } from './lib/seedUtentes';
 import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
@@ -807,6 +808,7 @@ export default function App() {
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
+                {activeTab === 'eventos' && <EventsModule user={user} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                 {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                 {activeTab === 'perfil' && (

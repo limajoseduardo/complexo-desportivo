@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  ChevronRight, Monitor, Radio, BookOpen,
+  ChevronRight, Monitor, Radio, BookOpen, Trophy,
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
@@ -310,6 +310,7 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'inicio',     icon: <Home />,         label: 'Início',     mobileLabel: 'INÍCIO', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'utentes',   icon: <Users />,         label: 'Utentes',    mobileLabel: 'UTENTES', roles: ['admin', 'staff', 'chefia'] },
   { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    mobileLabel: 'ACESSOS', roles: ['admin', 'staff', 'chefia'] },
+  { id: 'eventos',   icon: <Trophy />,        label: 'Eventos',    mobileLabel: 'PROVAS',  roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'alunos',    icon: <Users />,         label: 'Alunos',     mobileLabel: 'ALUNOS', roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
   { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor', 'utente'] },
