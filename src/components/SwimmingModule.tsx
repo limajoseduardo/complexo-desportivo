@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Waves, Users, Calendar, TrendingUp, Plus, Search, Mail, 
-  ChevronRight, ChevronLeft, Save, Check, Clock, ArrowLeft, 
-  AlertCircle, Target, Edit, Trash2, UserPlus, Play, NotebookPen, 
-  Award, Send, UserCheck, Star, Sparkles, BookOpen, X
+import {
+  Waves, Users, Calendar, TrendingUp, Plus, Search, Mail,
+  ChevronRight, ChevronLeft, Save, Check, Clock, ArrowLeft,
+  AlertCircle, Target, Edit, Trash2, UserPlus, Play, NotebookPen,
+  Award, Send, UserCheck, Star, Sparkles, BookOpen, X, FileText, Download
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip, BarChart, Bar, Legend 
@@ -518,6 +519,257 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
       .filter(u => (u.nome || u.n || '').toLowerCase().includes(studentSearchTerm.toLowerCase()));
   }, [utentes, studentSearchTerm]);
 
+  // Estado para adicionar aluno a turma existente
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [addStudentSearch, setAddStudentSearch] = useState('');
+
+  const studentsNotInClass = useMemo(() => {
+    if (!selectedClass) return [];
+    return utentes
+      .filter(u => u.role === 'utente' && !selectedClass.alunos.includes(u.id))
+      .filter(u => (u.nome || u.n || '').toLowerCase().includes(addStudentSearch.toLowerCase()));
+  }, [utentes, selectedClass, addStudentSearch]);
+
+  const handleAddStudentToClass = async (studentId: string) => {
+    if (!selectedClass) return;
+    try {
+      const updated = [...selectedClass.alunos, studentId];
+      await setDoc(doc(db, classesPath, selectedClass.id), { alunos: updated }, { merge: true });
+    } catch (e) {
+      console.error(e);
+      handleFirestoreError(e, OperationType.WRITE, 'swimming_classes');
+    }
+  };
+
+  const handleRemoveStudentFromClass = async (studentId: string) => {
+    if (!selectedClass) return;
+    const pupil = utentes.find(u => u.id === studentId);
+    if (!window.confirm(`Remover "${pupil?.n || pupil?.nome}" desta turma?`)) return;
+    try {
+      const updated = selectedClass.alunos.filter(id => id !== studentId);
+      await setDoc(doc(db, classesPath, selectedClass.id), { alunos: updated }, { merge: true });
+    } catch (e) {
+      console.error(e);
+      handleFirestoreError(e, OperationType.WRITE, 'swimming_classes');
+    }
+  };
+
+  // Estado para período do relatório PDF
+  const [reportPeriod, setReportPeriod] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const handleGeneratePDF = () => {
+    if (!selectedStudentId || !selectedStudent) return;
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const [year, month] = reportPeriod.split('-');
+    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const periodLabel = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+    // Logs do período
+    const periodLogs = logs.filter(l => {
+      return l.presencas.includes(selectedStudentId) && l.data.startsWith(`${year}-${month}`);
+    });
+    const allStudentLogs = logs.filter(l => l.presencas.includes(selectedStudentId));
+    const totalMeters = allStudentLogs.reduce((acc, l) => acc + (l.distancias[selectedStudentId] || 0), 0);
+    const periodMeters = periodLogs.reduce((acc, l) => acc + (l.distancias[selectedStudentId] || 0), 0);
+
+    const skillStatuses = evalSkills;
+    const acquired = Object.values(skillStatuses).filter(s => s === 'adquirido').length;
+    const inProgress = Object.values(skillStatuses).filter(s => s === 'em_desenvolvimento').length;
+    const total = Object.keys(skillStatuses).length;
+    const progressPct = total > 0 ? Math.round(((acquired + inProgress * 0.5) / total) * 100) : 0;
+
+    const W = 210;
+    let y = 0;
+
+    // Cabeçalho azul
+    doc.setFillColor(0, 77, 113);
+    doc.rect(0, 0, W, 42, 'F');
+    doc.setFillColor(247, 181, 0);
+    doc.rect(0, 38, W, 4, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('COMPLEXO DESPORTIVO', 15, 14);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(247, 181, 0);
+    doc.text('VILA DE REI  ·  SWIM TRACK', 15, 21);
+    doc.setTextColor(255, 255, 255);
+    doc.text('RELATÓRIO DE AVALIAÇÃO PEDAGÓGICA', 15, 32);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(247, 181, 0);
+    doc.text(`PERÍODO: ${periodLabel.toUpperCase()}`, W - 15, 32, { align: 'right' });
+
+    y = 54;
+
+    // Secção do aluno
+    doc.setFillColor(245, 248, 250);
+    doc.roundedRect(10, y - 6, W - 20, 28, 3, 3, 'F');
+    doc.setTextColor(0, 77, 113);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    const studentName = (selectedStudent.n || selectedStudent.nome || '').toUpperCase();
+    doc.text(studentName, 18, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Turma: ${studentClass?.nome || 'N/D'}   |   Nível: ${selectedStudent.modalidade || 'Natação Nível 1'}   |   Idade: ${selectedStudent.idade || '—'} anos`, 18, y + 11);
+    doc.text(`Professor: ${user.nome || user.n || user.email}   |   Data do relatório: ${new Date().toLocaleDateString('pt-PT')}`, 18, y + 17);
+
+    // Badge de progresso
+    const badgeX = W - 45;
+    doc.setFillColor(0, 77, 113);
+    doc.roundedRect(badgeX, y - 4, 35, 26, 4, 4, 'F');
+    doc.setTextColor(247, 181, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text(`${progressPct}%`, badgeX + 17.5, y + 10, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.text('PROGRESSO', badgeX + 17.5, y + 17, { align: 'center' });
+
+    y += 36;
+
+    // Estatísticas do período
+    doc.setFillColor(0, 77, 113);
+    doc.rect(10, y, W - 20, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('ESTATÍSTICAS DO PERÍODO', 15, y + 4.5);
+    y += 10;
+
+    const statsData = [
+      { label: 'Aulas no Período', val: `${periodLogs.length}` },
+      { label: 'Metros no Período', val: `${periodMeters}m` },
+      { label: 'Total Aulas (acum.)', val: `${allStudentLogs.length}` },
+      { label: 'Total Metros (acum.)', val: `${totalMeters}m` },
+    ];
+    const statW = (W - 20) / 4;
+    statsData.forEach((s, i) => {
+      const sx = 10 + i * statW;
+      doc.setFillColor(i % 2 === 0 ? 248 : 241, i % 2 === 0 ? 250 : 245, i % 2 === 0 ? 252 : 250);
+      doc.rect(sx, y, statW, 14, 'F');
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(s.label.toUpperCase(), sx + statW / 2, y + 5, { align: 'center' });
+      doc.setTextColor(0, 77, 113);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(s.val, sx + statW / 2, y + 11.5, { align: 'center' });
+    });
+    y += 20;
+
+    // Grelha de competências
+    doc.setFillColor(0, 77, 113);
+    doc.rect(10, y, W - 20, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('GRELHA DE COMPETÊNCIAS / OBJETIVOS', 15, y + 4.5);
+    y += 10;
+
+    Object.entries(skillStatuses).forEach(([skill, status], idx) => {
+      const rowY = y + idx * 9;
+      doc.setFillColor(idx % 2 === 0 ? 248 : 255, idx % 2 === 0 ? 250 : 255, idx % 2 === 0 ? 252 : 255);
+      doc.rect(10, rowY, W - 20, 8, 'F');
+
+      doc.setTextColor(30, 41, 59);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`${idx + 1}. ${skill}`, 15, rowY + 5);
+
+      const statusColors: Record<string, [number,number,number]> = {
+        adquirido: [16, 185, 129],
+        em_desenvolvimento: [247, 181, 0],
+        não_iniciado: [148, 163, 184],
+      };
+      const statusLabels: Record<string, string> = {
+        adquirido: 'ADQUIRIDO',
+        em_desenvolvimento: 'EM PROGRESSO',
+        não_iniciado: 'NÃO INICIADO',
+      };
+      const [r, g, b] = statusColors[status] || [148, 163, 184];
+      doc.setFillColor(r, g, b);
+      doc.roundedRect(W - 52, rowY + 1.5, 36, 5, 1, 1, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6);
+      doc.text(statusLabels[status] || status.toUpperCase(), W - 34, rowY + 5.2, { align: 'center' });
+    });
+    y += Object.keys(skillStatuses).length * 9 + 6;
+
+    // Observações do professor
+    if (evalFeedback || evalNextStep) {
+      doc.setFillColor(0, 77, 113);
+      doc.rect(10, y, W - 20, 7, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('PRESCRIÇÃO PEDAGÓGICA DO PROFESSOR', 15, y + 4.5);
+      y += 10;
+
+      if (evalFeedback) {
+        doc.setFillColor(248, 250, 252);
+        const feedLines = doc.splitTextToSize(evalFeedback, W - 30);
+        const feedH = feedLines.length * 5 + 6;
+        doc.rect(10, y, W - 20, feedH, 'F');
+        doc.setTextColor(30, 41, 59);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(feedLines, 15, y + 5);
+        y += feedH + 4;
+      }
+
+      if (evalNextStep) {
+        doc.setFillColor(0, 77, 113);
+        doc.roundedRect(10, y, W - 20, 10, 2, 2, 'F');
+        doc.setTextColor(247, 181, 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('PROPOSTA DE PROGRESSÃO:', 15, y + 4.5);
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'normal');
+        doc.text(evalNextStep, 15, y + 8.5);
+        y += 14;
+      }
+    }
+
+    // Assinaturas
+    y += 8;
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.line(15, y + 12, 85, y + 12);
+    doc.line(W - 85, y + 12, W - 15, y + 12);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('Assinatura do Professor', 50, y + 16, { align: 'center' });
+    doc.text('Assinatura do Encarregado de Educação', W - 50, y + 16, { align: 'center' });
+
+    // Rodapé
+    doc.setFillColor(0, 77, 113);
+    doc.rect(0, 282, W, 15, 'F');
+    doc.setTextColor(247, 181, 0);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPLEXO DESPORTIVO MUNICIPAL DE VILA DE REI', W / 2, 288, { align: 'center' });
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Swim Track — Sistema de Gestão Pedagógica de Natação', W / 2, 293, { align: 'center' });
+
+    const fileName = `avaliacao_${(selectedStudent.n || selectedStudent.nome || 'aluno').toLowerCase().replace(/\s+/g, '_')}_${reportPeriod}.pdf`;
+    doc.save(fileName);
+  };
+
   const handleCreateClass = async () => {
     if (!newClassName || !newClassTime) {
       alert("Nome e Horário são obrigatórios.");
@@ -943,43 +1195,46 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
 
                     {/* Alunos Inscritos */}
                     <div className="space-y-3">
-                      <h4 className="text-[10px] font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2 pl-2">
-                        <Users size={14}/> Alunos na Turma ({selectedClass.alunos.length})
-                      </h4>
+                      <div className="flex items-center justify-between pl-2">
+                        <h4 className="text-[10px] font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2">
+                          <Users size={14}/> Alunos na Turma ({selectedClass.alunos.length})
+                        </h4>
+                        <button
+                          onClick={() => { setAddStudentSearch(''); setShowAddStudentModal(true); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#004D71] text-[#F7B500] rounded-xl text-[8px] font-black uppercase hover:bg-[#004D71]/80 transition-colors"
+                        >
+                          <UserPlus size={12}/> Adicionar Aluno
+                        </button>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {selectedClass.alunos.map(aid => {
                           const pupil = utentes.find(u => u.id === aid);
                           if (!pupil) return null;
                           return (
-                            <div key={aid} className="p-4 bg-white rounded-3xl border-2 border-slate-100 flex items-center justify-between">
+                            <div key={aid} className="p-4 bg-white rounded-3xl border-2 border-slate-100 flex items-center justify-between group">
                               <div className="flex items-center gap-3 min-w-0">
                                 <AvatarImage src={pupil.img} alt={pupil.n || pupil.nome} className="w-12 h-12 rounded-xl shrink-0" />
                                 <div className="min-w-0">
                                   <p className="font-black text-[#004D71] text-xs uppercase truncate leading-none">{pupil.n || pupil.nome}</p>
-                                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-2">{pupil.idade || '—'} Anos • {pupil.email}</p>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-2">{pupil.idade || '—'} Anos • {pupil.modalidade || 'Utente'}</p>
                                 </div>
                               </div>
                               <div className="flex gap-1.5">
                                 <button
-                                  onClick={() => {
-                                    setSelectedStudentId(aid);
-                                    setActiveSubTab('evaluation');
-                                  }}
-                                  title="Avaliar Objetivos"
+                                  onClick={() => { setSelectedStudentId(aid); setActiveSubTab('evaluation'); }}
+                                  title="Avaliar"
                                   className="p-2 hover:bg-[#F7B500]/10 text-[#004D71] rounded-xl transition-colors"
-                                >
-                                  <Award size={16}/>
-                                </button>
+                                ><Award size={15}/></button>
                                 <button
-                                  onClick={() => {
-                                    setStatsStudentId(aid);
-                                    setActiveSubTab('analytics');
-                                  }}
-                                  title="Ver Evolução"
+                                  onClick={() => { setStatsStudentId(aid); setActiveSubTab('analytics'); }}
+                                  title="Estatísticas"
                                   className="p-2 hover:bg-[#004D71]/5 text-slate-400 hover:text-[#004D71] rounded-xl transition-colors"
-                                >
-                                  <TrendingUp size={16}/>
-                                </button>
+                                ><TrendingUp size={15}/></button>
+                                <button
+                                  onClick={() => handleRemoveStudentFromClass(aid)}
+                                  title="Remover da turma"
+                                  className="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-xl transition-all"
+                                ><X size={15}/></button>
                               </div>
                             </div>
                           );
@@ -988,7 +1243,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
                         {selectedClass.alunos.length === 0 && (
                           <div className="md:col-span-2 p-12 text-center text-slate-300">
                             <PicotoIcon className="mx-auto mb-2 opacity-20" size={30}/>
-                            <p className="text-[10px] font-black uppercase">Nenhum aluno inscrito nesta turma.</p>
+                            <p className="text-[10px] font-black uppercase">Nenhum aluno inscrito. Use "+ Adicionar Aluno".</p>
                           </div>
                         )}
                       </div>
@@ -1272,13 +1527,37 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
                         </div>
                       </div>
 
-                      <div className="flex justify-end pt-4 border-t border-slate-100">
-                        <button
-                          onClick={handleSaveEvaluation}
-                          className="bg-[#004D71] text-[#F7B500] px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#004D71]/90 active:scale-95 transition-all flex items-center gap-3"
-                        >
-                          <Save size={16}/> Guardar Avaliação do Aluno
-                        </button>
+                      <div className="flex flex-wrap justify-between items-center pt-4 border-t border-slate-100 gap-3">
+                        {/* Seletor de período para o PDF */}
+                        <div className="flex items-center gap-3">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Período do Relatório:</label>
+                          <input
+                            type="month"
+                            value={reportPeriod}
+                            onChange={e => setReportPeriod(e.target.value)}
+                            className="bg-slate-50 border-2 border-slate-100 rounded-xl px-3 py-2 text-[10px] font-black text-[#004D71] outline-none"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveEvaluation}
+                            className="bg-[#004D71] text-[#F7B500] px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-[#004D71]/90 active:scale-95 transition-all flex items-center gap-2"
+                          >
+                            <Save size={15}/> Guardar
+                          </button>
+                          <button
+                            onClick={() => { handleSaveEvaluation(); setTimeout(handleGeneratePDF, 500); }}
+                            className="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-emerald-600 active:scale-95 transition-all flex items-center gap-2"
+                          >
+                            <Download size={15}/> Gerar Relatório PDF
+                          </button>
+                          <a
+                            href={selectedStudent ? `mailto:${selectedStudent.email}?subject=Relatório de Avaliação Swim Track — ${selectedStudent.n || selectedStudent.nome}&body=Exmo(a) Encarregado(a) de Educação,%0A%0ASegue em anexo o relatório de avaliação pedagógica de natação referente ao período selecionado.%0A%0AQualquer dúvida estamos à disposição.%0A%0ACom os melhores cumprimentos,%0A${user.nome || user.n || 'Professor(a)'}` : '#'}
+                            className="bg-slate-100 text-[#004D71] px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all flex items-center gap-2"
+                          >
+                            <Mail size={15}/> Enviar por Email
+                          </a>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1730,6 +2009,49 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
             >
               Confirmar e Criar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADICIONAR ALUNO À TURMA */}
+      {showAddStudentModal && selectedClass && (
+        <div className="fixed inset-0 z-[100000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl relative max-h-[80vh] flex flex-col">
+            <button onClick={() => setShowAddStudentModal(false)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"><X size={18}/></button>
+            <div className="mb-5">
+              <h3 className="text-base font-black text-[#004D71] uppercase">Adicionar Aluno</h3>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Turma: {selectedClass.nome}</p>
+            </div>
+            <div className="relative mb-4">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={15}/>
+              <input
+                type="text"
+                placeholder="Procurar utente..."
+                value={addStudentSearch}
+                onChange={e => setAddStudentSearch(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-10 pr-4 py-3 text-xs font-black text-[#004D71] uppercase outline-none"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2 hide-scrollbar">
+              {studentsNotInClass.length === 0 ? (
+                <p className="text-center text-[10px] font-black text-slate-400 uppercase py-8">Todos os utentes já estão na turma</p>
+              ) : (
+                studentsNotInClass.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={async () => { await handleAddStudentToClass(u.id); }}
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl border-2 border-slate-100 hover:border-[#004D71]/20 hover:bg-slate-50 transition-all text-left"
+                  >
+                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-xl shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{u.idade || '—'} Anos · {u.modalidade || 'Utente Geral'}</p>
+                    </div>
+                    <div className="p-2 bg-[#004D71]/5 rounded-xl text-[#004D71]"><UserPlus size={14}/></div>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
