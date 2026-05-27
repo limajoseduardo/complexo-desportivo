@@ -285,12 +285,6 @@ export default function App() {
       seedSwimmingData();
     }
 
-    // Limpar utentes de teste
-    if (!localStorage.getItem('cpx_clear_utentes_v2')) {
-      seedUtentesTestData();
-      localStorage.setItem('cpx_clear_utentes_v2', 'true');
-    }
-
     return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
@@ -450,7 +444,7 @@ export default function App() {
         const isTeamEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt' || emailLower === 'nelson.rolo@cm-viladerei.pt' || emailLower === 'claudia.rechena@cm-viladerei.pt' || emailLower === 'eduardo.oliveira@cm-viladerei.pt';
         const hasDefaultOrNoPass = !existingProfile.password || existingProfile.password === '123456';
         
-        if (isTeamEmail && hasDefaultOrNoPass && emailLower !== 'informatica@cm-viladerei.pt') {
+        if (isTeamEmail && hasDefaultOrNoPass) {
           existingProfile.password = pass;
         } else {
           const expectedPass = emailLower === 'informatica@cm-viladerei.pt' ? 'JvTs*061416' : (existingProfile.password || '123456');

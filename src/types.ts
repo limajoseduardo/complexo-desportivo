@@ -55,6 +55,7 @@ export interface UserProfile {
   objetivos?: string;
   modalidade?: string;
   iban?: string;
+  weight?: number;
 
   // Financeiro (Carregamentos)
   entradas_disponiveis?: number;
