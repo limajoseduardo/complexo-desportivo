@@ -65,7 +65,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
   chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
   utente:    ['inicio', 'treino', 'nutricao', 'mensagens', 'agenda', 'perfil'],
 };
 

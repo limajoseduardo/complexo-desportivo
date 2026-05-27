@@ -55,14 +55,10 @@ export function UtentesList({
   const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const toggleGroup = (key: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+    setOpenGroup(prev => prev === key ? null : key);
   };
   const [formData, setFormData] = useState({
     nome: '',
@@ -226,10 +222,10 @@ export function UtentesList({
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-black text-green-600 bg-white px-3 py-1 rounded-full shadow-sm border border-green-100">{groups.inside.length} PRESENTES</span>
-                <ChevronDown size={16} className={`text-green-500 transition-transform ${collapsedGroups.has('__inside__') ? '-rotate-90' : ''}`} />
+                <ChevronDown size={16} className={`text-green-500 transition-transform ${openGroup !== '__inside__' ? '-rotate-90' : ''}`} />
               </div>
             </button>
-            {!collapsedGroups.has('__inside__') && (
+            {openGroup === '__inside__' && (
               <div className="divide-y divide-green-100/60">
                 {groups.inside.map(u => <UtenteRow key={u.id} u={u} onClick={() => onUserClick(u)} />)}
               </div>
@@ -248,9 +244,9 @@ export function UtentesList({
                 <span className="w-8 h-8 rounded-xl bg-[#004D71] text-[#F7B500] font-black text-sm flex items-center justify-center">{g.label}</span>
                 <span className="text-[10px] font-black text-[#004D71] uppercase tracking-widest">{g.users.length} utente{g.users.length !== 1 ? 's' : ''}</span>
               </div>
-              <ChevronDown size={16} className={`text-[#004D71]/40 transition-transform ${collapsedGroups.has(g.key) ? '-rotate-90' : ''}`} />
+              <ChevronDown size={16} className={`text-[#004D71]/40 transition-transform ${openGroup !== g.key ? '-rotate-90' : ''}`} />
             </button>
-            {!collapsedGroups.has(g.key) && (
+            {openGroup === g.key && (
               <div className="divide-y divide-[#004D71]/5">
                 {g.users.map(u => <UtenteRow key={u.id} u={u} onClick={() => onUserClick(u)} />)}
               </div>

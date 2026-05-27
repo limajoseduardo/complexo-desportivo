@@ -168,6 +168,7 @@ export interface Aula {
   vagas?: number;
   sala?: string;
   color?: string;
+  cancelada?: boolean;
 }
 
 export interface SwimmingClass {

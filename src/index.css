@@ -76,3 +76,50 @@ button, a, input, select {
 .login-overlay {
   background: linear-gradient(135deg, rgba(0, 77, 113, 0.85) 0%, rgba(0, 51, 80, 0.75) 100%);
 }
+
+/* Custom premium swimming style badges */
+.badge-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-width: 1.5px;
+  border-style: solid;
+}
+
+.badge-style:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.badge-crawl {
+  background-color: #EBF5FF !important;
+  color: #0066CC !important;
+  border-color: #CCE3FF !important;
+}
+
+.badge-costas {
+  background-color: #F3E8FF !important;
+  color: #7E22CE !important;
+  border-color: #E9D5FF !important;
+}
+
+.badge-brucos {
+  background-color: #ECFDF5 !important;
+  color: #047857 !important;
+  border-color: #D1FAE5 !important;
+}
+
+.badge-mariposa {
+  background-color: #FFF1F2 !important;
+  color: #BE123C !important;
+  border-color: #FFE4E6 !important;
+}
+

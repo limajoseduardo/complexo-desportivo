@@ -308,7 +308,7 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
 
 const MENU_ITEMS = (unreadCount: number) => [
   { id: 'inicio',     icon: <Home />,         label: 'Início',     mobileLabel: 'INÍCIO', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
-  { id: 'utentes',   icon: <Users />,         label: 'Utentes',    mobileLabel: 'UTENTES', roles: ['admin', 'staff', 'chefia'] },
+  { id: 'utentes',   icon: <Users />,         label: 'Utentes',    mobileLabel: 'UTENTES', roles: ['admin', 'staff', 'chefia', 'professor'] },
   { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    mobileLabel: 'ACESSOS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'eventos',   icon: <Trophy />,        label: 'Eventos',    mobileLabel: 'PROVAS',  roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'alunos',    icon: <Users />,         label: 'Alunos',     mobileLabel: 'ALUNOS', roles: ['professor', 'admin'] },

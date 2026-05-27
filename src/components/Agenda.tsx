@@ -7,7 +7,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
   collection, onSnapshot, query, addDoc, updateDoc, 
-  deleteDoc, doc, orderBy, where, Timestamp
+  deleteDoc, doc, orderBy, where, Timestamp, setDoc
 } from 'firebase/firestore';
 import { Aula, UserRole, UserProfile } from '../types';
 
@@ -132,19 +132,20 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const handleCancelAndNotify = async (aula: any) => {
     if (!user) return;
     const inscritos = aula.inscritos || [];
-    if (inscritos.length === 0) {
-       alert('Esta aula não tem inscritos. Pode eliminá-la editando a aula e apagando no final da lista.');
-       return;
-    }
     
-    if (!window.confirm(`Tem a certeza que deseja CANCELAR a aula de ${aula.modalidade} e NOTIFICAR os ${inscritos.length} inscritos?`)) return;
+    const confirmMessage = inscritos.length > 0
+      ? `Tem a certeza que deseja CANCELAR a aula de ${aula.modalidade} e NOTIFICAR os ${inscritos.length} inscritos?`
+      : `Tem a certeza que deseja CANCELAR a aula de ${aula.modalidade}? (Será publicado um aviso no Mural de Avisos)`;
+
+    if (!window.confirm(confirmMessage)) return;
 
     try {
       const diaNome = dias.find(d => d.id === aula.diaSemana)?.label || 'dia selecionado';
+      const actionText = `✨ COMUNICADO IMPORTANTE: CANCELAMENTO DE AULA ✨\n\nEstimado(a) utente, lamentamos informar que a aula de ${aula.modalidade} agendada para ${diaNome} às ${aula.horaInicio} foi cancelada por motivos de força maior / motivos superiores.\n\nPedimos as nossas sinceras desculpas pelo incómodo causado e agradecemos a sua compreensão. 🙏💙\n\nComplexo Desportivo Vila de Rei`;
+
       // 1. Enviar mensagens para todos os inscritos
       for (const inscrito of inscritos) {
          const chatId = [user.id, inscrito.id].sort().join('_');
-         const actionText = `❌ [AULA CANCELADA]: Informamos que a aula de ${aula.modalidade} das ${aula.horaInicio} (dia ${diaNome}) foi cancelada. Lamentamos o incómodo.`;
          
          await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
            senderId: user.id, senderEmail: user.email || '',
@@ -154,13 +155,68 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
            createdAt: Timestamp.now(), read: false
          });
       }
+
+      // 2. Publicar no Mural de Avisos (avisos_globais)
+      const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
+      const docId = `aviso_cancelamento_${aula.id}_${Date.now()}`;
+      await setDoc(doc(db, avisosPath, docId), {
+        id: docId,
+        titulo: `❌ AULA CANCELADA: ${aula.modalidade.toUpperCase()}`,
+        mensagem: `Lamentamos informar que a aula de ${aula.modalidade} de ${diaNome} às ${aula.horaInicio} foi cancelada por motivos de força maior / motivos superiores. Pedimos as nossas sinceras desculpas pelo incómodo causado.`,
+        professorId: user.id,
+        nomeProfessor: user.nome || user.n || 'Professor',
+        dataCriacao: Timestamp.now()
+      });
       
-      // 2. Eliminar a aula
-      await deleteDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, aula.id));
-      alert(`Aula cancelada com sucesso. Foram notificados ${inscritos.length} utentes via chat.`);
+      // 3. Não elimina a aula do horário, apenas marca como cancelada no Firestore
+      await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, aula.id), { cancelada: true });
+      
+      alert(`Aula cancelada com sucesso. Foram notificados ${inscritos.length} utentes via chat privado e publicado um aviso no Mural de Avisos.`);
     } catch (error) {
       console.error('Erro ao cancelar e notificar:', error);
       alert('Ocorreu um erro ao cancelar e notificar. Tente novamente.');
+    }
+  };
+
+  const handleReactivate = async (aula: any) => {
+    if (!user) return;
+    const inscritos = aula.inscritos || [];
+    if (!window.confirm(`Deseja reativar a aula de ${aula.modalidade}? (Serão notificados ${inscritos.length} utentes inscritos)`)) return;
+
+    try {
+      const diaNome = dias.find(d => d.id === aula.diaSemana)?.label || 'dia selecionado';
+      const actionText = `✨ EXCELENTE NOTÍCIA: AULA REATIVADA! ✨\n\nEstimado(a) utente, informamos que a aula de ${aula.modalidade} agendada para ${diaNome} às ${aula.horaInicio} afinal IRÁ REALIZAR-SE normalmente.\n\nPedimos desculpa por qualquer transtorno anterior e contamos com a sua presença! 🏊‍♂️💙\n\nComplexo Desportivo Vila de Rei`;
+
+      // 1. Enviar mensagens para todos os inscritos
+      for (const inscrito of inscritos) {
+         const chatId = [user.id, inscrito.id].sort().join('_');
+         await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
+           senderId: user.id, senderEmail: user.email || '',
+           receiverId: inscrito.id, receiverEmail: '', 
+           participants: [user.id, inscrito.id], participantEmails: [user.email || ''],
+           text: actionText,
+           createdAt: Timestamp.now(), read: false
+         });
+      }
+
+      // 2. Publicar no Mural de Avisos (avisos_globais)
+      const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
+      const docId = `aviso_reativacao_${aula.id}_${Date.now()}`;
+      await setDoc(doc(db, avisosPath, docId), {
+        id: docId,
+        titulo: `✅ AULA REATIVADA: ${aula.modalidade.toUpperCase()}`,
+        mensagem: `Informamos que a aula de ${aula.modalidade} de ${diaNome} às ${aula.horaInicio} afinal irá realizar-se normalmente. As inscrições voltaram a estar abertas. Contamos com a sua presença!`,
+        professorId: user.id,
+        nomeProfessor: user.nome || user.n || 'Professor',
+        dataCriacao: Timestamp.now()
+      });
+      
+      await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, aula.id), { cancelada: false });
+      
+      alert(`Aula reativada com sucesso. Foram notificados ${inscritos.length} utentes via chat privado e publicado um aviso no Mural de Avisos.`);
+    } catch (error) {
+      console.error('Erro ao reativar aula:', error);
+      alert('Ocorreu um erro ao reativar a aula. Tente novamente.');
     }
   };
 
@@ -249,37 +305,6 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-32 text-left font-sans max-w-full overflow-hidden px-1">
-      {/* Regime Livre & Ginásio (Hoje) */}
-      <div className="bg-white rounded-[2.5rem] p-6 border-4 border-slate-100 shadow-sm space-y-4">
-        <div className="flex items-center gap-3">
-          <Clock className="text-[#F7B500] shrink-0" size={24}/>
-          <div>
-            <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest leading-none">
-              🕒 Regime Livre & Ginásio ({dias.find(d => d.id === selectedDay)?.label})
-            </h3>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Horário de acesso livre para utentes e sócios</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 bg-slate-50 border border-slate-100 rounded-3xl">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Ginásio</span>
-            <p className="text-sm font-black text-[#004D71] mt-1 uppercase">
-              {selectedDay === 7 ? 'ENCERRADO' : (selectedDay === 6 ? '09:00 às 13:00' : '08:00 às 20:00')}
-            </p>
-          </div>
-          <div className="p-4 bg-slate-50 border border-slate-100 rounded-3xl">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Piscina (Regime Livre)</span>
-            <p className="text-sm font-black text-[#004D71] mt-1 uppercase">
-              {selectedDay === 7 ? 'ENCERRADO' : 
-               selectedDay === 1 ? '17:45 às 19:15' : 
-               (selectedDay === 2 || selectedDay === 3) ? '09:00 às 12:30 | 17:00 às 19:15' : 
-               (selectedDay === 4 || selectedDay === 5) ? '09:00 às 12:30 | 16:30 às 19:15' : 
-               '09:00 às 12:30'}
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar snap-x px-1">
         {dias.map(d => (
           <button
@@ -319,15 +344,22 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
         {filteredAulas.map(aula => (
           <div 
             key={aula.id} 
-            className="bg-white rounded-[2.5rem] p-6 border-4 border-slate-100 shadow-sm relative overflow-hidden group hover:border-[#004D71]/10 transition-all flex flex-col justify-between"
+            className={`bg-white rounded-[2.5rem] p-6 border-4 border-slate-100 shadow-sm relative overflow-hidden group hover:border-[#004D71]/10 transition-all flex flex-col justify-between ${aula.cancelada ? 'opacity-55 border-red-100/50 bg-slate-50/30' : ''}`}
           >
-            <div className={`absolute top-0 left-0 w-2 h-full`} style={{ backgroundColor: aula.color || '#004D71' }} />
+            <div className={`absolute top-0 left-0 w-2 h-full`} style={{ backgroundColor: aula.cancelada ? '#EF4444' : (aula.color || '#004D71') }} />
             
             <div className="space-y-4">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col gap-1">
-                   <div className="px-3 py-1 bg-slate-50 rounded-full text-[8px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 w-fit">
-                     {aula.categoria || 'Geral'}
+                   <div className="flex items-center gap-2">
+                     <div className="px-3 py-1 bg-slate-50 rounded-full text-[8px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 w-fit">
+                       {aula.categoria || 'Geral'}
+                     </div>
+                     {aula.cancelada && (
+                       <span className="px-2.5 py-0.5 bg-red-50 text-red-600 rounded-full text-[8px] font-black uppercase tracking-widest border border-red-100 animate-pulse">
+                         Cancelada
+                       </span>
+                     )}
                    </div>
                    {aula.sala && (
                      <p className="text-[8px] font-black text-[#F7B500] uppercase ml-1">{aula.sala}</p>
@@ -377,31 +409,45 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                     {userRole === 'utente' && (
                       <button 
                         onClick={() => toggleInscricao(aula)}
+                        disabled={aula.cancelada}
                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                          ((aula as any).inscritos || []).some((i: any) => i.id === user?.id)
+                          aula.cancelada
+                            ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none'
+                            : ((aula as any).inscritos || []).some((i: any) => i.id === user?.id)
                             ? 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-100' 
                             : 'bg-[#004D71] text-[#F7B500] active:scale-95 shadow-md'
                         }`}
                       >
-                        {((aula as any).inscritos || []).some((i: any) => i.id === user?.id) ? 'Cancelar' : 'Inscrever'}
+                        {aula.cancelada ? 'Cancelada' : ((aula as any).inscritos || []).some((i: any) => i.id === user?.id) ? 'Cancelar' : 'Inscrever'}
                       </button>
                     )}
                  </div>
               </div>
-              {canEdit && ((aula as any).inscritos && (aula as any).inscritos.length > 0) && (
-                <div className="flex gap-2 mt-3">
-                  <button 
-                    onClick={() => { setViewingInscritos((aula as any).inscritos); setViewingAulaNome(aula.modalidade); }}
-                    className="flex-1 py-2.5 bg-slate-50 text-[9px] font-black text-[#004D71] uppercase rounded-xl hover:bg-slate-100 transition-colors border border-slate-100 flex items-center justify-center gap-1.5"
-                  >
-                    <Users size={14}/> Ver {((aula as any).inscritos).length}
-                  </button>
-                  <button 
-                    onClick={() => handleCancelAndNotify(aula)}
-                    className="flex-1 py-2.5 bg-red-50 text-[9px] font-black text-red-600 uppercase rounded-xl hover:bg-red-100 transition-colors border border-red-100 flex items-center justify-center gap-1.5"
-                  >
-                    <Trash2 size={14}/> Cancelar & Notificar
-                  </button>
+              {canEdit && (
+                <div className="flex justify-end gap-2 mt-3 w-full">
+                  {((aula as any).inscritos && (aula as any).inscritos.length > 0) && (
+                    <button 
+                      onClick={() => { setViewingInscritos((aula as any).inscritos); setViewingAulaNome(aula.modalidade); }}
+                      className="py-1.5 px-3 bg-slate-50 text-[8px] font-black text-[#004D71] uppercase rounded-lg hover:bg-slate-100 transition-colors border border-slate-100 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Users size={12}/> Ver {((aula as any).inscritos).length}
+                    </button>
+                  )}
+                  {aula.cancelada ? (
+                    <button 
+                      onClick={() => handleReactivate(aula)}
+                      className="py-1.5 px-3 bg-green-50 text-green-600 hover:bg-green-100 border border-green-100 rounded-lg text-[8px] font-black uppercase flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Plus size={12}/> Reativar Aula
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleCancelAndNotify(aula)}
+                      className="py-1.5 px-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 rounded-lg text-[8px] font-black uppercase flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={12}/> Cancelar & Notificar
+                    </button>
+                  )}
                 </div>
               )}
             </div>
