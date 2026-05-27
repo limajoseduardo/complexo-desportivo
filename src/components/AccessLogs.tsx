@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Users, LogIn, LogOut, Calendar, Search,
   Download,
-  FileText, Plus, X, Edit2, Save, Trash2, QrCode,
+  FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
   Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets
 } from 'lucide-react';
 import { AvatarImage } from './Common';
@@ -42,6 +42,22 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('inside');
+  const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
+
+  const generateInviteCode = async () => {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    try {
+      await setDoc(doc(db, `artifacts/${APP_ID}/public/data/invites`, code), {
+        id: code,
+        createdAt: new Date().toISOString(),
+        status: 'active'
+      });
+      setGeneratedInvite(code);
+    } catch (e) {
+      alert('Erro ao gerar convite.');
+      console.error(e);
+    }
+  };
 
   const modalities = [
     'Piscina Regime Livre',
@@ -540,6 +556,12 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
             </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={generateInviteCode}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
+            >
+              <Key size={14}/> Gerar Convite
+            </button>
             {onScan && (
               <button
                 onClick={onScan}
@@ -569,6 +591,29 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
           </div>
         </div>
       </div>
+
+      {generatedInvite && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl relative text-center max-w-sm w-full animate-in zoom-in">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Key size={32} className="text-emerald-500" />
+            </div>
+            <h3 className="text-xl font-black text-[#004D71] uppercase mb-2">Código Gerado</h3>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-6">Partilha este código com o utente</p>
+            
+            <div className="bg-slate-50 border-2 border-slate-100 rounded-2xl py-6 mb-6">
+              <span className="text-5xl font-black tracking-[0.2em] text-[#004D71]">{generatedInvite}</span>
+            </div>
+
+            <button 
+              onClick={() => setGeneratedInvite(null)}
+              className="w-full py-4 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       {showManualModal && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">

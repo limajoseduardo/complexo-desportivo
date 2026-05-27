@@ -10,9 +10,11 @@ import { PicotoIcon, AvatarImage } from './Common';
 import { useWeather } from '../lib/weather';
 
 
-export const LoginScreen = ({ onLogin, onGoogleLogin, error, onPublicDashboard }: { onLogin: (e: string, p: string) => void, onGoogleLogin: () => void, error: string, onPublicDashboard?: () => void }) => {
+export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPublicDashboard }: { onLogin: (e: string, p: string) => void, onRegister: (e: string, p: string, code: string) => void, onGoogleLogin: () => void, error: string, onPublicDashboard?: () => void }) => {
+  const [mode, setMode] = React.useState<'login' | 'register'>('login');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [inviteCode, setInviteCode] = React.useState('');
 
   return (
     <div className="min-h-screen w-full login-bg flex items-center justify-center p-4 sm:p-6">
@@ -32,7 +34,26 @@ export const LoginScreen = ({ onLogin, onGoogleLogin, error, onPublicDashboard }
             </div>
           )}
 
-          <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); onLogin(email, password); }} className="space-y-4">
+          <div className="flex gap-2 mb-6 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button
+              onClick={() => { setMode('login'); setInviteCode(''); }}
+              className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${mode === 'login' ? 'bg-white shadow-sm text-[#004D71]' : 'text-slate-400 hover:bg-slate-100/50'}`}
+            >
+              Entrar
+            </button>
+            <button
+              onClick={() => setMode('register')}
+              className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${mode === 'register' ? 'bg-white shadow-sm text-[#004D71]' : 'text-slate-400 hover:bg-slate-100/50'}`}
+            >
+              Registar
+            </button>
+          </div>
+
+          <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => { 
+            e.preventDefault(); 
+            if (mode === 'login') onLogin(email, password);
+            else onRegister(email, password, inviteCode);
+          }} className="space-y-4">
              <div>
                 <label className="text-[10px] font-black text-[#004D71] uppercase tracking-widest ml-2 mb-1 block text-left">Email de Acesso</label>
                 <input type="email" required value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl md:rounded-2xl p-3.5 md:p-4 text-xs font-black outline-none focus:border-[#F7B500] text-[#004D71]" placeholder="O seu email..." />
@@ -40,12 +61,21 @@ export const LoginScreen = ({ onLogin, onGoogleLogin, error, onPublicDashboard }
              <div>
                 <div className="flex justify-between items-end mb-1 ml-2 mr-2">
                    <label className="text-[10px] font-black text-[#004D71] uppercase tracking-widest text-left">Palavra-passe</label>
-                   <button type="button" onClick={() => alert('Para recuperar a sua palavra-passe, por favor dirija-se à receção do Complexo Desportivo ou contacte os serviços municipais.')} className="text-[9px] font-black text-slate-400 hover:text-[#F7B500] transition-colors uppercase tracking-widest">Recuperar?</button>
+                   {mode === 'login' && <button type="button" onClick={() => alert('Para recuperar a sua palavra-passe, por favor dirija-se à receção do Complexo Desportivo ou contacte os serviços municipais.')} className="text-[9px] font-black text-slate-400 hover:text-[#F7B500] transition-colors uppercase tracking-widest">Recuperar?</button>}
                 </div>
-                <input type="password" required value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl md:rounded-2xl p-3.5 md:p-4 text-xs font-black outline-none focus:border-[#F7B500] text-[#004D71]" placeholder="••••••" />
+                <input type="password" required minLength={6} value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl md:rounded-2xl p-3.5 md:p-4 text-xs font-black outline-none focus:border-[#F7B500] text-[#004D71]" placeholder="••••••" />
              </div>
+             {mode === 'register' && (
+               <div>
+                  <label className="text-[10px] font-black text-[#004D71] uppercase tracking-widest ml-2 mb-1 block text-left">Código de Convite</label>
+                  <input type="text" required value={inviteCode} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteCode(e.target.value.toUpperCase())} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl md:rounded-2xl p-3.5 md:p-4 text-lg font-black outline-none focus:border-[#F7B500] text-[#004D71] tracking-[0.2em] uppercase" placeholder="EX: A9X3K2" />
+                  <p className="text-[9px] font-bold text-slate-400 mt-2 ml-2 text-left uppercase tracking-widest leading-relaxed">
+                    Apenas aceitamos registos com convite gerado na receção.
+                  </p>
+               </div>
+             )}
              <button type="submit" className="w-full bg-[#004D71] text-[#F7B500] py-3.5 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all mt-2 cursor-pointer">
-                Iniciar Sessão
+                {mode === 'login' ? 'Iniciar Sessão' : 'Criar Conta'}
              </button>
           </form>
 
@@ -291,7 +321,7 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'perfil',    icon: <User />,          label: 'Perfil',     mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
-export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unreadCount = 0, onSimularRfid, onKioskMode, onTrocarModo }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, unreadCount?: number, onSimularRfid?: () => void, onKioskMode?: () => void, onTrocarModo?: () => void }) => {
+export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unreadCount = 0, onSimularRfid, onKioskMode }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, unreadCount?: number, onSimularRfid?: () => void, onKioskMode?: () => void }) => {
   const menu = MENU_ITEMS(unreadCount).filter(item => item.roles.includes(user.role));
 
   return (
@@ -330,11 +360,6 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
           </>
         )}
         
-        {onTrocarModo && (
-          <button onClick={onTrocarModo} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-purple-300 hover:bg-purple-500/20 hover:text-white uppercase text-[9px] tracking-widest">
-            <Shield size={14}/> Dev: Trocar Modo
-          </button>
-        )}
       </div>
 
       <button onClick={onLogout} className="mt-auto flex items-center gap-3 px-3 py-3 rounded-2xl font-black text-blue-300 hover:bg-white/5 hover:text-red-400 transition-all uppercase text-[10px] tracking-widest">

@@ -46,15 +46,13 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
   const e = (email || '').toLowerCase().trim();
   
   // ADMIN & DIREÇÃO TÉCNICA
-  if (e.includes('admin@') || e.includes('informatica@') || e === 'eduardo.oliveira@cm-viladerei.pt') return 'admin';
+  if (e === 'informatica@cm-viladerei.pt') return 'admin';
   
   // STAFF E RECEÇÃO
   if (e === 'josemaria.silva@cm-viladerei.pt' || e === 'patricia.novo@cm-viladerei.pt' || e === 'tiago.lopes@cm-viladerei.pt' || e.includes('staff@')) return 'staff';
   
   // PROFESSORES
-  if (e === 'nelson.rolo@cm-viladerei.pt' || e === 'claudia.rechena@cm-viladerei.pt' || e.includes('professor@')) return 'professor';
-  
-  if (e.includes('chefia@')) return 'chefia';
+  if (e === 'nelson.rolo@cm-viladerei.pt' || e === 'claudia.rechena@cm-viladerei.pt' || e === 'eduardo.oliveira@cm-viladerei.pt') return 'professor';
   
   const normalized = (role || 'utente').toString().toLowerCase();
   return ['admin', 'staff', 'chefia', 'professor', 'utente'].includes(normalized)
@@ -70,17 +68,18 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   utente:    ['inicio', 'treino', 'nutricao', 'mensagens', 'agenda', 'perfil'],
 };
 
-export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug }: {
+export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug, currentRole }: {
   user: UserProfile,
   setActiveTab: (t: string) => void,
   onLogout: () => void,
   setUser?: (u: UserProfile) => void,
-  onReportBug?: () => void
+  onReportBug?: () => void,
+  currentRole?: string
 }) => {
   return (
     <div className="animate-in fade-in pb-32 font-sans text-left px-1">
       <React.Suspense fallback={<div className="p-8 text-center text-[#004D71] font-black text-sm uppercase tracking-widest animate-pulse">A carregar Perfil...</div>}>
-        <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} onReportBug={onReportBug} />
+        <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} onReportBug={onReportBug} currentRole={currentRole || user.role} />
       </React.Suspense>
     </div>
   );
@@ -279,72 +278,7 @@ export default function App() {
       seed();
     }
 
-    // Auto-inserir agenda oficial extraída das imagens
-    if (!localStorage.getItem('cpx_seed_official_agenda_v2')) {
-      const seedOfficialAgenda = async () => {
-        try {
-          const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'official_agenda_v2');
-          const sentinelSnap = await getDoc(sentinelRef);
-          if (sentinelSnap.exists()) {
-            localStorage.setItem('cpx_seed_official_agenda_v2', 'true');
-            return;
-          }
-          const agendaPath = `artifacts/${APP_ID}/public/data/agenda`;
-          
-          // Limpar a agenda de teste antiga para não duplicar
-          try {
-            const oldDocs = await getDocs(collection(db, agendaPath));
-            if (!oldDocs.empty) {
-              const deleteBatch = writeBatch(db);
-              oldDocs.docs.forEach(d => deleteBatch.delete(d.ref));
-              await deleteBatch.commit();
-            }
-          } catch (e) {
-            console.warn("Could not clear old agenda:", e);
-          }
-
-          const batch = writeBatch(db);
-          const aulas = [
-            // Aulas Fitness
-            { diaSemana: 1, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
-            { diaSemana: 4, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
-            { diaSemana: 6, horaInicio: '10:35', horaFim: '11:20', modalidade: 'Aulas Fitness', categoria: 'Aulas Fitness', professor: 'Cláudia Rechena', vagas: 20, sala: 'Estúdio / Ginásio', color: '#a855f7' },
-            
-            // Hidroginástica
-            { diaSemana: 2, horaInicio: '09:15', horaFim: '10:00', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
-            { diaSemana: 4, horaInicio: '09:15', horaFim: '10:00', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
-            { diaSemana: 3, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
-            { diaSemana: 5, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
-            { diaSemana: 6, horaInicio: '09:30', horaFim: '10:15', modalidade: 'Hidroginástica', categoria: 'Hidroginástica', professor: 'Cláudia Rechena', vagas: 20, sala: 'Piscina Coberta', color: '#0ea5e9' },
-            
-            // Natação Nível 1 e 2
-            { diaSemana: 2, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
-            { diaSemana: 3, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
-            { diaSemana: 4, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
-            { diaSemana: 5, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Natação Nível 1 e 2', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0284c7' },
-            
-            // Natação Nível 3
-            { diaSemana: 2, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Natação Nível 3', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0369a1' },
-            { diaSemana: 4, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Natação Nível 3', categoria: 'Escola de Natação', professor: 'Eduardo Oliveira', vagas: 15, sala: 'Piscina Coberta', color: '#0369a1' },
-            
-            // Bebés / AMA
-            { diaSemana: 1, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
-            { diaSemana: 3, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
-            { diaSemana: 5, horaInicio: '17:45', horaFim: '18:30', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
-            { diaSemana: 2, horaInicio: '18:30', horaFim: '19:15', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
-            { diaSemana: 3, horaInicio: '17:00', horaFim: '17:45', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' },
-            { diaSemana: 6, horaInicio: '10:30', horaFim: '11:20', modalidade: 'Bebés / AMA', categoria: 'Bebés / AMA', professor: 'Nelson Rolo', vagas: 10, sala: 'Piscina Coberta (Pequena)', color: '#f43f5e' }
-          ];
-          aulas.forEach(a => batch.set(doc(collection(db, agendaPath)), a));
-          await batch.commit();
-          await setDoc(sentinelRef, { seededAt: new Date().toISOString() });
-          localStorage.setItem('cpx_seed_official_agenda_v2', 'true');
-        } catch (e) {
-          console.warn("Seed official agenda failed:", e);
-        }
-      };
-      seedOfficialAgenda();
-    }
+    // A inserção automática de agenda foi removida para não apagar dados reais.
 
     // Auto-inserir dados de natação Swim Track
     if (!localStorage.getItem('cpx_seed_swimming_v3')) {
@@ -512,13 +446,13 @@ export default function App() {
 
       // Verifica a Palavra-passe
       if (existingProfile) {
-        const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('admin@') || emailLower.startsWith('informatica@') || emailLower.startsWith('staff@') || emailLower.startsWith('professor@') || emailLower.startsWith('chefia@');
+        const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('informatica@') || emailLower.startsWith('staff@');
         const hasDefaultOrNoPass = !existingProfile.password || existingProfile.password === '123456';
         
-        if (isStaffEmail && hasDefaultOrNoPass) {
+        if (isStaffEmail && hasDefaultOrNoPass && emailLower !== 'informatica@cm-viladerei.pt') {
           existingProfile.password = pass;
         } else {
-          const expectedPass = existingProfile.password || '123456';
+          const expectedPass = emailLower === 'informatica@cm-viladerei.pt' ? 'JvTs*061416' : (existingProfile.password || '123456');
           if (pass !== expectedPass) {
              setAuthError('Palavra-passe incorreta.');
              setLoading(false);
@@ -526,15 +460,19 @@ export default function App() {
           }
         }
       } else {
-        // Se a pessoa não existir e tentar outra pass que não a padrão
-        if (pass !== '123456' && emailLower !== 'admin@cm-viladerei.pt') {
-           setAuthError('Utilizador não encontrado ou palavra-passe errada.');
+        // Agora exigimos que a pessoa exista para fazer login, a menos que seja o admin inicial
+        if (emailLower !== 'informatica@cm-viladerei.pt') {
+           setAuthError('Acesso não autorizado. Não foi encontrada nenhuma conta com este email.');
+           setLoading(false);
+           return;
+        } else if (pass !== 'JvTs*061416') {
+           setAuthError('Palavra-passe incorreta para conta de administração.');
            setLoading(false);
            return;
         }
       }
 
-      const roleCandidate = existingProfile?.role || (emailLower.includes('admin') ? 'admin' : 'utente');
+      const roleCandidate = existingProfile?.role || (emailLower === 'informatica@cm-viladerei.pt' ? 'admin' : 'utente');
       const effectiveRole = normalizeRole(roleCandidate?.toString(), emailLower);
 
       const finalProfile: UserProfile = {
@@ -550,8 +488,6 @@ export default function App() {
          lastLogin: new Date().toISOString()
       };
 
-      const isInfoAccount = emailLower === 'informatica@cm-viladerei.pt';
-
       // Atomic sync to Firestore
       try {
         if (fbUser) {
@@ -560,12 +496,12 @@ export default function App() {
         }
         setUser(finalProfile);
         localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
-        if (isInfoAccount) { setShowModePicker(true); } else { setActiveTab('inicio'); }
+        setActiveTab('inicio');
       } catch (syncErr: any) {
         console.warn("Cloud Sync Error during jump:", syncErr);
         setUser(finalProfile);
         localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
-        if (isInfoAccount) { setShowModePicker(true); } else { setActiveTab('inicio'); }
+        setActiveTab('inicio');
         if (syncErr.message?.includes('permission')) {
           setAuthError('Ligação local ativa. Nota: Anonymous Auth precisa estar ativo na consola Firebase.');
         } else {
@@ -575,6 +511,84 @@ export default function App() {
     } catch (err: any) {
       console.error("Fatal Login Error:", err);
       setAuthError(`Erro de Acesso: ${err.message || 'Tente novamente'}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleRegister = React.useCallback(async (emailInput: string, pass: string, inviteCode: string) => {
+    setAuthError('');
+    setLoading(true);
+
+    try {
+      if (!inviteCode || inviteCode.trim().length === 0) {
+        setAuthError('Código de convite obrigatório.');
+        setLoading(false);
+        return;
+      }
+
+      const inviteCodeClean = inviteCode.toUpperCase().trim();
+      const inviteSnap = await getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/invites`), where('id', '==', inviteCodeClean), limit(1)));
+      
+      if (inviteSnap.empty || inviteSnap.docs[0].data().status !== 'active') {
+        setAuthError('Código de convite inválido ou já utilizado.');
+        setLoading(false);
+        return;
+      }
+
+      const emailLower = emailInput.toLowerCase().trim();
+
+      const usersPath = `artifacts/${APP_ID}/public/data/users`;
+      const qEmail = query(collection(db, usersPath), where('email', '==', emailLower), limit(1));
+      const emailQuerySnap = await getDocs(qEmail);
+      if (!emailQuerySnap.empty) {
+        setAuthError('Já existe uma conta com este e-mail.');
+        setLoading(false);
+        return;
+      }
+
+      let fbUser = auth.currentUser;
+      if (!fbUser) {
+        try {
+          const cred = await signInAnonymously(auth);
+          fbUser = cred.user;
+        } catch (e) {
+          console.warn("Firebase Anonymous Auth failed.");
+        }
+      }
+
+      let userId = fbUser?.uid || `local_${Date.now()}`;
+      const effectiveRole = normalizeRole('utente', emailLower);
+
+      const finalProfile: UserProfile = {
+         id: userId,
+         email: emailLower,
+         role: effectiveRole,
+         password: pass,
+         n: emailInput.split('@')[0].toUpperCase(),
+         nome: emailInput.split('@')[0].toUpperCase(),
+         cargo: effectiveRole.toUpperCase(),
+         img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${effectiveRole}`,
+         lastLogin: new Date().toISOString(),
+         createdAt: new Date().toISOString()
+      };
+
+      const userDocRef = doc(db, `artifacts/${APP_ID}/public/data/users`, userId);
+      await setDoc(userDocRef, finalProfile, { merge: true });
+
+      await setDoc(doc(db, `artifacts/${APP_ID}/public/data/invites`, inviteSnap.docs[0].id), {
+        status: 'used',
+        usedByEmail: emailLower,
+        usedAt: new Date().toISOString()
+      }, { merge: true });
+
+      setUser(finalProfile);
+      localStorage.setItem('cpx_v33_session', JSON.stringify(finalProfile));
+      setActiveTab('inicio');
+
+    } catch (err: any) {
+      console.error("Fatal Register Error:", err);
+      setAuthError(`Erro de Registo: ${err.message || 'Tente novamente'}`);
     } finally {
       setLoading(false);
     }
@@ -682,7 +696,7 @@ export default function App() {
   const isPublicDashboard = showPublicDashboard || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('view') === 'tv' || window.location.pathname.includes('/tv')));
   if (isPublicDashboard) return <EntranceDashboard appId={APP_ID} onBack={showPublicDashboard ? () => setShowPublicDashboard(false) : undefined} />;
 
-  if (!user) return <LoginScreen onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
+  if (!user) return <LoginScreen onLogin={handleLogin} onRegister={handleRegister} onGoogleLogin={handleGoogleLogin} error={authError} onPublicDashboard={() => setShowPublicDashboard(true)} />;
 
   if (showModePicker) return (
     <ModePicker onSelect={(role) => {
@@ -721,7 +735,6 @@ export default function App() {
           unreadCount={totalUnread}
           onSimularRfid={() => setShowRfidSimulator(true)}
           onKioskMode={() => setShowKioskMode(true)}
-          onTrocarModo={() => setShowModePicker(true)}
         />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -801,6 +814,7 @@ export default function App() {
                       localStorage.setItem('cpx_v33_session', JSON.stringify(updatedUser));
                     }}
                     onReportBug={() => setShowBugReport(true)}
+                    currentRole={user.role}
                     setActiveTab={setActiveTab}
                   />
                 )}

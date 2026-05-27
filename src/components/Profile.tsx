@@ -279,8 +279,8 @@ export function ProfileViewModule({
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 text-left px-2 pb-24 max-w-4xl mx-auto">
 
-      {/* ID CARD — apenas visível em vistas externas (admin a ver utente, etc.) */}
-      {isExternalView && <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
+      {/* ID CARD — visível para todos (foto, nome, role, etc.) */}
+      <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
         <div className="flex items-center justify-between px-6 pt-5 pb-2">
           <div className="flex items-center gap-2">
             {isExternalView && (
@@ -385,7 +385,7 @@ export function ProfileViewModule({
           </div>
         </div>
         <div className="h-2 bg-[#F7B500] w-full"/>
-      </div>}
+      </div>
 
       <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={e => {
         if (e.target.files?.[0]) {
@@ -443,8 +443,8 @@ export function ProfileViewModule({
         {[
           { id: 'geral',      label: 'Identificação',   icon: <User size={15}/> },
           { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
-          { id: 'saude',      label: 'Saúde & Metas',    icon: <Heart size={15}/> },
-          { id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> },
+          ...(formData.role === 'utente' ? [{ id: 'saude',      label: 'Saúde & Metas',    icon: <Heart size={15}/> }] : []),
+          ...(formData.role === 'utente' ? [{ id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> }] : []),
           ...(formData.role === 'utente' ? [{ id: 'treino', label: 'Treino', icon: <Dumbbell size={15}/> }] : []),
           ...(formData.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
         ].map(t => (
@@ -537,20 +537,22 @@ export function ProfileViewModule({
           </div>
 
           {/* Cartão Municipal */}
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
-            <SectionTitle icon={<CreditCard size={16}/>} label="Cartão Municipal" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormInput label="Número do Cartão Municipal" icon={<CreditCard size={14}/>}
-                value={formData.cartao_municipal || ''} disabled={!isEditing}
-                onChange={v => set('cartao_municipal', v)} />
-              <FormInput label="Município" icon={<MapPin size={14}/>}
-                value={formData.municipio_cartao || 'Vila de Rei'} disabled={!isEditing}
-                onChange={v => set('municipio_cartao', v)} />
+          {formData.role === 'utente' && (
+            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+              <SectionTitle icon={<CreditCard size={16}/>} label="Cartão Municipal" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormInput label="Número do Cartão Municipal" icon={<CreditCard size={14}/>}
+                  value={formData.cartao_municipal || ''} disabled={!isEditing}
+                  onChange={v => set('cartao_municipal', v)} />
+                <FormInput label="Município" icon={<MapPin size={14}/>}
+                  value={formData.municipio_cartao || 'Vila de Rei'} disabled={!isEditing}
+                  onChange={v => set('municipio_cartao', v)} />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Financeiro (Gestão de Entradas) */}
-          {['admin', 'staff', 'chefia'].includes(currentRole) && (
+          {['admin', 'staff', 'chefia'].includes(currentRole) && formData.role === 'utente' && (
             <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
               <SectionTitle icon={<CreditCard size={16}/>} label="Gestão de Entradas (Carregamentos)" />
               
