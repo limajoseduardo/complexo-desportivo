@@ -314,7 +314,6 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'alunos',    icon: <Users />,         label: 'Alunos',     mobileLabel: 'ALUNOS', roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
   { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor', 'utente'] },
-  { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios', mobileLabel: 'EXERCÍCIOS', roles: ['admin', 'professor', 'chefia'] },
   { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: ['utente'] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia', 'professor'] },

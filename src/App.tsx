@@ -62,10 +62,10 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
+  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  chefia:    ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
   utente:    ['inicio', 'treino', 'nutricao', 'mensagens', 'agenda', 'perfil'],
 };
 
@@ -804,7 +804,6 @@ export default function App() {
                 )}
                 {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
                 {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
-                {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
