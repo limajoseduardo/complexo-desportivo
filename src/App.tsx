@@ -101,8 +101,23 @@ export default function App() {
     } catch (e) {}
     return null;
   });
-  const [activeTabState, setActiveTabState] = useState('acessos');
-  const activeTab = activeTabState;
+  const [activeTabState, setActiveTabState] = useState(() => {
+    try {
+      const savedSession = localStorage.getItem('cpx_v33_session');
+      if (savedSession) {
+        const parsedUser = JSON.parse(savedSession);
+        const role = normalizeRole(parsedUser.role, parsedUser.email);
+        const savedTab = localStorage.getItem('cpx_active_tab');
+        const allowed = TABS_BY_ROLE[role] || ['inicio'];
+        if (savedTab && allowed.includes(savedTab)) return savedTab;
+        return allowed[0] || 'inicio';
+      }
+    } catch (e) {}
+    return 'inicio';
+  });
+  const activeTab = user
+    ? (TABS_BY_ROLE[user.role]?.includes(activeTabState) ? activeTabState : 'inicio')
+    : activeTabState;
   const setActiveTab = (tab: string) => { setActiveTabState(tab); localStorage.setItem('cpx_active_tab', tab); };
   const [authError, setAuthError] = useState('');
   const [showPublicDashboard, setShowPublicDashboard] = useState(false);
