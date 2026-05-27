@@ -6,7 +6,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 export const APP_ID = 'cpx-vila-rei-main';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
 const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';

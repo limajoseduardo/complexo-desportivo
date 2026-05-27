@@ -510,14 +510,14 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
 
   return (
     <div className="space-y-6 animate-in fade-in pb-32 text-left font-sans max-w-full overflow-hidden px-1">
-      <div className="px-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="px-1 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter flex items-center gap-3">
             <Users className="text-[#F7B500]"/> Registo de Acessos
           </h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Controlo histórico de entradas e saídas</p>
         </div>
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full xl:w-auto">
           <div className="flex items-center gap-2">
             <div className="relative w-28 md:w-36">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -717,7 +717,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       )}
 
       {/* Quadrados em tempo real */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
         {React.useMemo(() => [
           { id: 'livre',    label: 'Piscina Livre', icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
           { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
@@ -731,7 +731,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
           <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex items-center justify-between gap-1.5 border border-white/10`}>
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <span className={`${z.color} bg-white/10 p-1 rounded-md shrink-0 shadow-sm`}>{z.icon}</span>
-              <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight break-words line-clamp-2 drop-shadow-sm truncate">{z.label}</p>
+              <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight break-words line-clamp-2 drop-shadow-sm">{z.label}</p>
             </div>
             <p className={`text-xl font-black tabular-nums leading-none ${z.color} shrink-0 drop-shadow-md`}>{z.count}</p>
           </div>

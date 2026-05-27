@@ -4,20 +4,26 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ModalitiesDashboard, UtenteDashboard, StaffDashboard } from './components/Dashboards';
-import { EntranceDashboard } from './components/EntranceDashboard';
-import { UtentesList, ScannerScreen } from './components/Utentes';
-import { BugReportModule } from './components/BugReport';
-import { ProfileViewModule } from './components/Profile';
-import { MapsManager } from './components/Maps';
-import { ExerciseGallery } from './components/Exercises';
-import { ChatModule } from './components/Chat';
-import { UtenteTrainingModule } from './components/UtenteTraining';
-import { TrainerTrainingModule } from './components/TrainerTrainingPlans';
-import { AccessLogsModule } from './components/AccessLogs';
-import { AgendaModule } from './components/Agenda';
-import { KioskMode } from './components/KioskMode';
-import { SwimmingTeacherPortal, seedSwimmingData } from './components/SwimmingModule';
+import { seedSwimmingData } from './components/SwimmingModule';
+
+const ModalitiesDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.ModalitiesDashboard })));
+const UtenteDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.UtenteDashboard })));
+const StaffDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.StaffDashboard })));
+const EntranceDashboard = React.lazy(() => import('./components/EntranceDashboard').then(m => ({ default: m.EntranceDashboard })));
+const UtentesList = React.lazy(() => import('./components/Utentes').then(m => ({ default: m.UtentesList })));
+const ScannerScreen = React.lazy(() => import('./components/Utentes').then(m => ({ default: m.ScannerScreen })));
+const BugReportModule = React.lazy(() => import('./components/BugReport').then(m => ({ default: m.BugReportModule })));
+const ProfileViewModule = React.lazy(() => import('./components/Profile').then(m => ({ default: m.ProfileViewModule })));
+const MapsManager = React.lazy(() => import('./components/Maps').then(m => ({ default: m.MapsManager })));
+const ExerciseGallery = React.lazy(() => import('./components/Exercises').then(m => ({ default: m.ExerciseGallery })));
+const ChatModule = React.lazy(() => import('./components/Chat').then(m => ({ default: m.ChatModule })));
+const UtenteTrainingModule = React.lazy(() => import('./components/UtenteTraining').then(m => ({ default: m.UtenteTrainingModule })));
+const TrainerTrainingModule = React.lazy(() => import('./components/TrainerTrainingPlans').then(m => ({ default: m.TrainerTrainingModule })));
+const AccessLogsModule = React.lazy(() => import('./components/AccessLogs').then(m => ({ default: m.AccessLogsModule })));
+const AgendaModule = React.lazy(() => import('./components/Agenda').then(m => ({ default: m.AgendaModule })));
+const KioskMode = React.lazy(() => import('./components/KioskMode').then(m => ({ default: m.KioskMode })));
+const SwimmingTeacherPortal = React.lazy(() => import('./components/SwimmingModule').then(m => ({ default: m.SwimmingTeacherPortal })));
+const DietModule = React.lazy(() => import('./components/DietModule').then(m => ({ default: m.DietModule })));
 import { seedUtentesTestData } from './lib/seedUtentes';
 import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
@@ -57,11 +63,11 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
   chefia:    ['inicio', 'utentes', 'acessos', 'exercicios', 'mapas', 'agenda', 'perfil'],
-  staff:     ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'alunos', 'planos', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  utente:    ['inicio', 'treino', 'mensagens', 'agenda', 'perfil'],
+  staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  professor: ['inicio', 'alunos', 'planos', 'nutricao', 'exercicios', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  utente:    ['inicio', 'treino', 'nutricao', 'mensagens', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug }: {
@@ -73,7 +79,9 @@ export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogou
 }) => {
   return (
     <div className="animate-in fade-in pb-32 font-sans text-left px-1">
-      <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} onReportBug={onReportBug} />
+      <React.Suspense fallback={<div className="p-8 text-center text-[#004D71] font-black text-sm uppercase tracking-widest animate-pulse">A carregar Perfil...</div>}>
+        <ProfileViewModule user={user} onLogout={onLogout} setUser={setUser} onReportBug={onReportBug} />
+      </React.Suspense>
     </div>
   );
 });
@@ -687,17 +695,21 @@ export default function App() {
   return (
     <div className="app-shell font-sans">
       {showKioskMode && (
-        <KioskMode 
-          scanResult={kioskScanResult} 
-          onExit={() => setShowKioskMode(false)} 
-        />
+        <React.Suspense fallback={null}>
+          <KioskMode 
+            scanResult={kioskScanResult} 
+            onExit={() => setShowKioskMode(false)} 
+          />
+        </React.Suspense>
       )}
       {showScanner && (
-        <ScannerScreen 
-          utentes={utentes} 
-          onBack={() => setShowScanner(false)} 
-          onResult={(u) => { setShowScanner(false); setViewingProfile(u); }} 
-        />
+        <React.Suspense fallback={null}>
+          <ScannerScreen 
+            utentes={utentes} 
+            onBack={() => setShowScanner(false)} 
+            onResult={(u) => { setShowScanner(false); setViewingProfile(u); }} 
+          />
+        </React.Suspense>
       )}
       
       <div className="flex h-full w-full bg-slate-50 overflow-hidden relative">
@@ -714,7 +726,10 @@ export default function App() {
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header user={user} unreadCount={totalUnread} isVisible={isNavVisible} />
-          <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
+          
+          <React.Suspense fallback={null}>
+            <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
+          </React.Suspense>
           
           {latestAviso && !avisoDismissed && (
             <div className="bg-[#F7B500] text-[#004D71] px-6 py-4 flex items-center justify-between border-b-2 border-[#004D71]/10 shadow-sm shrink-0 animate-in slide-in-from-top duration-300">
@@ -735,6 +750,7 @@ export default function App() {
           )}
           
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
+            <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center text-[#004D71] font-black uppercase text-sm animate-pulse tracking-widest mt-20">A carregar...</div>}>
             {viewingProfile ? (
               <ProfileViewModule 
                 user={viewingProfile} 
@@ -769,6 +785,7 @@ export default function App() {
                   )
                 )}
                 {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
+                {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
                 {activeTab === 'exercicios' && <ExerciseGallery user={user} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
@@ -789,6 +806,7 @@ export default function App() {
                 )}
               </>
             )}
+            </React.Suspense>
           </main>
 
           <MobileNav 

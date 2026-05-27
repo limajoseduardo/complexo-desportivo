@@ -3,7 +3,7 @@ import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -208,9 +208,9 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
       {/* Centro + Direita: Meteorologia completa + Relógio */}
       <div className="flex items-center gap-4 justify-end shrink-0">
 
-        {/* Bloco meteorologia — lg+ */}
+        {/* Bloco meteorologia — xl+ */}
         {weather && (
-          <div className="hidden lg:flex items-center gap-5 bg-slate-50/50 p-2.5 rounded-2xl border-2 border-slate-100 shadow-sm">
+          <div className="hidden xl:flex items-center gap-5 bg-slate-50/50 p-2.5 rounded-2xl border-2 border-slate-100 shadow-sm">
             <div className="text-[#004D71] drop-shadow-sm">
               <HeaderWeatherIcon code={weather.weatherCode} size={36} />
             </div>
@@ -245,7 +245,7 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
 
         {/* Meteorologia compacta — sm */}
         {weather && (
-          <div className="flex lg:hidden items-center gap-1.5 text-[#004D71]">
+          <div className="flex xl:hidden items-center gap-1.5 text-[#004D71]">
             <HeaderWeatherIcon code={weather.weatherCode} size={20} />
             <span className="text-base font-black tabular-nums">{weather.temperature}°C</span>
             <span className="text-[10px] font-bold text-slate-400">{weather.humidity}%<Droplets size={10} className="inline ml-0.5"/></span>
@@ -282,6 +282,7 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    mobileLabel: 'ACESSOS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'alunos',    icon: <Users />,         label: 'Alunos',     mobileLabel: 'ALUNOS', roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
+  { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'staff', 'professor', 'utente'] },
   { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios', mobileLabel: 'EXERCÍCIOS', roles: ['admin', 'professor', 'chefia'] },
   { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: ['utente'] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
@@ -294,13 +295,13 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
   const menu = MENU_ITEMS(unreadCount).filter(item => item.roles.includes(user.role));
 
   return (
-    <aside className="hidden lg:flex flex-col w-80 bg-[#004D71] p-8 text-white relative shrink-0">
+    <aside className="hidden lg:flex flex-col w-56 bg-[#004D71] p-4 text-white relative shrink-0">
       <nav className="flex-1 space-y-1">
         {menu.map(item => (
-          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-5 py-4 rounded-[1.5rem] font-black transition-all ${activeTab === item.id ? 'bg-[#F7B500] text-[#004D71] shadow-xl translate-x-2' : 'text-blue-100/40 hover:bg-white/5 hover:text-white'}`}>
-            <div className="flex items-center gap-4">
-              {React.cloneElement(item.icon as React.ReactElement, { size: 20 })}
-              <span className="uppercase text-[11px] tracking-widest">{item.label}</span>
+          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl font-black transition-all ${activeTab === item.id ? 'bg-[#F7B500] text-[#004D71] shadow-xl translate-x-2' : 'text-blue-100/40 hover:bg-white/5 hover:text-white'}`}>
+            <div className="flex items-center gap-3">
+              {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
+              <span className="uppercase text-[10px] tracking-widest">{item.label}</span>
             </div>
             {item.badge ? (
               <div className="relative">
@@ -317,27 +318,27 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
           <>
             <p className="text-[9px] font-black uppercase tracking-widest text-white/40 px-3 mb-3">Receção</p>
             {onKioskMode && (
-              <button onClick={onKioskMode} className="w-full flex items-center gap-4 px-5 py-3 rounded-[1.2rem] font-black transition-all text-sky-200 hover:bg-sky-500/20 hover:text-white uppercase text-[10px] tracking-widest">
-                <Monitor size={16}/> Quiosque Ecrã
+              <button onClick={onKioskMode} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-sky-200 hover:bg-sky-500/20 hover:text-white uppercase text-[9px] tracking-widest">
+                <Monitor size={14}/> Quiosque Ecrã
               </button>
             )}
             {onSimularRfid && (
-              <button onClick={onSimularRfid} className="w-full flex items-center gap-4 px-5 py-3 rounded-[1.2rem] font-black transition-all text-yellow-200 hover:bg-yellow-500/20 hover:text-white uppercase text-[10px] tracking-widest">
-                <Radio size={16}/> Teste RFID
+              <button onClick={onSimularRfid} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-yellow-200 hover:bg-yellow-500/20 hover:text-white uppercase text-[9px] tracking-widest">
+                <Radio size={14}/> Teste RFID
               </button>
             )}
           </>
         )}
         
         {onTrocarModo && (
-          <button onClick={onTrocarModo} className="w-full flex items-center gap-4 px-5 py-3 rounded-[1.2rem] font-black transition-all text-purple-300 hover:bg-purple-500/20 hover:text-white uppercase text-[10px] tracking-widest">
-            <Shield size={16}/> Dev: Trocar Modo
+          <button onClick={onTrocarModo} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-purple-300 hover:bg-purple-500/20 hover:text-white uppercase text-[9px] tracking-widest">
+            <Shield size={14}/> Dev: Trocar Modo
           </button>
         )}
       </div>
 
-      <button onClick={onLogout} className="mt-auto flex items-center gap-4 px-5 py-4 rounded-2xl font-black text-blue-300 hover:bg-white/5 hover:text-red-400 transition-all uppercase text-[11px] tracking-widest">
-        <LogOut size={18}/> Terminar Sessão
+      <button onClick={onLogout} className="mt-auto flex items-center gap-3 px-3 py-3 rounded-2xl font-black text-blue-300 hover:bg-white/5 hover:text-red-400 transition-all uppercase text-[10px] tracking-widest">
+        <LogOut size={16}/> Terminar Sessão
       </button>
     </aside>
   );

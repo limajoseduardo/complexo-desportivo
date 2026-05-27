@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Dumbbell, Plus, Search, BookOpen, X, Edit, Trash2, Check, Copy } from 'lucide-react';
+import { motion } from "framer-motion";
+import { Edit2, Play, Users, Save, Eye, MoreVertical } from "lucide-react";
 import { db } from '../lib/firebase';
 import { APP_ID } from '../App';
-import { collection, onSnapshot, query, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, addDoc, updateDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
 import { UserProfile, Exercise, WorkoutTemplate, WorkoutSession, WorkoutSet } from '../types';
+import { AdvancedTemplateEditor } from "./AdvancedTemplateEditor";
 
 export function TrainerTrainingModule({ user }: { user: UserProfile }) {
   const [activeTab, setActiveTab] = useState<'exercicios' | 'templates'>('exercicios');
@@ -215,7 +218,7 @@ function WorkoutTemplatesTab({ user }: { user: UserProfile }) {
       const workoutSession: Partial<WorkoutSession> = {
          title: session.title,
          description: applyingTemplate.name,
-         exercises: session.exercises,
+         exercises: session.exercises as Exercise[],
          completed: false,
          durationSeconds: 0,
          assignedStudentId: selectedStudent,
@@ -229,7 +232,7 @@ function WorkoutTemplatesTab({ user }: { user: UserProfile }) {
   };
 
   if (editingTemplate) {
-      return <TemplateEditor template={editingTemplate} onBack={() => setEditingTemplate(null)} />;
+    return <AdvancedTemplateEditor template={editingTemplate} onBack={() => setEditingTemplate(null)} />;
   }
 
   return (
@@ -364,6 +367,7 @@ function TemplateEditor({ template, onBack }: { template: WorkoutTemplate, onBac
 
    const addExerciseToSession = (sessionIndex: number, exLib: any) => {
        const newEx = {
+           id: crypto.randomUUID(),
            name: exLib.name,
            type: exLib.type || 'STRENGTH',
            sets: [{ reps: 10, weight: 0 }, { reps: 10, weight: 0 }, { reps: 10, weight: 0 }]
