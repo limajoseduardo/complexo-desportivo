@@ -460,13 +460,22 @@ export default function App() {
           }
         }
       } else {
-        // Agora exigimos que a pessoa exista para fazer login, a menos que seja o admin inicial
-        if (emailLower !== 'informatica@cm-viladerei.pt') {
-           setAuthError('Acesso não autorizado. Não foi encontrada nenhuma conta com este email.');
-           setLoading(false);
-           return;
-        } else if (pass !== 'JvTs*061416') {
-           setAuthError('Palavra-passe incorreta para conta de administração.');
+        // Agora exigimos que a pessoa exista para fazer login, a menos que seja admin ou staff
+        const isStaffEmail = emailLower.includes('@cm-viladerei.pt') || emailLower.startsWith('staff@');
+        if (emailLower === 'informatica@cm-viladerei.pt') {
+           if (pass !== 'JvTs*061416') {
+              setAuthError('Palavra-passe incorreta para conta de administração.');
+              setLoading(false);
+              return;
+           }
+        } else if (isStaffEmail) {
+           if (pass !== '123456') {
+              setAuthError('As novas contas de equipa usam a password 123456 para primeiro acesso.');
+              setLoading(false);
+              return;
+           }
+        } else {
+           setAuthError('Acesso não autorizado. Não foi encontrada nenhuma conta com este email. Use o Registo com Convite.');
            setLoading(false);
            return;
         }
