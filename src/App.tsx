@@ -808,7 +808,7 @@ export default function App() {
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
-                {activeTab === 'eventos' && <EventsModule user={user} />}
+                {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                 {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                 {activeTab === 'perfil' && (

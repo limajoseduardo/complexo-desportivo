@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText } from 'lucide-react';
+import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
@@ -23,13 +23,17 @@ interface Evento {
 
 interface EventsModuleProps {
   user: UserProfile;
+  utentes: UserProfile[];
 }
 
-export function EventsModule({ user }: EventsModuleProps) {
+export function EventsModule({ user, utentes }: EventsModuleProps) {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewingInscritos, setViewingInscritos] = useState<Evento | null>(null);
+  
+  // Search for adding participants manually
+  const [searchUtente, setSearchUtente] = useState('');
   
   const [formData, setFormData] = useState({
     titulo: '',
@@ -53,12 +57,21 @@ export function EventsModule({ user }: EventsModuleProps) {
         list.push({ id: docSnap.id, ...docSnap.data() } as Evento);
       });
       setEventos(list);
+      
+      // Update viewingInscritos if it's currently open
+      if (viewingInscritos) {
+        const updated = list.find(e => e.id === viewingInscritos.id);
+        if (updated) {
+          setViewingInscritos(updated);
+        }
+      }
+      
       setLoading(false);
     }, (error) => {
       console.error("Erro ao sincronizar eventos:", error);
       setLoading(false);
     });
-  }, []);
+  }, [viewingInscritos?.id]);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +152,67 @@ export function EventsModule({ user }: EventsModuleProps) {
       alert("Ocorreu um erro ao processar a inscrição.");
     }
   };
+
+  // Staff Manually Adds Participant
+  const handleAddParticipant = async (evento: Evento, utente: UserProfile) => {
+    if (evento.inscritos.some(i => i.id === utente.id)) {
+      alert("Este utente já se encontra inscrito neste evento!");
+      return;
+    }
+
+    if (evento.maxParticipantes && evento.inscritos.length >= evento.maxParticipantes) {
+      if (!window.confirm("O limite de inscrições já foi atingido. Deseja inscrever mesmo assim?")) return;
+    }
+
+    const path = `artifacts/${APP_ID}/public/data/eventos`;
+    const newInscritos = [
+      ...evento.inscritos,
+      {
+        id: utente.id,
+        nome: utente.nome || utente.n || 'Utente',
+        email: utente.email,
+        dataInscricao: new Date().toISOString()
+      }
+    ];
+
+    try {
+      await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
+      setSearchUtente(''); // Clear search
+    } catch (error) {
+      console.error("Erro ao adicionar participante:", error);
+      alert("Erro ao adicionar participante.");
+    }
+  };
+
+  // Staff Manually Removes Participant
+  const handleRemoveParticipant = async (evento: Evento, participantId: string, participantNome: string) => {
+    if (!window.confirm(`Tem a certeza que deseja remover ${participantNome.toUpperCase()} desta prova?`)) return;
+
+    const path = `artifacts/${APP_ID}/public/data/eventos`;
+    const newInscritos = evento.inscritos.filter(i => i.id !== participantId);
+
+    try {
+      await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
+    } catch (error) {
+      console.error("Erro ao remover participante:", error);
+      alert("Erro ao remover participante.");
+    }
+  };
+
+  // Filter utentes who are NOT enrolled and match search query
+  const searchableUtentes = React.useMemo(() => {
+    if (!viewingInscritos || !searchUtente.trim()) return [];
+    
+    // Filter only those who have 'utente' role or no staff roles, and match search
+    return utentes
+      .filter(u => {
+        const r = (u.role || '').toLowerCase();
+        return !['admin', 'staff', 'chefia', 'professor'].includes(r);
+      })
+      .filter(u => !viewingInscritos.inscritos.some(i => i.id === u.id))
+      .filter(u => (u.nome || u.n || '').toLowerCase().includes(searchUtente.toLowerCase()))
+      .slice(0, 5); // Limit to top 5 results for clean display
+  }, [utentes, viewingInscritos, searchUtente]);
 
   return (
     <div className="space-y-6 animate-in fade-in pb-32 text-left font-sans max-w-full overflow-hidden px-1">
@@ -246,13 +320,13 @@ export function EventsModule({ user }: EventsModuleProps) {
                     </button>
                   )}
 
-                  {/* View participants button for Staff/Professores */}
+                  {/* View/Manage participants button for Staff/Professores */}
                   {isStaff && (
                     <button
-                      onClick={() => setViewingInscritos(evento)}
+                      onClick={() => { setViewingInscritos(evento); setSearchUtente(''); }}
                       className="flex-1 py-3 px-4 bg-slate-50 border-2 border-slate-100 text-[#004D71] rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                      <Users size={12}/> Ver Inscritos ({evento.inscritos.length})
+                      <Users size={12}/> Gerir Inscritos ({evento.inscritos.length})
                     </button>
                   )}
                 </div>
@@ -364,7 +438,7 @@ export function EventsModule({ user }: EventsModuleProps) {
         </div>
       )}
 
-      {/* MODAL: VER INSCRITOS */}
+      {/* MODAL: VER/GERIR INSCRITOS */}
       {viewingInscritos && (
         <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-lg rounded-[3rem] p-8 shadow-2xl relative animate-in zoom-in max-h-[90vh] flex flex-col justify-between">
@@ -375,9 +449,9 @@ export function EventsModule({ user }: EventsModuleProps) {
               <X size={20}/>
             </button>
 
-            <div className="mb-6 text-left border-b pb-4 shrink-0">
+            <div className="mb-4 text-left border-b pb-4 shrink-0">
               <h3 className="text-lg font-black text-[#004D71] uppercase leading-tight">
-                Inscritos na Prova
+                Gerir Inscritos na Prova
               </h3>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
                 {viewingInscritos.titulo}
@@ -387,7 +461,44 @@ export function EventsModule({ user }: EventsModuleProps) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar my-4">
+            {/* Staff-only section: Dynamic search to add participant */}
+            {isStaff && (
+              <div className="mb-4 space-y-2 text-left bg-slate-50 p-4 rounded-2xl border border-slate-100 relative shrink-0">
+                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Inscrever Utente Manualmente</label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                  <input
+                    type="text"
+                    value={searchUtente}
+                    onChange={e => setSearchUtente(e.target.value)}
+                    placeholder="PROCURAR UTENTE PELO NOME..."
+                    className="w-full bg-white border border-slate-200 p-3 pl-10 rounded-xl font-black text-[9px] uppercase tracking-wider outline-none focus:border-[#004D71]/40"
+                  />
+                </div>
+
+                {/* Dropdown Search Results */}
+                {searchableUtentes.length > 0 && (
+                  <div className="absolute left-4 right-4 bg-white border border-slate-200 rounded-2xl shadow-xl z-[10001] max-h-[200px] overflow-y-auto mt-1 overflow-hidden divide-y">
+                    {searchableUtentes.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => handleAddParticipant(viewingInscritos, u)}
+                        className="w-full p-3 text-left hover:bg-slate-50 active:bg-blue-50 transition-all flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="font-black text-[10px] text-[#004D71] uppercase leading-none">{u.nome || u.n}</p>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-1.5">{u.email}</p>
+                        </div>
+                        <UserPlus size={14} className="text-[#004D71]" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Enrolled Participants List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar my-2">
               {viewingInscritos.inscritos.length === 0 ? (
                 <div className="text-center py-12 text-slate-300 font-black uppercase text-[10px] tracking-widest">
                   Nenhuma inscrição realizada até ao momento.
@@ -400,16 +511,28 @@ export function EventsModule({ user }: EventsModuleProps) {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-lg bg-[#004D71] text-[#F7B500] font-black text-[9px] flex items-center justify-center">
+                        <span className="w-5 h-5 rounded-lg bg-[#004D71] text-[#F7B500] font-black text-[9px] flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
                         <h4 className="font-black text-xs text-[#004D71] uppercase leading-none">{inscrito.nome}</h4>
                       </div>
-                      <p className="text-[8px] font-black text-slate-400 mt-2 uppercase tracking-widest">{inscrito.email}</p>
+                      <p className="text-[8px] font-black text-slate-400 mt-2 uppercase tracking-widest line-clamp-1">{inscrito.email}</p>
                     </div>
-                    <span className="text-[8px] font-black text-slate-400 bg-white border px-2.5 py-1 rounded-full shadow-sm">
-                      {new Date(inscrito.dataInscricao).toLocaleDateString('pt-PT')}
-                    </span>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-[8px] font-black text-slate-400 bg-white border px-2 py-1 rounded-full shadow-sm hidden sm:inline">
+                        {new Date(inscrito.dataInscricao).toLocaleDateString('pt-PT')}
+                      </span>
+                      {isStaff && (
+                        <button
+                          onClick={() => handleRemoveParticipant(viewingInscritos, inscrito.id, inscrito.nome)}
+                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 active:scale-95 transition-all"
+                          title="Remover Participante"
+                        >
+                          <UserMinus size={14}/>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
