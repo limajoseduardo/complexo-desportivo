@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus } from 'lucide-react';
+import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus, Award } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
@@ -16,7 +16,7 @@ interface Evento {
   local: string;
   descricao: string;
   maxParticipantes?: number;
-  inscritos: { id: string; nome: string; email: string; dataInscricao: string }[];
+  inscritos: { id: string; nome: string; email: string; dataInscricao: string; provas: string[] }[];
   criadoPor: string;
   criadoEm: any;
 }
@@ -34,6 +34,22 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
   
   // Search for adding participants manually
   const [searchUtente, setSearchUtente] = useState('');
+
+  // Styles selection state modal
+  const [selectingStyles, setSelectingStyles] = useState<{
+    evento: Evento;
+    utenteId: string;
+    utenteNome: string;
+    utenteEmail: string;
+    isStaffAction: boolean;
+  } | null>(null);
+
+  const [selectedProvas, setSelectedProvas] = useState<Record<string, boolean>>({
+    Crawl: false,
+    Costas: false,
+    Bruços: false,
+    Mariposa: false
+  });
   
   const [formData, setFormData] = useState({
     titulo: '',
@@ -46,6 +62,8 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
 
   const isStaff = ['admin', 'staff', 'chefia', 'professor'].includes(user.role);
   const isProfessor = user.role === 'professor';
+
+  const ESTILOS = ['Crawl', 'Costas', 'Bruços', 'Mariposa'];
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/eventos`;
@@ -122,80 +140,80 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     }
   };
 
-  const handleToggleRegistration = async (evento: Evento) => {
-    const isRegistered = evento.inscritos.some(i => i.id === user.id);
-    const path = `artifacts/${APP_ID}/public/data/eventos`;
-
-    let newInscritos = [...evento.inscritos];
-
+  // Triggers the styles selection overlay
+  const initiateRegistration = (evento: Evento, isStaffAction: boolean, targetUtente?: UserProfile) => {
+    const isRegistered = evento.inscritos.some(i => i.id === (targetUtente ? targetUtente.id : user.id));
+    
     if (isRegistered) {
-      if (!window.confirm("Tem a certeza que deseja cancelar a sua inscrição neste evento?")) return;
-      newInscritos = newInscritos.filter(i => i.id !== user.id);
-    } else {
-      if (evento.maxParticipantes && evento.inscritos.length >= evento.maxParticipantes) {
-        alert("Desculpe, as inscrições para esta prova já atingiram o limite máximo!");
-        return;
-      }
-      newInscritos.push({
-        id: user.id,
-        nome: user.nome || user.n || 'Utente',
-        email: user.email,
-        dataInscricao: new Date().toISOString()
-      });
-    }
-
-    try {
-      await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
-      alert(isRegistered ? "Inscrição cancelada com sucesso." : "Inscrição realizada com sucesso! Boa sorte para a prova.");
-    } catch (error) {
-      console.error("Erro ao atualizar inscrição:", error);
-      alert("Ocorreu um erro ao processar a inscrição.");
-    }
-  };
-
-  // Staff Manually Adds Participant
-  const handleAddParticipant = async (evento: Evento, utente: UserProfile) => {
-    if (evento.inscritos.some(i => i.id === utente.id)) {
-      alert("Este utente já se encontra inscrito neste evento!");
+      // If already registered, directly toggle (which asks to unsubscribe)
+      handleToggleUnsubscribe(evento, targetUtente ? targetUtente.id : user.id, targetUtente ? targetUtente.nome : (user.nome || user.n));
       return;
     }
 
-    if (evento.maxParticipantes && evento.inscritos.length >= evento.maxParticipantes) {
-      if (!window.confirm("O limite de inscrições já foi atingido. Deseja inscrever mesmo assim?")) return;
-    }
+    // Set styling target
+    setSelectingStyles({
+      evento,
+      utenteId: targetUtente ? targetUtente.id : user.id,
+      utenteNome: targetUtente ? (targetUtente.nome || targetUtente.n || 'Utente') : (user.nome || user.n || 'Utente'),
+      utenteEmail: targetUtente ? targetUtente.email : user.email,
+      isStaffAction
+    });
 
-    const path = `artifacts/${APP_ID}/public/data/eventos`;
-    const newInscritos = [
-      ...evento.inscritos,
-      {
-        id: utente.id,
-        nome: utente.nome || utente.n || 'Utente',
-        email: utente.email,
-        dataInscricao: new Date().toISOString()
-      }
-    ];
-
-    try {
-      await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
-      setSearchUtente(''); // Clear search
-    } catch (error) {
-      console.error("Erro ao adicionar participante:", error);
-      alert("Erro ao adicionar participante.");
-    }
+    // Reset styles selections
+    setSelectedProvas({
+      Crawl: false,
+      Costas: false,
+      Bruços: false,
+      Mariposa: false
+    });
   };
 
-  // Staff Manually Removes Participant
-  const handleRemoveParticipant = async (evento: Evento, participantId: string, participantNome: string) => {
-    if (!window.confirm(`Tem a certeza que deseja remover ${participantNome.toUpperCase()} desta prova?`)) return;
+  const handleToggleUnsubscribe = async (evento: Evento, participantId: string, participantNome: string) => {
+    if (!window.confirm(`Tem a certeza que deseja cancelar a inscrição de ${participantNome.toUpperCase()} nesta prova?`)) return;
 
     const path = `artifacts/${APP_ID}/public/data/eventos`;
     const newInscritos = evento.inscritos.filter(i => i.id !== participantId);
 
     try {
       await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
+      alert("Inscrição cancelada.");
     } catch (error) {
       console.error("Erro ao remover participante:", error);
-      alert("Erro ao remover participante.");
+    }
+  };
+
+  // Submit Styles selection to Firestore
+  const handleConfirmStyles = async () => {
+    if (!selectingStyles) return;
+
+    const chosenStyles = Object.keys(selectedProvas).filter(key => selectedProvas[key]);
+    if (chosenStyles.length === 0) {
+      alert("Por favor, selecione pelo menos 1 estilo de natação em que o atleta irá participar.");
+      return;
+    }
+
+    const { evento, utenteId, utenteNome, utenteEmail } = selectingStyles;
+    const path = `artifacts/${APP_ID}/public/data/eventos`;
+
+    const newInscritos = [
+      ...evento.inscritos.filter(i => i.id !== utenteId), // prevent duplicates
+      {
+        id: utenteId,
+        nome: utenteNome,
+        email: utenteEmail,
+        dataInscricao: new Date().toISOString(),
+        provas: chosenStyles
+      }
+    ];
+
+    try {
+      await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
+      alert(`Inscrição de "${utenteNome.toUpperCase()}" gravada com sucesso nos estilos: ${chosenStyles.join(', ')}.`);
+      setSelectingStyles(null);
+      setSearchUtente(''); // Clear search if staff added manually
+    } catch (error) {
+      console.error("Erro ao guardar inscrição com provas:", error);
+      alert("Ocorreu um erro ao guardar a inscrição.");
     }
   };
 
@@ -203,7 +221,6 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
   const searchableUtentes = React.useMemo(() => {
     if (!viewingInscritos || !searchUtente.trim()) return [];
     
-    // Filter only those who have 'utente' role or no staff roles, and match search
     return utentes
       .filter(u => {
         const r = (u.role || '').toLowerCase();
@@ -211,7 +228,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
       })
       .filter(u => !viewingInscritos.inscritos.some(i => i.id === u.id))
       .filter(u => (u.nome || u.n || '').toLowerCase().includes(searchUtente.toLowerCase()))
-      .slice(0, 5); // Limit to top 5 results for clean display
+      .slice(0, 5);
   }, [utentes, viewingInscritos, searchUtente]);
 
   return (
@@ -298,7 +315,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                   {/* Action button for Utente */}
                   {user.role === 'utente' && (
                     <button
-                      onClick={() => handleToggleRegistration(evento)}
+                      onClick={() => initiateRegistration(evento, false)}
                       className={`flex-1 py-3 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 ${
                         isRegistered 
                           ? 'bg-green-50 text-green-600 border-2 border-green-200 hover:bg-green-100' 
@@ -482,7 +499,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                     {searchableUtentes.map(u => (
                       <button
                         key={u.id}
-                        onClick={() => handleAddParticipant(viewingInscritos, u)}
+                        onClick={() => initiateRegistration(viewingInscritos, true, u)}
                         className="w-full p-3 text-left hover:bg-slate-50 active:bg-blue-50 transition-all flex items-center justify-between"
                       >
                         <div>
@@ -507,7 +524,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                 viewingInscritos.inscritos.map((inscrito, idx) => (
                   <div 
                     key={inscrito.id} 
-                    className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between text-left"
+                    className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between text-left gap-2"
                   >
                     <div>
                       <div className="flex items-center gap-2">
@@ -516,16 +533,29 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                         </span>
                         <h4 className="font-black text-xs text-[#004D71] uppercase leading-none">{inscrito.nome}</h4>
                       </div>
-                      <p className="text-[8px] font-black text-slate-400 mt-2 uppercase tracking-widest line-clamp-1">{inscrito.email}</p>
+                      
+                      {/* Swimming styles list */}
+                      {inscrito.provas && inscrito.provas.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 ml-7">
+                          {inscrito.provas.map(p => (
+                            <span 
+                              key={p} 
+                              className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md font-black uppercase text-[6px] tracking-wider flex items-center gap-0.5"
+                            >
+                              <Award size={6}/> {p}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <span className="text-[8px] font-black text-slate-400 bg-white border px-2 py-1 rounded-full shadow-sm hidden sm:inline">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 mt-2 sm:mt-0 ml-7 sm:ml-0">
+                      <span className="text-[8px] font-black text-slate-400 bg-white border px-2.5 py-1 rounded-full shadow-sm">
                         {new Date(inscrito.dataInscricao).toLocaleDateString('pt-PT')}
                       </span>
                       {isStaff && (
                         <button
-                          onClick={() => handleRemoveParticipant(viewingInscritos, inscrito.id, inscrito.nome)}
+                          onClick={() => handleToggleUnsubscribe(viewingInscritos, inscrito.id, inscrito.nome)}
                           className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 active:scale-95 transition-all"
                           title="Remover Participante"
                         >
@@ -544,6 +574,62 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                 className="w-full bg-[#004D71] text-[#F7B500] py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
               >
                 Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY MODAL: SELECIONAR ESTILOS (CRAWL, COSTAS, BRUÇOS, MARIPOSA) */}
+      {selectingStyles && (
+        <div className="fixed inset-0 z-[20002] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl relative text-left">
+            <button 
+              onClick={() => setSelectingStyles(null)}
+              className="absolute top-4 right-4 p-2.5 bg-slate-50 rounded-full active:scale-90 border border-slate-100 cursor-pointer"
+            >
+              <X size={16}/>
+            </button>
+
+            <div className="mb-6">
+              <h3 className="text-base font-black text-[#004D71] uppercase leading-tight">
+                Estilos de Natação
+              </h3>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                Atleta: {selectingStyles.utenteNome}
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Selecione uma ou mais modalidades:</p>
+              {ESTILOS.map(estilo => (
+                <label 
+                  key={estilo} 
+                  className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-[#004D71]/20 active:scale-[0.99] transition-all select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedProvas[estilo]}
+                    onChange={() => setSelectedProvas(prev => ({ ...prev, [estilo]: !prev[estilo] }))}
+                    className="w-4.5 h-4.5 accent-[#004D71] rounded-md cursor-pointer"
+                  />
+                  <span className="text-xs font-black text-[#004D71] uppercase tracking-wider">{estilo}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectingStyles(null)}
+                className="flex-1 py-4 bg-slate-50 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-colors border"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmStyles}
+                className="flex-1 py-4 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-[#004D71]/90 shadow-md transition-colors"
+              >
+                Confirmar
               </button>
             </div>
           </div>
