@@ -691,7 +691,7 @@ export default function App() {
      return (
        <div className="min-h-screen bg-[#004D71] flex items-center justify-center p-6 text-white">
          <div className="text-center space-y-4">
-            <QrCode size={60} className="mx-auto animate-pulse text-[#F7B500]" />
+            <PicotoIcon size={60} className="mx-auto animate-pulse text-[#F7B500]" />
             <h2 className="text-xl font-black uppercase tracking-tighter">Vila de Rei</h2>
             <div className="flex gap-1 justify-center">
                <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
@@ -846,7 +846,7 @@ export default function App() {
               onClick={() => setShowScanner(true)}
               className="lg:hidden fixed bottom-24 right-6 bg-[#F7B500] text-[#004D71] p-4 rounded-full shadow-2xl z-40 active:scale-95 border-2 border-[#004D71]"
             >
-              <QrCode size={24} />
+              <PicotoIcon size={24} />
             </button>
           )}
 

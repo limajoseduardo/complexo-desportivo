@@ -5,7 +5,7 @@ import {
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
   Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets
 } from 'lucide-react';
-import { AvatarImage } from './Common';
+import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import {
@@ -567,7 +567,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                 onClick={onScan}
                 className="px-4 py-2 bg-[#004D71] text-[#F7B500] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
               >
-                <QrCode size={14}/> Ler QR
+                <PicotoIcon size={14}/> Ler QR
               </button>
             )}
             <button
