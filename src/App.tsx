@@ -26,6 +26,7 @@ const SwimmingTeacherPortal = React.lazy(() => import('./components/SwimmingModu
 const DietModule = React.lazy(() => import('./components/DietModule').then(m => ({ default: m.DietModule })));
 const EventsModule = React.lazy(() => import('./components/Events').then(m => ({ default: m.EventsModule })));
 import { seedUtentesTestData } from './lib/seedUtentes';
+import { seedExerciseLibrary } from './lib/seedExercises';
 import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
@@ -65,7 +66,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
   chefia:    ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
+  professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'agenda', 'mensagens', 'perfil'],
   utente:    ['inicio', 'treino', 'nutricao', 'mensagens', 'agenda', 'perfil'],
 };
 
@@ -284,6 +285,11 @@ export default function App() {
     // Auto-inserir dados de natação Swim Track
     if (!localStorage.getItem('cpx_seed_swimming_v3')) {
       seedSwimmingData();
+    }
+
+    // Auto-inserir enciclopédia de exercícios
+    if (!localStorage.getItem('cpx_seed_exercises_v1')) {
+      seedExerciseLibrary();
     }
 
     return () => { unsub(); clearTimeout(timeout); };
