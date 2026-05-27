@@ -6,14 +6,14 @@ import {
 import { UserProfile, AccessLog, TreinoPlano, Exercicio } from '../types';
 
 export async function seedUtentesTestData() {
-  if (localStorage.getItem('cpx_seed_utentes_v3')) return;
+  if (localStorage.getItem('cpx_seed_utentes_v4')) return;
 
   try {
-    const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'utentes_v3');
+    const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'utentes_v4');
     const sentinelSnap = await getDoc(sentinelRef);
     if (sentinelSnap.exists()) {
-      localStorage.setItem('cpx_seed_utentes_v3', 'true');
-      console.log("Seeding de Utentes e Logs já existe na base de dados cloud.");
+      localStorage.setItem('cpx_seed_utentes_v4', 'true');
+      console.log("Mock users já apagados na base de dados cloud.");
       return;
     }
 
@@ -240,8 +240,9 @@ export async function seedUtentesTestData() {
       }
     ];
 
+    // 2. Apagar os Utentes Fictícios em vez de os criar
     testUtentes.forEach(ut => {
-      batch.set(doc(db, usersPath, ut.id), ut, { merge: true });
+      batch.delete(doc(db, usersPath, ut.id));
     });
 
     // 3. Criar Planos de Treino para os alunos de Ginásio (Afonso e Carlos)
@@ -398,8 +399,8 @@ export async function seedUtentesTestData() {
 
     await setDoc(sentinelRef, { seededAt: new Date().toISOString() });
 
-    localStorage.setItem('cpx_seed_utentes_v3', 'true');
-    console.log("Seeding de Utentes e Logs de Acesso concluído com sucesso!");
+    localStorage.setItem('cpx_seed_utentes_v4', 'true');
+    console.log("Mock users apagados com sucesso para dar lugar aos dados reais!");
   } catch (err) {
     console.error("Erro no Seeding de Utentes de Teste:", err);
   }

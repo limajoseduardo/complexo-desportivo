@@ -282,7 +282,7 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    mobileLabel: 'ACESSOS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'alunos',    icon: <Users />,         label: 'Alunos',     mobileLabel: 'ALUNOS', roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
-  { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'staff', 'professor', 'utente'] },
+  { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor', 'utente'] },
   { id: 'exercicios',icon: <Dumbbell />,      label: 'Exercícios', mobileLabel: 'EXERCÍCIOS', roles: ['admin', 'professor', 'chefia'] },
   { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: ['utente'] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
@@ -295,7 +295,7 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
   const menu = MENU_ITEMS(unreadCount).filter(item => item.roles.includes(user.role));
 
   return (
-    <aside className="hidden lg:flex flex-col w-56 bg-[#004D71] p-4 text-white relative shrink-0">
+    <aside className="hidden lg:flex flex-col w-48 bg-[#004D71] p-3 text-white relative shrink-0">
       <nav className="flex-1 space-y-1">
         {menu.map(item => (
           <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl font-black transition-all ${activeTab === item.id ? 'bg-[#F7B500] text-[#004D71] shadow-xl translate-x-2' : 'text-blue-100/40 hover:bg-white/5 hover:text-white'}`}>
