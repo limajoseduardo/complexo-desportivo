@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus, Award, GraduationCap } from 'lucide-react';
+import { Trophy, Calendar, MapPin, Users, Plus, Trash2, X, Save, Clock, Check, FileText, Search, UserMinus, UserPlus, Award, GraduationCap, Edit } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
@@ -61,14 +61,20 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     maxParticipantes: ''
   });
 
-  // Selected accompanying teachers for new event creation
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
 
   const isStaff = ['admin', 'staff', 'chefia', 'professor'].includes(user.role);
 
   const ESTILOS = ['Crawl', 'Costas', 'Bruços', 'Mariposa'];
 
-  // Get list of professors/teachers
+  // Vibrant, distinct colors for each style
+  const STYLE_COLORS: Record<string, string> = {
+    Crawl: 'bg-blue-100 text-blue-800 border-blue-200',
+    Costas: 'bg-purple-100 text-purple-800 border-purple-200',
+    Bruços: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    Mariposa: 'bg-rose-100 text-rose-800 border-rose-200'
+  };
+
   const professorsList = React.useMemo(() => {
     return utentes.filter(u => u.role === 'professor');
   }, [utentes]);
@@ -150,28 +156,29 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     }
   };
 
-  // Triggers the styles selection overlay
-  const initiateRegistration = (evento: Evento, isStaffAction: boolean, targetUtente?: UserProfile) => {
-    const isRegistered = evento.inscritos.some(i => i.id === (targetUtente ? targetUtente.id : user.id));
+  // Triggers the styles selection overlay (can be used for new registrations or edits)
+  const initiateRegistration = (evento: Evento, isStaffAction: boolean, targetUtente?: UserProfile | { id: string; nome: string; email: string; provas?: string[] }) => {
+    const participantId = targetUtente ? targetUtente.id : user.id;
+    const participantNome = targetUtente ? (targetUtente.nome || (targetUtente as any).n || 'Utente') : (user.nome || user.n || 'Utente');
+    const participantEmail = targetUtente ? targetUtente.email : user.email;
     
-    if (isRegistered) {
-      handleToggleUnsubscribe(evento, targetUtente ? targetUtente.id : user.id, targetUtente ? targetUtente.nome : (user.nome || user.n));
-      return;
-    }
+    const existingEnrollment = evento.inscritos.find(i => i.id === participantId);
 
+    // Set styling target
     setSelectingStyles({
       evento,
-      utenteId: targetUtente ? targetUtente.id : user.id,
-      utenteNome: targetUtente ? (targetUtente.nome || targetUtente.n || 'Utente') : (user.nome || user.n || 'Utente'),
-      utenteEmail: targetUtente ? targetUtente.email : user.email,
+      utenteId: participantId,
+      utenteNome: participantNome,
+      utenteEmail: participantEmail || '',
       isStaffAction
     });
 
+    // Preset selections if they already have styles chosen
     setSelectedProvas({
-      Crawl: false,
-      Costas: false,
-      Bruços: false,
-      Mariposa: false
+      Crawl: existingEnrollment?.provas?.includes('Crawl') || false,
+      Costas: existingEnrollment?.provas?.includes('Costas') || false,
+      Bruços: existingEnrollment?.provas?.includes('Bruços') || false,
+      Mariposa: existingEnrollment?.provas?.includes('Mariposa') || false
     });
   };
 
@@ -215,7 +222,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
 
     try {
       await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
-      alert(`Inscrição de "${utenteNome.toUpperCase()}" gravada com sucesso nos estilos: ${chosenStyles.join(', ')}.`);
+      alert(`Inscrição de "${utenteNome.toUpperCase()}" guardada com sucesso.`);
       setSelectingStyles(null);
       setSearchUtente('');
     } catch (error) {
@@ -574,7 +581,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
             )}
 
             {/* Enrolled Participants List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar my-2">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar my-2">
               {viewingInscritos.inscritos.length === 0 ? (
                 <div className="text-center py-12 text-slate-300 font-black uppercase text-[10px] tracking-widest">
                   Nenhuma inscrição realizada até ao momento.
@@ -583,45 +590,53 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                 viewingInscritos.inscritos.map((inscrito, idx) => (
                   <div 
                     key={inscrito.id} 
-                    className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between text-left gap-2"
+                    className="p-5 bg-slate-50 border border-slate-100 rounded-3xl flex flex-col justify-between text-left gap-3 shadow-sm"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-lg bg-[#004D71] text-[#F7B500] font-black text-[9px] flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        <h4 className="font-black text-xs text-[#004D71] uppercase leading-none">{inscrito.nome}</h4>
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-xl bg-[#004D71] text-[#F7B500] font-black text-[10px] flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <h4 className="font-black text-sm text-[#004D71] uppercase leading-none">{inscrito.nome}</h4>
+                        </div>
+                        <p className="text-[9px] font-black text-slate-400 mt-2.5 ml-8 uppercase tracking-widest line-clamp-1">{inscrito.email}</p>
                       </div>
-                      
-                      {/* Swimming styles list */}
-                      {inscrito.provas && inscrito.provas.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2 ml-7">
-                          {inscrito.provas.map(p => (
-                            <span 
-                              key={p} 
-                              className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md font-black uppercase text-[6px] tracking-wider flex items-center gap-0.5"
-                            >
-                              <Award size={6}/> {p}
-                            </span>
-                          ))}
+
+                      {/* Controls for editing styles / removing */}
+                      {isStaff && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => initiateRegistration(viewingInscritos, true, inscrito)}
+                            className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 active:scale-95 transition-all border border-blue-100 flex items-center justify-center"
+                            title="Editar Estilos"
+                          >
+                            <Edit size={14}/>
+                          </button>
+                          <button
+                            onClick={() => handleToggleUnsubscribe(viewingInscritos, inscrito.id, inscrito.nome)}
+                            className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 active:scale-95 transition-all border border-red-100 flex items-center justify-center"
+                            title="Remover Participante"
+                          >
+                            <UserMinus size={14}/>
+                          </button>
                         </div>
                       )}
                     </div>
                     
-                    <div className="flex items-center justify-between sm:justify-end gap-2 mt-2 sm:mt-0 ml-7 sm:ml-0">
-                      <span className="text-[8px] font-black text-slate-400 bg-white border px-2.5 py-1 rounded-full shadow-sm">
-                        {new Date(inscrito.dataInscricao).toLocaleDateString('pt-PT')}
-                      </span>
-                      {isStaff && (
-                        <button
-                          onClick={() => handleToggleUnsubscribe(viewingInscritos, inscrito.id, inscrito.nome)}
-                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 active:scale-95 transition-all"
-                          title="Remover Participante"
-                        >
-                          <UserMinus size={14}/>
-                        </button>
-                      )}
-                    </div>
+                    {/* LARGER, CLEARLY COLOR-CODED SWIMMING STYLES BADGES */}
+                    {inscrito.provas && inscrito.provas.length > 0 && (
+                      <div className="flex flex-wrap gap-2 ml-8 border-t border-slate-200/60 pt-3">
+                        {inscrito.provas.map(p => (
+                          <span 
+                            key={p} 
+                            className={`px-3.5 py-1.5 border rounded-xl font-black uppercase text-[9px] tracking-wider flex items-center gap-1.5 shadow-sm ${STYLE_COLORS[p] || 'bg-slate-100 text-slate-700'}`}
+                          >
+                            <Award size={10} className="shrink-0"/> {p}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -652,7 +667,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
 
             <div className="mb-6">
               <h3 className="text-base font-black text-[#004D71] uppercase leading-tight">
-                Estilos de Natação
+                Selecionar Estilos
               </h3>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
                 Atleta: {selectingStyles.utenteNome}
