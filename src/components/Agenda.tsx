@@ -129,6 +129,41 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
     }
   };
 
+  const handleCancelAndNotify = async (aula: any) => {
+    if (!user) return;
+    const inscritos = aula.inscritos || [];
+    if (inscritos.length === 0) {
+       alert('Esta aula não tem inscritos. Pode eliminá-la editando a aula e apagando no final da lista.');
+       return;
+    }
+    
+    if (!window.confirm(`Tem a certeza que deseja CANCELAR a aula de ${aula.modalidade} e NOTIFICAR os ${inscritos.length} inscritos?`)) return;
+
+    try {
+      const diaNome = dias.find(d => d.id === aula.diaSemana)?.label || 'dia selecionado';
+      // 1. Enviar mensagens para todos os inscritos
+      for (const inscrito of inscritos) {
+         const chatId = [user.id, inscrito.id].sort().join('_');
+         const actionText = `❌ [AULA CANCELADA]: Informamos que a aula de ${aula.modalidade} das ${aula.horaInicio} (dia ${diaNome}) foi cancelada. Lamentamos o incómodo.`;
+         
+         await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
+           senderId: user.id, senderEmail: user.email || '',
+           receiverId: inscrito.id, receiverEmail: '', 
+           participants: [user.id, inscrito.id], participantEmails: [user.email || ''],
+           text: actionText,
+           createdAt: Timestamp.now(), read: false
+         });
+      }
+      
+      // 2. Eliminar a aula
+      await deleteDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, aula.id));
+      alert(`Aula cancelada com sucesso. Foram notificados ${inscritos.length} utentes via chat.`);
+    } catch (error) {
+      console.error('Erro ao cancelar e notificar:', error);
+      alert('Ocorreu um erro ao cancelar e notificar. Tente novamente.');
+    }
+  };
+
   const toggleInscricao = async (aula: any) => {
     if (!user) return;
     const path = `artifacts/${APP_ID}/public/data/agenda`;
@@ -354,12 +389,20 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                  </div>
               </div>
               {canEdit && ((aula as any).inscritos && (aula as any).inscritos.length > 0) && (
-                <button 
-                  onClick={() => { setViewingInscritos((aula as any).inscritos); setViewingAulaNome(aula.modalidade); }}
-                  className="mt-3 w-full py-2.5 bg-slate-50 text-[9px] font-black text-[#004D71] uppercase rounded-xl hover:bg-slate-100 transition-colors border border-slate-100 flex items-center justify-center gap-2"
-                >
-                  <Users size={14}/> Ver {((aula as any).inscritos).length} {((aula as any).inscritos).length === 1 ? 'Inscrito' : 'Inscritos'}
-                </button>
+                <div className="flex gap-2 mt-3">
+                  <button 
+                    onClick={() => { setViewingInscritos((aula as any).inscritos); setViewingAulaNome(aula.modalidade); }}
+                    className="flex-1 py-2.5 bg-slate-50 text-[9px] font-black text-[#004D71] uppercase rounded-xl hover:bg-slate-100 transition-colors border border-slate-100 flex items-center justify-center gap-1.5"
+                  >
+                    <Users size={14}/> Ver {((aula as any).inscritos).length}
+                  </button>
+                  <button 
+                    onClick={() => handleCancelAndNotify(aula)}
+                    className="flex-1 py-2.5 bg-red-50 text-[9px] font-black text-red-600 uppercase rounded-xl hover:bg-red-100 transition-colors border border-red-100 flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 size={14}/> Cancelar & Notificar
+                  </button>
+                </div>
               )}
             </div>
           </div>
