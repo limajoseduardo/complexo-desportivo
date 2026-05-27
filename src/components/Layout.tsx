@@ -184,11 +184,11 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
   const aqiInfo = aqi !== null ? headerAqiLabel(aqi) : null;
 
   return (
-    <header className={`bg-white px-5 flex justify-between items-center sticky top-0 z-40 transition-all duration-300 overflow-hidden ${isVisible ? 'max-h-[160px] py-4 border-b-4 border-slate-100 opacity-100' : 'max-h-0 py-0 border-b-0 border-transparent opacity-0'}`}>
+    <header className={`bg-white px-5 flex justify-between items-center sticky top-0 z-40 transition-all duration-300 overflow-hidden ${isVisible ? 'max-h-[120px] py-2 border-b-4 border-slate-100 opacity-100' : 'max-h-0 py-0 border-b-0 border-transparent opacity-0'}`}>
 
       {/* Esquerda: Foto + Info */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
-        <div className="w-16 h-16 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md shrink-0">
+        <div className="w-12 h-12 rounded-xl border-2 border-slate-200 overflow-hidden shadow-sm shrink-0">
           <AvatarImage src={user.img} alt={fullName} className="w-full h-full object-cover" />
         </div>
         <div className="min-w-0">
@@ -210,13 +210,13 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
 
         {/* Bloco meteorologia — xl+ */}
         {weather && (
-          <div className="hidden xl:flex items-center gap-5 bg-slate-50/50 p-2.5 rounded-2xl border-2 border-slate-100 shadow-sm">
+          <div className="hidden xl:flex items-center gap-4 p-2">
             <div className="text-[#004D71] drop-shadow-sm">
-              <HeaderWeatherIcon code={weather.weatherCode} size={36} />
+              <HeaderWeatherIcon code={weather.weatherCode} size={32} />
             </div>
-            <div className="flex flex-col gap-1 pr-2">
+            <div className="flex flex-col gap-0.5 pr-2">
               <div className="flex items-end gap-3">
-                <span className="text-3xl font-black text-[#004D71] tabular-nums leading-none tracking-tighter drop-shadow-sm">
+                <span className="text-2xl font-black text-[#004D71] tabular-nums leading-none tracking-tighter drop-shadow-sm">
                   {weather.temperature}°C
                 </span>
                 <span className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none mb-0.5">
@@ -253,8 +253,8 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
         )}
 
         {/* Relógio */}
-        <div className="hidden sm:flex flex-col items-end justify-center pl-5 border-l-4 border-slate-100 py-1">
-          <span className="text-3xl font-black text-[#004D71] tabular-nums leading-none tracking-tighter drop-shadow-sm">
+        <div className="hidden sm:flex flex-col items-end justify-center pl-5 border-l-2 border-slate-100 py-1">
+          <span className="text-2xl font-black text-[#004D71] tabular-nums leading-none tracking-tighter drop-shadow-sm">
             {time.toLocaleTimeString('pt-PT')}
           </span>
           <span className="text-xs font-black text-[#F7B500] uppercase tracking-widest mt-1.5">
