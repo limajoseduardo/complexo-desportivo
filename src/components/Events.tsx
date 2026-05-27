@@ -1310,9 +1310,9 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
           if (!heatsMap[serie]) {
             heatsMap[serie] = [];
           }
-          heatsMap[serie].push({ pista, atleta, idade: ut?.idade });
+          heatsMap[serie].push({ pista, atleta, idade: ut?.idade, img: ut?.img });
         });
-        
+
         const heats = Object.keys(heatsMap).map(k => {
           const id = parseInt(k, 10);
           const lanes = heatsMap[id].sort((a, b) => a.pista - b.pista);
@@ -1445,9 +1445,11 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
                                   P{lane.pista}
                                 </span>
                               )}
-                              <div className="ml-2">
-                                <h5 className="font-black text-xs text-[#004D71] uppercase leading-tight">{lane.atleta.nome}</h5>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{lane.atleta.email}</p>
+                              <AvatarImage src={lane.img} alt={lane.atleta.nome} className="w-8 h-8 rounded-xl border-2 border-white shadow-sm shrink-0" />
+                              <div className="ml-1">
+                                <h5 className="font-black text-xs text-[#004D71] uppercase leading-tight">
+                                  {(() => { const p = (lane.atleta.nome || '').trim().split(/\s+/); return p.length <= 2 ? lane.atleta.nome : `${p[0]} ${p[p.length - 1]}`; })()}
+                                </h5>
                               </div>
                             </div>
                             {lane.idade && (
