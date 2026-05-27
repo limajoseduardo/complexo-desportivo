@@ -19,6 +19,7 @@ const ExerciseGallery = React.lazy(() => import('./components/Exercises').then(m
 const ChatModule = React.lazy(() => import('./components/Chat').then(m => ({ default: m.ChatModule })));
 const UtenteTrainingModule = React.lazy(() => import('./components/UtenteTraining').then(m => ({ default: m.UtenteTrainingModule })));
 const TrainerTrainingModule = React.lazy(() => import('./components/TrainerTrainingPlans').then(m => ({ default: m.TrainerTrainingModule })));
+const ExerciseLibraryView = React.lazy(() => import('./components/TrainerTrainingPlans').then(m => ({ default: m.ExerciseLibraryView })));
 const AccessLogsModule = React.lazy(() => import('./components/AccessLogs').then(m => ({ default: m.AccessLogsModule })));
 const AgendaModule = React.lazy(() => import('./components/Agenda').then(m => ({ default: m.AgendaModule })));
 const KioskMode = React.lazy(() => import('./components/KioskMode').then(m => ({ default: m.KioskMode })));
@@ -68,7 +69,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   chefia:    ['inicio', 'utentes', 'acessos', 'mapas', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'agenda', 'mensagens', 'perfil'],
-  utente:    ['inicio', 'treino', 'nutricao', 'mensagens', 'agenda', 'perfil'],
+  utente:    ['inicio', 'treino', 'exercicios', 'nutricao', 'mensagens', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug, currentRole }: {
@@ -818,6 +819,7 @@ export default function App() {
                 {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
+                {activeTab === 'exercicios' && user.role === 'utente' && <ExerciseLibraryView />}
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} />}
                 {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}

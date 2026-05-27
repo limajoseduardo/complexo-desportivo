@@ -67,13 +67,14 @@ const emptyExForm = {
   equipamento: '', dificuldade: 'iniciante', descricao: '', instrucoes: '', video_url: ''
 };
 
-function ExerciseBankTab() {
+function ExerciseBankTab({ readOnly = false }: { readOnly?: boolean }) {
   const [exercises, setExercises] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ ...emptyExForm });
+  const [selectedExercise, setSelectedExercise] = useState<any | null>(null);
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/exercise_library`;
@@ -158,12 +159,14 @@ function ExerciseBankTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center px-2">
         <div>
-          <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Banco de Exercícios</h2>
+          <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">{readOnly ? 'Biblioteca' : 'Banco de Exercícios'}</h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{exercises.length} exercícios · por grupo muscular</p>
         </div>
-        <button onClick={openAdd} className="bg-[#004D71] text-[#F7B500] p-3 rounded-2xl shadow-lg active:scale-95 transition-all">
-          <Plus size={20}/>
-        </button>
+        {!readOnly && (
+          <button onClick={openAdd} className="bg-[#004D71] text-[#F7B500] p-3 rounded-2xl shadow-lg active:scale-95 transition-all">
+            <Plus size={20}/>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl p-2 border-4 border-[#004D71]/5 flex items-center pr-4 shadow-sm focus-within:border-[#F7B500]/50 transition-colors">
@@ -200,7 +203,7 @@ function ExerciseBankTab() {
             {openGroup === group.key && (
               <div className="border-t-2 border-slate-50 divide-y-2 divide-slate-50">
                 {group.exercises.map(ex => (
-                  <div key={ex.id} className="flex items-center gap-3 px-5 py-3.5 group hover:bg-slate-50/50 transition-colors">
+                  <div key={ex.id} className={`flex items-center gap-3 px-5 py-3.5 group hover:bg-slate-50/50 transition-colors ${readOnly ? 'cursor-pointer' : ''}`} onClick={readOnly ? () => setSelectedExercise(ex) : undefined}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: group.color + '15' }}>
                       <Dumbbell size={13} style={{ color: group.color }}/>
                     </div>
@@ -217,12 +220,13 @@ function ExerciseBankTab() {
                     </div>
                     <div className="flex gap-1.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       {ex.video_url && (
-                        <a href={ex.video_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-red-50 text-red-500 hover:text-red-600 rounded-xl">
+                        <a href={ex.video_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-red-50 text-red-500 hover:text-red-600 rounded-xl" onClick={e => e.stopPropagation()}>
                           <Play size={13}/>
                         </a>
                       )}
-                      <button onClick={() => openEdit(ex)} className="p-2 bg-slate-50 text-slate-400 hover:text-[#004D71] rounded-xl"><Edit size={13}/></button>
-                      <button onClick={() => handleDelete(ex.id)} className="p-2 bg-red-50 text-red-400 hover:text-red-600 rounded-xl"><Trash2 size={13}/></button>
+                      {!readOnly && <button onClick={() => openEdit(ex)} className="p-2 bg-slate-50 text-slate-400 hover:text-[#004D71] rounded-xl"><Edit size={13}/></button>}
+                      {!readOnly && <button onClick={() => handleDelete(ex.id)} className="p-2 bg-red-50 text-red-400 hover:text-red-600 rounded-xl"><Trash2 size={13}/></button>}
+                      {readOnly && <ChevronDown size={14} className="-rotate-90 text-slate-300 shrink-0"/>}
                     </div>
                   </div>
                 ))}
@@ -238,6 +242,78 @@ function ExerciseBankTab() {
           </div>
         )}
       </div>
+
+      {/* DETAIL VIEW — Read-Only (Utentes) */}
+      {selectedExercise && readOnly && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/90 backdrop-blur-sm flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-xl sm:rounded-[2.5rem] rounded-t-[2.5rem] shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-start justify-between p-6 border-b-2 border-slate-50 shrink-0">
+              <div className="flex-1 min-w-0 pr-4">
+                <h3 className="font-black text-[#004D71] uppercase text-xl leading-tight">{selectedExercise.name}</h3>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {selectedExercise.dificuldade && (
+                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${selectedExercise.dificuldade === 'iniciante' ? 'bg-emerald-50 text-emerald-600' : selectedExercise.dificuldade === 'intermédio' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>{selectedExercise.dificuldade}</span>
+                  )}
+                  {selectedExercise.primary_muscle && (
+                    <span className="text-[9px] font-black uppercase px-2 py-1 rounded-full bg-[#004D71]/10 text-[#004D71]">{selectedExercise.primary_muscle}</span>
+                  )}
+                  <span className="text-[9px] font-black text-slate-400 uppercase">{selectedExercise.type === 'CARDIO' ? '❤️ Cardio' : '🏋️ Força'}</span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedExercise(null)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 shrink-0"><X size={18}/></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {selectedExercise.equipamento && (
+                <div className="bg-slate-50 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Equipamento</p>
+                  <p className="text-sm font-bold text-[#004D71]">{selectedExercise.equipamento}</p>
+                </div>
+              )}
+              {Array.isArray(selectedExercise.musculos_secundarios) && selectedExercise.musculos_secundarios.length > 0 && (
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Músculos Secundários</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedExercise.musculos_secundarios.filter(Boolean).map((m: string, i: number) => (
+                      <span key={i} className="text-[9px] font-black uppercase px-2 py-1 rounded-full bg-slate-50 text-slate-500 border border-slate-100">{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedExercise.descricao && (
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Descrição</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">{selectedExercise.descricao}</p>
+                </div>
+              )}
+              {selectedExercise.instrucoes && (
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Como Executar</p>
+                  <div className="space-y-2">
+                    {selectedExercise.instrucoes.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => (
+                      <p key={i} className="text-sm text-slate-600 leading-relaxed">{line}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {getYouTubeId(selectedExercise.video_url) && (
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Vídeo Tutorial</p>
+                  <div className="rounded-2xl overflow-hidden" style={{aspectRatio:'16/9'}}>
+                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${getYouTubeId(selectedExercise.video_url)}`} allowFullScreen title="Tutorial" />
+                  </div>
+                </div>
+              )}
+              {!selectedExercise.instrucoes && !selectedExercise.descricao && !selectedExercise.video_url && (
+                <div className="text-center py-8 text-slate-300">
+                  <Dumbbell size={36} className="mx-auto mb-3"/>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Detalhes em breve</p>
+                  <p className="text-[10px] text-slate-400 mt-1">O professor ainda não adicionou descrição</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/90 backdrop-blur-sm flex items-end sm:items-center justify-center">
@@ -696,4 +772,15 @@ function TemplateEditor({ template, onBack }: { template: WorkoutTemplate, onBac
          )}
       </div>
    );
+}
+
+// ==========================================
+// BIBLIOTECA DE EXERCÍCIOS (Utentes - Só Leitura)
+// ==========================================
+export function ExerciseLibraryView() {
+  return (
+    <div className="space-y-6 animate-in fade-in pb-24 text-left font-sans">
+      <ExerciseBankTab readOnly />
+    </div>
+  );
 }
