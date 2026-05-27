@@ -285,9 +285,10 @@ export default function App() {
       seedSwimmingData();
     }
 
-    // Auto-inserir utentes de teste
-    if (!localStorage.getItem('cpx_seed_utentes_v3')) {
+    // Limpar utentes de teste
+    if (!localStorage.getItem('cpx_clear_utentes_v2')) {
       seedUtentesTestData();
+      localStorage.setItem('cpx_clear_utentes_v2', 'true');
     }
 
     return () => { unsub(); clearTimeout(timeout); };

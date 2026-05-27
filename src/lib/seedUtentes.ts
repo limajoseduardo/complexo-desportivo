@@ -5,13 +5,13 @@ import {
 } from 'firebase/firestore';
 
 export async function seedUtentesTestData() {
-  if (localStorage.getItem('cpx_clear_all_utentes_v1')) return;
+  if (localStorage.getItem('cpx_clear_all_utentes_v2')) return;
 
   try {
-    const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'clear_all_utentes_v1');
+    const sentinelRef = doc(db, `artifacts/${APP_ID}/public/data/sentinels`, 'clear_all_utentes_v2');
     const sentinelSnap = await getDoc(sentinelRef);
     if (sentinelSnap.exists()) {
-      localStorage.setItem('cpx_clear_all_utentes_v1', 'true');
+      localStorage.setItem('cpx_clear_all_utentes_v2', 'true');
       console.log("Utentes falsos já apagados.");
       return;
     }
@@ -63,7 +63,7 @@ export async function seedUtentesTestData() {
     await batch.commit();
 
     await setDoc(sentinelRef, { clearedAt: new Date().toISOString() });
-    localStorage.setItem('cpx_clear_all_utentes_v1', 'true');
+    localStorage.setItem('cpx_clear_all_utentes_v2', 'true');
     console.log("Limpeza concluída! A base de dados está limpa para novos utentes reais.");
   } catch (err) {
     console.error("Erro na limpeza de Utentes:", err);
