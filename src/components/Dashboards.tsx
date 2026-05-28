@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, Target, Building2
+  Activity, Plus, Check, Star, Shield, Target, Building2, Download, FileText
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
 import { UserProfile, OperationalLog, AccessLog, Aula } from '../types';
@@ -295,6 +297,13 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   const [leaderboard, setLeaderboard] = useState<{user: UserProfile, count: number}[]>([]);
   const [modalData, setModalData] = useState<{ totalMonth: number; weeklyData: { week: string; count: number }[]; top5: { user: UserProfile; count: number }[] } | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState<{
+    byModality: Record<string, number>;
+    byUser: Record<string, { count: number; modalities: string[] }>;
+    total: number;
+    monthKey: string;
+  } | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const totalInside = utentes.filter(u => u.isInside).length;
 
   useEffect(() => {
@@ -331,6 +340,164 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
     };
     fetchTop();
   }, [utentes.length]);
+
+  // Real-time monthly totals — auto-resets when month changes
+  useEffect(() => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const lastDay  = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+
+    const unsub = onSnapshot(
+      query(collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
+        where('date', '>=', firstDay), where('date', '<=', lastDay)),
+      snap => {
+        const byModality: Record<string, number> = {};
+        const byUserMap: Record<string, { count: number; mods: Set<string> }> = {};
+        snap.forEach(d => {
+          const { modalidade, userId } = d.data();
+          const mod = normalizeModality(modalidade || '') || 'Outros';
+          byModality[mod] = (byModality[mod] || 0) + 1;
+          if (userId) {
+            if (!byUserMap[userId]) byUserMap[userId] = { count: 0, mods: new Set() };
+            byUserMap[userId].count++;
+            byUserMap[userId].mods.add(mod);
+          }
+        });
+        const byUser: Record<string, { count: number; modalities: string[] }> = {};
+        Object.entries(byUserMap).forEach(([id, v]) => {
+          byUser[id] = { count: v.count, modalities: Array.from(v.mods) };
+        });
+        setMonthlyStats({ byModality, byUser, total: snap.size, monthKey });
+      },
+      console.error
+    );
+    return () => unsub();
+  }, []);
+
+  const generateMonthlyPDF = async () => {
+    setPdfLoading(true);
+    try {
+      const now = new Date();
+      const monthName = now.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.width;
+      const stats = monthlyStats || { byModality: {}, byUser: {}, total: 0, monthKey: '' };
+
+      // ── Header ───────────────────────────────────────────────
+      doc.setFillColor(0, 77, 113);
+      doc.rect(0, 0, pageW, 42, 'F');
+      doc.setFillColor(247, 181, 0);
+      doc.rect(0, 38, pageW, 4, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(247, 181, 0);
+      doc.text('COMPLEXO DESPORTIVO VILA DE REI', pageW / 2, 13, { align: 'center' });
+      doc.setFontSize(17);
+      doc.setTextColor(255, 255, 255);
+      doc.text('RELATÓRIO MENSAL DE AFLUÊNCIA', pageW / 2, 24, { align: 'center' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(monthName.toUpperCase(), pageW / 2, 33, { align: 'center' });
+
+      // ── Summary boxes ────────────────────────────────────────
+      const totalEntradas   = stats.total;
+      const modsAtivas      = Object.values(stats.byModality).filter(v => v > 0).length;
+      const utentesUnicos   = Object.keys(stats.byUser).length;
+      const boxes = [
+        { label: 'Total de Entradas',   value: totalEntradas.toString() },
+        { label: 'Modalidades Ativas',  value: modsAtivas.toString()    },
+        { label: 'Utentes Distintos',   value: utentesUnicos.toString() },
+      ];
+      boxes.forEach((box, i) => {
+        const x = 14 + i * 60;
+        doc.setFillColor(240, 245, 250);
+        doc.roundedRect(x, 48, 56, 22, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor(0, 77, 113);
+        doc.text(box.value, x + 28, 60, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(box.label.toUpperCase(), x + 28, 66, { align: 'center' });
+      });
+
+      // ── Modalities table ─────────────────────────────────────
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(0, 77, 113);
+      doc.text('AFLUÊNCIA POR MODALIDADE', 14, 80);
+
+      const modalRows = MODALITIES
+        .map(m => ({ label: m.label, count: stats.byModality[m.dest] || 0 }))
+        .sort((a, b) => b.count - a.count);
+
+      autoTable(doc, {
+        startY: 83,
+        head: [['Modalidade', 'Entradas', '% do Total']],
+        body: modalRows.map(r => [
+          r.label,
+          r.count,
+          totalEntradas > 0 ? `${((r.count / totalEntradas) * 100).toFixed(1)} %` : '—',
+        ]),
+        headStyles:          { fillColor: [0, 77, 113], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        bodyStyles:          { fontSize: 8, textColor: [30, 30, 30] },
+        alternateRowStyles:  { fillColor: [245, 248, 252] },
+        columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'center', cellWidth: 28 }, 2: { halign: 'center', cellWidth: 28 } },
+        margin: { left: 14, right: 14 },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 1 && Number(data.cell.raw) === 0) {
+            data.cell.styles.textColor = [180, 180, 180];
+          }
+        },
+      });
+
+      // ── Utentes table ────────────────────────────────────────
+      const afterMods = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(0, 77, 113);
+      doc.text('PRESENÇAS POR UTENTE', 14, afterMods);
+
+      const utenteRows = Object.entries(stats.byUser)
+        .map(([id, data]) => {
+          const u = utentes.find(u => u.id === id);
+          return { name: (u?.n || u?.nome || `Utente #${id.slice(-4)}`).toUpperCase(), count: data.count, mods: data.modalities.join(', ') };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      autoTable(doc, {
+        startY: afterMods + 3,
+        head: [['#', 'Utente', 'Presenças', 'Modalidades Frequentadas']],
+        body: utenteRows.map((r, i) => [i + 1, r.name, r.count, r.mods]),
+        headStyles:          { fillColor: [0, 77, 113], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        bodyStyles:          { fontSize: 7.5, textColor: [30, 30, 30] },
+        alternateRowStyles:  { fillColor: [245, 248, 252] },
+        columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 2: { halign: 'center', cellWidth: 25 }, 3: { cellWidth: 80 } },
+        margin: { left: 14, right: 14 },
+      });
+
+      // ── Footer on every page ─────────────────────────────────
+      const pages = doc.getNumberOfPages();
+      const genText = `Gerado em ${now.toLocaleDateString('pt-PT')} às ${now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })} • Complexo Desportivo Vila de Rei`;
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(160);
+        doc.text(genText, pageW / 2, doc.internal.pageSize.height - 8, { align: 'center' });
+        doc.text(`${i} / ${pages}`, pageW - 14, doc.internal.pageSize.height - 8, { align: 'right' });
+      }
+
+      doc.save(`relatorio-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.pdf`);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!selectedMod) { setModalData(null); return; }
@@ -391,28 +558,46 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
         </div>
 
         <div className="px-6 pt-4 pb-6">
-          <div className="flex items-baseline justify-between mb-3">
-            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
-            <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
-              Neste momento tem{' '}
-              <span className="text-[#F7B500] text-sm font-black">{totalInside}</span>
-              {' '}{totalInside === 1 ? 'utente' : 'utentes'}
-            </p>
+          <div className="flex items-center justify-between mb-3 gap-3">
+            <div>
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
+              <p className="text-[9px] font-black text-white/70 uppercase tracking-wide mt-0.5">
+                Neste momento tem{' '}
+                <span className="text-[#F7B500] text-sm font-black">{totalInside}</span>
+                {' '}{totalInside === 1 ? 'utente' : 'utentes'}{' '}
+                <span className="text-white/40">•</span>{' '}
+                <span className="text-[#F7B500] font-black">{monthlyStats?.total ?? '—'}</span> entradas este mês
+              </p>
+            </div>
+            <button
+              onClick={generateMonthlyPDF}
+              disabled={pdfLoading || !monthlyStats}
+              className="shrink-0 flex items-center gap-1.5 bg-[#F7B500] text-[#004D71] px-3 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 shadow-lg"
+            >
+              {pdfLoading ? <div className="w-3 h-3 border-2 border-[#004D71]/30 border-t-[#004D71] rounded-full animate-spin"/> : <Download size={12}/>}
+              PDF
+            </button>
           </div>
           <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })).sort((a, b) => b.count - a.count), [utentes]).map(m => (
+            {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })).sort((a, b) => b.count - a.count), [utentes]).map(m => {
+              const monthCount = monthlyStats?.byModality[m.dest] || 0;
+              return (
                 <button key={m.id} onClick={() => setSelectedMod(m)}
                   className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
                   <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                    <p className="text-[11px] font-bold text-white/70 mt-1 leading-none">
-                      tem <span className="text-white font-black text-sm">{m.count}</span> {m.count === 1 ? 'utente' : 'utentes'}
+                    <p className="text-[12px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
+                    <p className="text-[10px] font-bold text-white/60 mt-0.5 leading-none">
+                      <span className="text-white font-black">{m.count}</span> agora
+                    </p>
+                    <p className="text-[10px] font-bold text-[#F7B500]/80 mt-0.5 leading-none">
+                      <span className="text-[#F7B500] font-black">{monthCount}</span> este mês
                     </p>
                   </div>
                   <ChevronRight size={14} className="text-white/30 shrink-0"/>
                 </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
