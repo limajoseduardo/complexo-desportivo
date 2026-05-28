@@ -558,43 +558,52 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
         </div>
 
         <div className="px-6 pt-4 pb-6">
-          <div className="flex items-center justify-between mb-3 gap-3">
+          <div className="flex items-center justify-between mb-5 gap-3">
             <div>
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Afluência por modalidade</p>
-              <p className="text-[9px] font-black text-white/70 uppercase tracking-wide mt-0.5">
-                Neste momento tem{' '}
-                <span className="text-[#F7B500] text-sm font-black">{totalInside}</span>
-                {' '}{totalInside === 1 ? 'utente' : 'utentes'}{' '}
-                <span className="text-white/40">•</span>{' '}
-                <span className="text-[#F7B500] font-black">{monthlyStats?.total ?? '—'}</span> entradas este mês
-              </p>
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Afluência por modalidade</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-black text-[#F7B500] tabular-nums leading-none">{monthlyStats?.total ?? '—'}</span>
+                <span className="text-[10px] font-black text-white/50 uppercase">entradas este mês</span>
+              </div>
+              {totalInside > 0 && (
+                <p className="text-[8px] font-black text-green-400 mt-1.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>
+                  {totalInside} {totalInside === 1 ? 'utente presente' : 'utentes presentes'} agora
+                </p>
+              )}
             </div>
             <button
               onClick={generateMonthlyPDF}
               disabled={pdfLoading || !monthlyStats}
-              className="shrink-0 flex items-center gap-1.5 bg-[#F7B500] text-[#004D71] px-3 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 shadow-lg"
+              className="shrink-0 flex items-center gap-1.5 bg-[#F7B500] text-[#004D71] px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 shadow-lg"
             >
-              {pdfLoading ? <div className="w-3 h-3 border-2 border-[#004D71]/30 border-t-[#004D71] rounded-full animate-spin"/> : <Download size={12}/>}
+              {pdfLoading ? <div className="w-3 h-3 border-2 border-[#004D71]/30 border-t-[#004D71] rounded-full animate-spin"/> : <Download size={13}/>}
               PDF
             </button>
           </div>
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })).sort((a, b) => b.count - a.count), [utentes]).map(m => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })), [utentes]).map(m => {
               const monthCount = monthlyStats?.byModality[m.dest] || 0;
               return (
                 <button key={m.id} onClick={() => setSelectedMod(m)}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left">
-                  <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">{m.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-black uppercase leading-tight line-clamp-2 text-white/95">{m.label}</p>
-                    <p className="text-[10px] font-bold text-white/60 mt-0.5 leading-none">
-                      <span className="text-white font-black">{m.count}</span> agora
-                    </p>
-                    <p className="text-[10px] font-bold text-[#F7B500]/80 mt-0.5 leading-none">
-                      <span className="text-[#F7B500] font-black">{monthCount}</span> este mês
-                    </p>
+                  className={`flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all active:scale-95 text-left relative overflow-hidden ${
+                    monthCount > 0 ? 'bg-white/10 border-white/20 hover:bg-white/15' : 'bg-white/4 border-white/8 hover:bg-white/8'
+                  }`}>
+                  <div className="flex items-start justify-between">
+                    <div className="p-2 rounded-xl bg-white/10 text-white/80 shrink-0">{m.icon}</div>
+                    {m.count > 0 && (
+                      <div className="flex items-center gap-1 bg-green-500/25 border border-green-400/40 px-1.5 py-0.5 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse block"/>
+                        <span className="text-[9px] font-black text-green-300">{m.count}</span>
+                      </div>
+                    )}
                   </div>
-                  <ChevronRight size={14} className="text-white/30 shrink-0"/>
+                  <div>
+                    <p className="text-[11px] font-black uppercase leading-tight text-white/75 line-clamp-2 mb-2">{m.label}</p>
+                    <p className="text-3xl font-black text-[#F7B500] leading-none tabular-nums">{monthCount}</p>
+                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mt-0.5">este mês</p>
+                  </div>
+                  <ChevronRight size={11} className="absolute bottom-3 right-3 text-white/20"/>
                 </button>
               );
             })}
