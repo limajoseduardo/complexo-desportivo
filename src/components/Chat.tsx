@@ -206,7 +206,7 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
     const usersPath = `artifacts/${APP_ID}/public/data/users`;
     const q = query(
       collection(db, usersPath),
-      where('role', 'in', ['admin', 'staff', 'chefia', 'professor'])
+      where('role', 'in', ['staff', 'professor'])
     );
     const unsub = onSnapshot(q, snap => {
       setStaffContacts(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
