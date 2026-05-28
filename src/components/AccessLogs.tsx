@@ -42,7 +42,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
-  const [filterStatus, setFilterStatus] = useState('inside');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
 
   const generateInviteCode = async () => {
@@ -306,36 +306,39 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     }
   };
 
-  const filteredLogs = logs.filter(l => {
+  // All logs within date range — used for charts and stats (unaffected by search/status)
+  const allDateLogs = React.useMemo(() => logs.filter(l => {
     let lDate = l.date;
     if (!lDate) {
       if (l.checkIn instanceof Timestamp) lDate = l.checkIn.toDate().toISOString().split('T')[0];
       else if (l.timestamp && (l.timestamp as any).toDate) lDate = (l.timestamp as any).toDate().toISOString().split('T')[0];
       else lDate = '2024-01-01';
     }
-    const inRange = lDate >= startDate && lDate <= endDate;
+    return lDate >= startDate && lDate <= endDate;
+  }), [logs, startDate, endDate]);
+
+  // Table view — additionally filtered by search and status toggle
+  const filteredLogs = React.useMemo(() => allDateLogs.filter(l => {
     const matchSearch = (l.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
     let matchStatus = true;
     if (filterStatus === 'inside') matchStatus = !l.checkOut;
     if (filterStatus === 'left') matchStatus = !!l.checkOut;
+    return matchSearch && matchStatus;
+  }), [allDateLogs, searchTerm, filterStatus]);
 
-    return inRange && matchSearch && matchStatus;
-  });
-
-  const statsByModality = modalities.map(m => ({
-    label: m,
-    count: filteredLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
-  })).filter(s => s.count > 0);
-  
-  const otherCount = filteredLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
-  if (otherCount > 0) {
-    statsByModality.push({ label: 'Outro / Geral', count: otherCount });
-  }
+  const statsByModality = React.useMemo(() => {
+    const rows = modalities.map(m => ({
+      label: m,
+      count: allDateLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
+    })).filter(s => s.count > 0);
+    const otherCount = allDateLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
+    if (otherCount > 0) rows.push({ label: 'Outro / Geral', count: otherCount });
+    return rows;
+  }, [allDateLogs]);
 
   const hourlyData = React.useMemo(() => {
     const hours = new Array(24).fill(0);
-    filteredLogs.forEach(log => {
+    allDateLogs.forEach(log => {
       let hour = -1;
       if (log.checkIn instanceof Timestamp) {
         hour = log.checkIn.toDate().getHours();
@@ -353,11 +356,11 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
       data.push({ hora: `${i.toString().padStart(2, '0')}h`, entradas: hours[i] });
     }
     return data;
-  }, [filteredLogs]);
+  }, [allDateLogs]);
 
   const todayAffluenceByLocation = React.useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const rows = filteredLogs.filter(l => l.date === today);
+    const rows = allDateLogs.filter(l => l.date === today);
     const counts: Record<string, number> = {};
     rows.forEach((r) => {
       const key = (r.modalidade || 'Outro / Geral').trim() || 'Outro / Geral';
@@ -366,13 +369,13 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     return Object.entries(counts)
       .map(([local, entradas]) => ({ local, entradas }))
       .sort((a, b) => b.entradas - a.entradas);
-  }, [filteredLogs]);
+  }, [allDateLogs]);
 
   const leaderboardByModality = React.useMemo(() => {
     const ranking: Record<string, Array<{ userId: string; userName: string; count: number }>> = {};
 
     modalities.forEach(m => {
-      const modalityLogs = filteredLogs.filter(l => normalizeModality(l.modalidade || '') === m);
+      const modalityLogs = allDateLogs.filter(l => normalizeModality(l.modalidade || '') === m);
       const userCounts: Record<string, { userName: string; count: number }> = {};
       
       modalityLogs.forEach(l => {
@@ -394,7 +397,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
     });
 
     return ranking;
-  }, [filteredLogs]);
+  }, [allDateLogs]);
 
   const downloadCSV = () => {
     let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
