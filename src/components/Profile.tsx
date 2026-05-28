@@ -143,7 +143,9 @@ export function ProfileViewModule({
     const map = readLocalOverrides();
     map[profile.id] = profile;
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(map));
-    localStorage.setItem('cpx_v33_session', JSON.stringify(profile));
+    if (!isExternalView) {
+      localStorage.setItem('cpx_v33_session', JSON.stringify(profile));
+    }
   };
 
   const age = calcAge(formData.data_nasc);
@@ -1003,37 +1005,7 @@ export function ProfileViewModule({
           <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
             <SectionTitle icon={<Star size={16}/>} label="Saúde e Objetivos" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {isEditing && isStaff ? (
-                <div className="space-y-1.5 text-left w-full">
-                  <div className="flex items-center gap-2 ml-1 text-[#004D71]">
-                    <Trophy size={14} />
-                    <label className="text-[10px] font-black uppercase tracking-widest">Modalidade Atual</label>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={formData.modalidade || ''}
-                      onChange={e => set('modalidade', e.target.value)}
-                      className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="">Selecionar modalidade...</option>
-                      {MODALIDADES.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                      <ChevronDown size={18} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <FormInput
-                  label="Modalidade Atual"
-                  icon={<Trophy size={14}/>}
-                  value={formData.modalidade || ''}
-                  disabled={true}
-                  onChange={() => {}}
-                />
-              )}
+
               <FormInput label="Alergias" icon={<AlertCircle size={14}/>}
                 value={formData.alergias || ''} disabled={!isEditing}
                 onChange={v => set('alergias', v)} multiline />

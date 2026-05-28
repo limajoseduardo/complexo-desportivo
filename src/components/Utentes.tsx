@@ -5,6 +5,7 @@ import { PicotoIcon, FormInput, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { doc, setDoc } from 'firebase/firestore';
+import { MODALIDADES } from './Profile';
 
 import { handleCheckIn, handleCheckOut } from '../lib/access';
 
@@ -125,7 +126,7 @@ export function UtentesList({
         cargo: 'UTENTE',
         n: formData.nome.toUpperCase(),
         isInside: false,
-        img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.nome}`,
+        img: '',
         updatedAt: new Date().toISOString()
       };
 
@@ -326,12 +327,7 @@ export function UtentesList({
                   onChange={v => setFormData({...formData, phone: v})} 
                 />
               </div>
-              <FormInput 
-                label="Modalidade Principal" 
-                value={formData.modalidade} 
-                onChange={v => setFormData({...formData, modalidade: v})} 
-                placeholder="Ex: Natação, Hidroginástica..."
-              />
+
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 space-y-4">

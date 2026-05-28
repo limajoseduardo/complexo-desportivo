@@ -4,7 +4,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { collection, onSnapshot, query, where, addDoc, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { UserProfile, Exercicio, WorkoutSession } from '../types';
-import { ExerciseGallery } from './Exercises';
+import { ExerciseBankTab } from './TrainerTrainingPlans';
 
 export function UtenteTrainingModule({ user }: { user: UserProfile }) {
   const [activeTab, setActiveTab] = useState<'plano' | 'biblioteca'>('plano');
@@ -259,7 +259,7 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
       )}
 
       {activeTab === 'biblioteca' && (
-        <ExerciseGallery user={user} />
+        <ExerciseBankTab readOnly />
       )}
 
       {showRequest && (

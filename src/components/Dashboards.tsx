@@ -6,12 +6,13 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PicotoIcon, AvatarImage } from './Common';
-import { UserProfile, OperationalLog } from '../types';
+import { UserProfile, OperationalLog, AccessLog, Aula } from '../types';
 import { APP_ID } from '../App';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { isUserInZone } from '../lib/logic';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { SwimmingStudentPortal } from './SwimmingModule';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], utentes: UserProfile[] }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
@@ -258,6 +259,19 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
   );
 });
 
+const normalizeModality = (m: string) => {
+  if (m?.startsWith('Natação Nível')) return 'Natação';
+  return m || '';
+};
+
+const timeToMin = (t: string) => {
+  const [h, m] = (t || '00:00').split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+const normStr = (s: string) =>
+  (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 const MODALITIES = [
   { id: 'livre',    label: 'Piscina Regime Livre', icon: <Star size={18}/>,     dest: 'Piscina Regime Livre' },
   { id: 'pool_out', label: 'Piscina Exterior',     icon: <Sun size={18}/>,      dest: 'Piscina Exterior'     },
@@ -279,6 +293,8 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
 }) => {
   const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
   const [leaderboard, setLeaderboard] = useState<{user: UserProfile, count: number}[]>([]);
+  const [modalData, setModalData] = useState<{ totalMonth: number; weeklyData: { week: string; count: number }[]; top5: { user: UserProfile; count: number }[] } | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
   const totalInside = utentes.filter(u => u.isInside).length;
 
   useEffect(() => {
@@ -315,6 +331,48 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
     };
     fetchTop();
   }, [utentes.length]);
+
+  useEffect(() => {
+    if (!selectedMod) { setModalData(null); return; }
+    setModalLoading(true);
+    setModalData(null);
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const today = now.toISOString().split('T')[0];
+    const dest = selectedMod.dest;
+
+    getDocs(query(
+      collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
+      where('date', '>=', firstDay),
+      where('date', '<=', today)
+    )).then(snap => {
+      const logs = snap.docs
+        .map(d => d.data() as AccessLog)
+        .filter(l => {
+          const m = normalizeModality(l.modalidade || '');
+          return m === dest || normalizeModality(dest) === m;
+        });
+
+      const weeks: Record<number, number> = {};
+      logs.forEach(l => {
+        const day = parseInt(l.date?.split('-')[2] || '1');
+        const w = Math.min(Math.ceil(day / 7), 5);
+        weeks[w] = (weeks[w] || 0) + 1;
+      });
+      const maxWeek = Math.ceil(now.getDate() / 7);
+      const weeklyData = Array.from({ length: maxWeek }, (_, i) => ({ week: `S${i + 1}`, count: weeks[i + 1] || 0 }));
+
+      const counts: Record<string, number> = {};
+      logs.forEach(l => { if (l.userId) counts[l.userId] = (counts[l.userId] || 0) + 1; });
+      const top5 = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([id, count]) => { const u = utentes.find(u => u.id === id); return u ? { user: u, count } : null; })
+        .filter(Boolean) as { user: UserProfile; count: number }[];
+
+      setModalData({ totalMonth: logs.length, weeklyData, top5 });
+    }).catch(console.error).finally(() => setModalLoading(false));
+  }, [selectedMod?.id]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
@@ -386,38 +444,114 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
       </div>
 
       {selectedMod && (() => {
-        const users = utentes.filter(u => isUserInZone(u, selectedMod.id));
+        const currentUsers = utentes.filter(u => isUserInZone(u, selectedMod.id));
         return (
           <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4" onClick={() => setSelectedMod(null)}>
-            <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+            <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-10 flex flex-col max-h-[92dvh]" onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="flex justify-between items-center px-8 pt-8 pb-5 border-b border-slate-100 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{selectedMod.icon}</div>
+                  <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl shrink-0">{selectedMod.icon}</div>
                   <div>
-                    <h3 className="text-base font-black text-[#004D71] uppercase">{selectedMod.label}</h3>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                      {users.length} {users.length === 1 ? 'utente presente' : 'utentes presentes'}
-                    </p>
+                    <h3 className="text-base font-black text-[#004D71] uppercase leading-tight">{selectedMod.label}</h3>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Estatísticas do mês corrente</p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
+                <button onClick={() => setSelectedMod(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400 shrink-0"><X size={20}/></button>
               </div>
-              <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
-                {users.map(u => (
-                  <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
-                    className="w-full flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
-                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
+
+              {/* Scrollable body */}
+              <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6 hide-scrollbar">
+
+                {/* Stats row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#004D71]/5 rounded-2xl p-4 text-center">
+                    {modalLoading ? (
+                      <div className="h-8 flex items-center justify-center"><div className="w-5 h-5 border-2 border-[#004D71]/20 border-t-[#004D71] rounded-full animate-spin"/></div>
+                    ) : (
+                      <p className="text-3xl font-black text-[#004D71]">{modalData?.totalMonth ?? '—'}</p>
+                    )}
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Entradas este mês</p>
+                  </div>
+                  <div className="bg-green-50 rounded-2xl p-4 text-center">
+                    <p className="text-3xl font-black text-green-600">{currentUsers.length}</p>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Presentes agora</p>
+                  </div>
+                </div>
+
+                {/* Weekly chart */}
+                {modalData && modalData.weeklyData.length > 0 && (
+                  <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Entradas por semana</p>
+                    <div className="h-28">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={modalData.weeklyData} barSize={28} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                          <XAxis dataKey="week" tick={{ fontSize: 9, fontWeight: 900, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            formatter={(v: any) => [`${v} entradas`, '']}
+                            contentStyle={{ fontSize: 11, fontWeight: 900, borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', padding: '8px 14px' }}
+                            cursor={{ fill: '#004D71', opacity: 0.04 }}
+                          />
+                          <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                            {modalData.weeklyData.map((entry, i) => (
+                              <Cell key={i} fill={entry.count === Math.max(...modalData.weeklyData.map(w => w.count)) && entry.count > 0 ? '#F7B500' : '#004D71'} fillOpacity={0.85} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <ChevronRight size={16} className="text-[#F7B500] shrink-0"/>
-                  </button>
-                ))}
-                {users.length === 0 && (
+                  </div>
+                )}
+
+                {/* Top 5 */}
+                {modalData && modalData.top5.length > 0 && (
+                  <div>
+                    <p className="text-[8px] font-black text-[#F7B500] uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Star size={11}/> Top 5 utentes este mês
+                    </p>
+                    <div className="space-y-2">
+                      {modalData.top5.map((item, idx) => (
+                        <button key={item.user.id} onClick={() => { onUserClick(item.user); setSelectedMod(null); }}
+                          className="w-full flex items-center gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-[#004D71]/20 active:scale-95 transition-all text-left">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[9px] shrink-0 ${idx === 0 ? 'bg-[#F7B500] text-[#004D71]' : 'bg-[#004D71]/10 text-[#004D71]'}`}>
+                            {idx + 1}
+                          </div>
+                          <AvatarImage src={item.user.img} alt={item.user.n || item.user.nome} className="w-9 h-9 rounded-xl shrink-0 border border-slate-200"/>
+                          <p className="flex-1 font-black text-[#004D71] text-xs uppercase truncate">{item.user.n || item.user.nome}</p>
+                          <span className="text-[10px] font-black text-slate-400 shrink-0 bg-slate-100 px-2.5 py-1 rounded-full">{item.count}×</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Currently present */}
+                {currentUsers.length > 0 && (
+                  <div>
+                    <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block"/> Presentes agora
+                    </p>
+                    <div className="space-y-2">
+                      {currentUsers.map(u => (
+                        <button key={u.id} onClick={() => { onUserClick(u); setSelectedMod(null); }}
+                          className="w-full flex items-center gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-green-200 active:scale-95 transition-all text-left">
+                          <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-xl border-2 border-green-400 shadow-sm shrink-0"/>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selectedMod.label}</p>
+                          </div>
+                          <ChevronRight size={15} className="text-[#F7B500] shrink-0"/>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!modalLoading && modalData?.totalMonth === 0 && currentUsers.length === 0 && (
                   <div className="py-16 text-center">
                     <PicotoIcon className="mx-auto mb-4 opacity-10" size={50}/>
-                    <p className="uppercase font-black text-[10px] tracking-widest text-slate-300">Nenhum utente nesta modalidade</p>
+                    <p className="uppercase font-black text-[10px] tracking-widest text-slate-300">Sem dados para este mês</p>
                   </div>
                 )}
               </div>
@@ -425,6 +559,245 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           </div>
         );
       })()}
+    </div>
+  );
+});
+
+export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick, logs }: {
+  user: UserProfile;
+  utentes?: UserProfile[];
+  onUserClick: (u: UserProfile) => void;
+  logs: OperationalLog[];
+}) => {
+  const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
+  const latestDescoberta = logs.find(l => l.tipo === 'descoberta') || {} as OperationalLog;
+
+  const todayDow = new Date().getDay() || 7;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const nowMin = (() => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
+
+  const [todayAulas, setTodayAulas] = useState<Aula[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<Record<string, number>>({});
+  const [selected, setSelected] = useState<{ label: string; id: string } | null>(null);
+
+  const zones = React.useMemo(() => [
+    { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={14}/> },
+    { id: 'pool_in',  label: 'Piscina Coberta',   icon: <Waves size={14}/>   },
+    { id: 'pool_out', label: 'Piscina Exterior',  icon: <Sun size={14}/>     },
+    { id: 'sauna',    label: 'Sauna',             icon: <Flame size={14}/>   },
+    { id: 'fit',      label: 'Aulas Grupo',        icon: <Users2 size={14}/> },
+  ], []);
+
+  const zonesUsers = React.useMemo(() =>
+    zones.map(z => ({ ...z, count: utentes.filter(u => isUserInZone(u, z.id)).length }))
+  , [utentes, zones]);
+
+  // Today's classes for this professor
+  useEffect(() => {
+    const profNorm = normStr(user.n || user.nome || '');
+    const q = query(collection(db, `artifacts/${APP_ID}/public/data/agenda`), where('diaSemana', '==', todayDow));
+    return onSnapshot(q, snap => {
+      const aulas = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Aula))
+        .filter(a => {
+          if (a.cancelada) return false;
+          const ap = normStr(a.professor || '');
+          const ap2 = normStr(a.professor2 || '');
+          const parts = profNorm.split(' ').filter(p => p.length > 2);
+          return parts.some(p => ap.includes(p) || ap2.includes(p));
+        })
+        .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+      setTodayAulas(aulas);
+    }, () => {});
+  }, [user.id, todayDow]);
+
+  // Today's attendance per modality from access logs
+  useEffect(() => {
+    getDocs(query(
+      collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
+      where('date', '==', todayStr)
+    )).then(snap => {
+      const counts: Record<string, number> = {};
+      snap.forEach(d => {
+        const m = normalizeModality(d.data().modalidade || '');
+        if (m) counts[m] = (counts[m] || 0) + 1;
+      });
+      setTodayAttendance(counts);
+    }).catch(() => {});
+  }, [todayStr]);
+
+  const getAulaStatus = (aula: Aula) => {
+    const s = timeToMin(aula.horaInicio);
+    const e = timeToMin(aula.horaFim);
+    if (nowMin >= s && nowMin <= e) return 'decorrer';
+    if (nowMin < s && s - nowMin <= 60) return 'proxima';
+    if (nowMin < s) return 'futura';
+    return 'passada';
+  };
+
+  const selectedUtentes = React.useMemo(() => {
+    if (!selected) return [];
+    return utentes.filter(u => isUserInZone(u, selected.id));
+  }, [utentes, selected]);
+
+  const dayNames = ['', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const today = new Date();
+  const todayLabel = `${dayNames[todayDow]}, ${today.getDate()} ${monthNames[today.getMonth()]}`;
+
+  return (
+    <div className="space-y-6 animate-in fade-in pb-24 px-2 text-left relative font-sans">
+
+      {/* ── MINHAS AULAS HOJE ── */}
+      <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
+          <div>
+            <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">As Minhas Aulas</p>
+            <p className="text-sm font-black text-white uppercase leading-tight">{todayLabel}</p>
+          </div>
+          <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
+            <p className="text-[7px] font-black text-[#004D71] uppercase tracking-widest">Professor</p>
+          </div>
+        </div>
+
+        <div className="px-6 py-5">
+          {todayAulas.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-white/30 font-black text-[10px] uppercase tracking-widest">Sem aulas agendadas para hoje</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todayAulas.map(aula => {
+                const status = getAulaStatus(aula);
+                const attendance = todayAttendance[normalizeModality(aula.modalidade)] || 0;
+                const presentNow = utentes.filter(u => u.isInside && normalizeModality(u.modalidade || '') === normalizeModality(aula.modalidade)).length;
+                return (
+                  <div key={aula.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                    status === 'decorrer' ? 'bg-[#F7B500]/15 border-[#F7B500]/50' :
+                    status === 'proxima'  ? 'bg-white/10 border-white/25' :
+                    status === 'passada'  ? 'bg-white/3 border-white/5 opacity-50' :
+                    'bg-white/5 border-white/10'
+                  }`}>
+                    <div className="text-center shrink-0 w-16">
+                      <p className="text-[11px] font-black text-white/70">{aula.horaInicio}</p>
+                      <p className="text-[9px] font-black text-white/30">{aula.horaFim}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-black text-white text-sm uppercase leading-tight truncate">{aula.modalidade}</p>
+                        {status === 'decorrer' && <span className="bg-[#F7B500] text-[#004D71] text-[7px] font-black px-2 py-0.5 rounded-full uppercase shrink-0">Em curso</span>}
+                        {status === 'proxima' && <span className="bg-white/20 text-white text-[7px] font-black px-2 py-0.5 rounded-full uppercase shrink-0">A seguir</span>}
+                      </div>
+                      {aula.sala && <p className="text-[8px] text-white/30 font-black uppercase mt-0.5">{aula.sala}</p>}
+                    </div>
+                    <div className="text-right shrink-0 space-y-1">
+                      {(status === 'decorrer' || status === 'passada') ? (
+                        <>
+                          <p className="text-white font-black text-xl leading-none">{attendance}</p>
+                          <p className="text-[7px] text-white/40 font-black uppercase">presenças</p>
+                          {status === 'decorrer' && presentNow > 0 && (
+                            <p className="text-[7px] text-[#F7B500] font-black uppercase">{presentNow} agora</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-white font-black text-xl leading-none">{aula.vagas ?? '—'}</p>
+                          <p className="text-[7px] text-white/40 font-black uppercase">vagas</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ZONE OCCUPANCY ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {zonesUsers.map(m => (
+          <button key={m.id} onClick={() => setSelected({ label: m.label, id: m.id })}
+            className="bg-white rounded-3xl p-5 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{m.icon}</div>
+              <div className={`w-2 h-2 rounded-full ${m.count > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-200'}`}/>
+            </div>
+            <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-1 line-clamp-1">{m.label}</h4>
+            <p className="text-xl font-black text-[#004D71]">{m.count} <span className="text-[10px] opacity-40 uppercase">Presentes</span></p>
+          </button>
+        ))}
+      </div>
+
+      {/* ── POOL MONITORING (read-only) ── */}
+      <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-[#004D71]/5 p-6">
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+          <Droplets size={14} className="text-[#F7B500]"/> Monitorização Piscinas
+        </h3>
+        <div className="space-y-6">
+          {[
+            { label: 'Piscina Coberta', color: 'bg-blue-500', data: latestCoberta },
+            { label: 'Piscina Exterior', color: 'bg-amber-500', data: latestDescoberta },
+          ].map(({ label, color, data }) => (
+            <div key={label} className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${color}`}/>
+                <p className="text-[9px] font-black text-[#004D71] uppercase tracking-widest">{label}</p>
+                {data.hora && <span className="text-[8px] font-bold text-slate-400 uppercase ml-auto">{data.hora}</span>}
+              </div>
+              <div className="grid grid-cols-3 gap-2 font-mono text-center">
+                {[
+                  { key: 'Água', val: data.tempAgua ? `${data.tempAgua}ºC` : '---', cls: 'text-[#004D71]' },
+                  { key: 'pH',   val: data.ph || '---',      cls: 'text-orange-600' },
+                  { key: 'Cloro', val: data.clLivre || '---', cls: 'text-blue-600'   },
+                ].map(({ key, val, cls }) => (
+                  <div key={key} className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
+                    <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">{key}</span>
+                    <span className={`text-[12px] font-black ${cls}`}>{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── ZONE USERS MODAL ── */}
+      {selected && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10">
+            <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-[#004D71] uppercase">{selected.label}</h3>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Utentes Presentes Agora</p>
+              </div>
+              <button onClick={() => setSelected(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
+            </div>
+            <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
+              {selectedUtentes.map(u => (
+                <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm"/>
+                    <div>
+                      <p className="font-black text-[#004D71] text-sm uppercase">{u.n || u.nome}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selected.label}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => { onUserClick(u); setSelected(null); }} className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-[#F7B500]">
+                    <ChevronRight size={16}/>
+                  </button>
+                </div>
+              ))}
+              {selectedUtentes.length === 0 && (
+                <div className="py-20 text-center text-slate-300">
+                  <PicotoIcon className="mx-auto mb-4 opacity-10" size={60}/>
+                  <p className="uppercase font-black text-[10px] tracking-widest">Vazio de momento</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

@@ -9,6 +9,7 @@ import { seedSwimmingData } from './components/SwimmingModule';
 const ModalitiesDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.ModalitiesDashboard })));
 const UtenteDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.UtenteDashboard })));
 const StaffDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.StaffDashboard })));
+const ProfessorDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.ProfessorDashboard })));
 const EntranceDashboard = React.lazy(() => import('./components/EntranceDashboard').then(m => ({ default: m.EntranceDashboard })));
 const UtentesList = React.lazy(() => import('./components/Utentes').then(m => ({ default: m.UtentesList })));
 const ScannerScreen = React.lazy(() => import('./components/Utentes').then(m => ({ default: m.ScannerScreen })));
@@ -819,11 +820,19 @@ export default function App() {
                     onLogout={handleLogout}
                   />
                 )}
-                {activeTab === 'inicio' && !['utente', 'staff'].includes(user.role) && (
-                  <ModalitiesDashboard 
-                    onUserClick={setViewingProfile} 
-                    logs={logs} 
-                    utentes={utentes} 
+                {activeTab === 'inicio' && user.role === 'professor' && (
+                  <ProfessorDashboard
+                    user={user}
+                    utentes={utentes}
+                    onUserClick={setViewingProfile}
+                    logs={logs}
+                  />
+                )}
+                {activeTab === 'inicio' && !['utente', 'staff', 'professor'].includes(user.role) && (
+                  <ModalitiesDashboard
+                    onUserClick={setViewingProfile}
+                    logs={logs}
+                    utentes={utentes}
                   />
                 )}
                 {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'chefia'].includes(user.role)} />}
@@ -848,8 +857,12 @@ export default function App() {
                     user={user} 
                     onLogout={handleLogout} 
                     setUser={(updatedUser) => {
-                      setUser(updatedUser);
-                      localStorage.setItem('cpx_v33_session', JSON.stringify(updatedUser));
+                      const normalized = {
+                        ...updatedUser,
+                        role: normalizeRole(updatedUser.role, updatedUser.email)
+                      };
+                      setUser(normalized);
+                      localStorage.setItem('cpx_v33_session', JSON.stringify(normalized));
                     }}
                     onReportBug={() => setShowBugReport(true)}
                     currentRole={user.role}

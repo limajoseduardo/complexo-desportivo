@@ -1091,7 +1091,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
                         <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${isActive ? 'bg-white/10 text-[#F7B500]' : 'bg-[#004D71]/5 text-[#004D71]'}`}>
                           {c.nivel}
                         </span>
-                        <h4 className="font-black text-sm uppercase leading-none mt-2 truncate max-w-[180px]">{c.nome}</h4>
+                        <h4 className="font-black text-sm uppercase leading-snug mt-2 pr-2">{c.nome}</h4>
                         <div className={`flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wide mt-2 ${isActive ? 'text-white/60' : 'text-slate-400'}`}>
                           <Clock size={10}/> {c.horario}
                         </div>
@@ -1187,7 +1187,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
                         {selectedClass.objetivos.map((obj, i) => (
                           <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 text-[10px] font-bold text-slate-500 uppercase">
                             <span className="w-5 h-5 bg-[#004D71]/5 text-[#004D71] rounded-lg flex items-center justify-center text-[9px] font-black">{i + 1}</span>
-                            <span className="truncate">{obj}</span>
+                            <span className="break-words flex-1">{obj}</span>
                           </div>
                         ))}
                       </div>

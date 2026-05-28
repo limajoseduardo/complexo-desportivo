@@ -67,7 +67,7 @@ const emptyExForm = {
   equipamento: '', dificuldade: 'iniciante', descricao: '', instrucoes: '', video_url: ''
 };
 
-function ExerciseBankTab({ readOnly = false }: { readOnly?: boolean }) {
+export function ExerciseBankTab({ readOnly = false }: { readOnly?: boolean }) {
   const [exercises, setExercises] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [openGroup, setOpenGroup] = useState<string | null>(null);

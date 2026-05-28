@@ -618,7 +618,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
 
       {showManualModal && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-           <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in">
+           <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in">
               <button 
                 onClick={closeModal}
                 className="absolute top-6 right-6 p-4 bg-slate-50 text-slate-400 rounded-full hover:bg-slate-100 transition-colors"
@@ -651,19 +651,20 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                           />
                        </div>
 
-                       <div className="max-h-[250px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                       <div className="max-h-[380px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                           {foundUsers.map(u => (
                             <button 
                               key={u.id}
                               onClick={() => setSelectedUser(u)}
                               className="w-full p-4 rounded-xl border-2 border-slate-100 flex items-center gap-3 hover:border-[#F7B500] text-left transition-all"
                             >
-                               <div className="w-10 h-10 rounded-lg bg-[#004D71]/5 flex items-center justify-center text-[#004D71] font-black text-xs uppercase shrink-0">
-                                  {u.n?.substring(0,2) || 'UT'}
-                               </div>
+                               <AvatarImage 
+                                 src={u.img} 
+                                 alt={u.n || u.nome} 
+                                 className="w-12 h-12 rounded-xl shrink-0 border border-slate-100 shadow-sm" 
+                               />
                                <div>
-                                  <p className="font-black text-[#004D71] text-xs uppercase">{u.n || u.nome}</p>
-                                  <p className="text-[9px] font-bold text-slate-400 uppercase">{u.email}</p>
+                                  <p className="font-black text-[#004D71] text-sm uppercase">{u.n || u.nome}</p>
                                </div>
                             </button>
                           ))}
@@ -679,11 +680,13 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
                     <div className="space-y-6 animate-in slide-in-from-bottom-4">
                        <div className="p-4 bg-slate-50 rounded-2xl border-2 border-[#004D71]/10 flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-lg bg-[#004D71] flex items-center justify-center text-[#F7B500] font-black text-xs uppercase">
-                                {selectedUser.n?.substring(0,2) || 'UT'}
-                             </div>
+                             <AvatarImage 
+                               src={selectedUser.img} 
+                               alt={selectedUser.n || selectedUser.nome} 
+                               className="w-12 h-12 rounded-xl shrink-0 border border-slate-100 shadow-sm" 
+                             />
                              <div>
-                                <p className="font-black text-[#004D71] text-xs uppercase">{selectedUser.n || selectedUser.nome}</p>
+                                <p className="font-black text-[#004D71] text-sm uppercase">{selectedUser.n || selectedUser.nome}</p>
                                 <p className="text-[9px] font-bold text-[#F7B500] uppercase">Utente Selecionado</p>
                              </div>
                           </div>

@@ -5,7 +5,8 @@ import { motion } from 'motion/react';
 
 export const AvatarImage = React.memo(({ src, alt, className = "" }: { src?: string, alt: string, className?: string }) => {
   const [error, setError] = React.useState(false);
-  const hasSrc = !!(src && src.trim());
+  const isDicebear = src && src.includes('dicebear.com');
+  const hasSrc = !!(src && src.trim() && !isDicebear);
 
   return (
     <div className={`relative ${className} bg-slate-100 flex items-center justify-center overflow-hidden`}>
