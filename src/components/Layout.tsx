@@ -193,7 +193,7 @@ function headerAqiLabel(aqi: number): { label: string; color: string } {
   return                 { label: 'Crítica',      color: 'text-purple-500' };
 }
 
-export function Header({ user, unreadCount = 0, isVisible = true }: { user: UserProfile, unreadCount?: number, isVisible?: boolean }) {
+export function Header({ user, unreadCount = 0 }: { user: UserProfile, unreadCount?: number }) {
   const [time, setTime] = React.useState(new Date());
   const { weather, aqi } = useWeather();
 
@@ -214,7 +214,7 @@ export function Header({ user, unreadCount = 0, isVisible = true }: { user: User
   const aqiInfo = aqi !== null ? headerAqiLabel(aqi) : null;
 
   return (
-    <header className={`bg-white px-5 flex justify-between items-center sticky top-0 z-40 transition-all duration-300 overflow-hidden ${isVisible ? 'max-h-[120px] py-2 border-b-4 border-slate-100 opacity-100' : 'max-h-0 py-0 border-b-0 border-transparent opacity-0'}`}>
+    <header className="bg-white px-5 flex justify-between items-center sticky top-0 z-40 py-2 border-b-4 border-slate-100">
 
       {/* Esquerda: Foto + Info */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -315,7 +315,6 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
   { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor', 'utente'] },
   { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: ['utente'] },
-  { id: 'exercicios', icon: <BookOpen />,     label: 'Exercícios', mobileLabel: 'EXERC.', roles: ['utente'] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor', 'utente'], badge: unreadCount },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',     mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },

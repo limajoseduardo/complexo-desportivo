@@ -138,6 +138,7 @@ export default function App() {
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastScrollY = React.useRef(0);
+  const anchorScrollY = React.useRef(0);
 
   // Clear RFID Toast after timeout
   useEffect(() => {
@@ -231,15 +232,18 @@ export default function App() {
   useRfidScanner(processRfidScan);
 
   const handleMainScroll = React.useCallback((e: React.UIEvent<HTMLElement>) => {
-    const currentScrollY = e.currentTarget.scrollTop;
-    if (currentScrollY < 50) {
-      setIsNavVisible(true); // Mostrar sempre se estiver no topo
-    } else if (currentScrollY > lastScrollY.current + 10) {
-      setIsNavVisible(false); // A descer (esconder)
-    } else if (currentScrollY < lastScrollY.current - 10) {
-      setIsNavVisible(true); // A subir (mostrar)
+    const y = e.currentTarget.scrollTop;
+    if (y < 60) {
+      setIsNavVisible(true);
+      anchorScrollY.current = y;
+    } else if (y > anchorScrollY.current + 80) {
+      setIsNavVisible(false);
+      anchorScrollY.current = y;
+    } else if (y < anchorScrollY.current - 40) {
+      setIsNavVisible(true);
+      anchorScrollY.current = y;
     }
-    lastScrollY.current = currentScrollY;
+    lastScrollY.current = y;
   }, []);
 
   useEffect(() => {
@@ -517,7 +521,7 @@ export default function App() {
          n: existingProfile?.n || existingProfile?.nome || emailInput.split('@')[0].toUpperCase(),
          nome: existingProfile?.nome || existingProfile?.n || emailInput.split('@')[0].toUpperCase(),
          cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
-         img: existingProfile?.img || `https://api.dicebear.com/7.x/avataaars/svg?seed=${effectiveRole}`,
+         img: existingProfile?.img || '',
          lastLogin: new Date().toISOString()
       };
 
@@ -601,7 +605,7 @@ export default function App() {
          n: emailInput.split('@')[0].toUpperCase(),
          nome: emailInput.split('@')[0].toUpperCase(),
          cargo: effectiveRole.toUpperCase(),
-         img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${effectiveRole}`,
+         img: '',
          lastLogin: new Date().toISOString(),
          createdAt: new Date().toISOString()
       };
@@ -675,7 +679,7 @@ export default function App() {
          n: existingProfile?.n || existingProfile?.nome || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
          nome: existingProfile?.nome || existingProfile?.n || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
          cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
-         img: fbUser.photoURL || existingProfile?.img || `https://api.dicebear.com/7.x/avataaars/svg?seed=${effectiveRole}`,
+         img: fbUser.photoURL || existingProfile?.img || '',
          lastLogin: new Date().toISOString()
       };
 
@@ -771,7 +775,7 @@ export default function App() {
         />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} unreadCount={totalUnread} isVisible={isNavVisible} />
+          <Header user={user} unreadCount={totalUnread} />
           
           <React.Suspense fallback={null}>
             <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
