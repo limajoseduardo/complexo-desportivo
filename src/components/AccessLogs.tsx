@@ -46,6 +46,8 @@ export function AccessLogsModule({ onScan, currentUser }: { onScan?: () => void;
   const [filterStatus, setFilterStatus] = useState('all');
   const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
   const [showTurmas, setShowTurmas] = useState(false);
+  const [confirmDeleteLog, setConfirmDeleteLog] = useState<AccessLog | null>(null);
+  const [deletingLog, setDeletingLog] = useState(false);
 
   const generateInviteCode = async () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -258,12 +260,25 @@ export function AccessLogsModule({ onScan, currentUser }: { onScan?: () => void;
     setShowManualModal(true);
   };
 
-  const handleDeleteLog = async (id: string) => {
-    if (!window.confirm('Tem a certeza que deseja eliminar este registo permanentemente?')) return;
+  const handleDeleteLog = async (log: AccessLog) => {
+    setDeletingLog(true);
     try {
-      await deleteDoc(doc(db, `artifacts/${APP_ID}/public/data/logs_acesso`, id));
+      await deleteDoc(doc(db, `artifacts/${APP_ID}/public/data/logs_acesso`, log.id));
+      // If the user was still inside (no checkout), reset their isInside status
+      if (!log.checkOut && log.userId) {
+        try {
+          await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId), {
+            isInside: false,
+            location: null,
+            z: null,
+          });
+        } catch (_) { /* user may not exist as registered account */ }
+      }
+      setConfirmDeleteLog(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'logs_acesso');
+    } finally {
+      setDeletingLog(false);
     }
   };
 
@@ -604,6 +619,44 @@ export function AccessLogsModule({ onScan, currentUser }: { onScan?: () => void;
         </div>
       </div>
 
+      {confirmDeleteLog && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl max-w-sm w-full animate-in zoom-in text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-500"/>
+            </div>
+            <h3 className="text-lg font-black text-[#004D71] uppercase mb-1">Eliminar Registo?</h3>
+            <p className="text-sm font-bold text-slate-600 mb-1">{confirmDeleteLog.userName}</p>
+            <p className="text-xs font-bold text-slate-400 uppercase mb-1">{confirmDeleteLog.modalidade} · {confirmDeleteLog.date}</p>
+            {!confirmDeleteLog.checkOut && (
+              <p className="text-[10px] font-black text-amber-500 uppercase tracking-wide mt-2 mb-1">
+                O utente ficará marcado como saído
+              </p>
+            )}
+            <p className="text-[10px] text-slate-400 font-bold mt-2 mb-6">Este registo será removido das estatísticas.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDeleteLog(null)}
+                disabled={deletingLog}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeleteLog(confirmDeleteLog)}
+                disabled={deletingLog}
+                className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deletingLog
+                  ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                  : <Trash2 size={12}/>}
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showTurmas && (
         <TurmasModule
           onClose={() => setShowTurmas(false)}
@@ -761,9 +814,12 @@ export function AccessLogsModule({ onScan, currentUser }: { onScan?: () => void;
 
                        <div className="flex gap-3">
                          {editingLogId && (
-                           <button 
+                           <button
                             type="button"
-                             onClick={() => handleDeleteLog(editingLogId)}
+                             onClick={() => {
+                               const log = filteredLogs.find(l => l.id === editingLogId);
+                               if (log) { closeModal(); setConfirmDeleteLog(log); }
+                             }}
                              className="p-5 bg-red-50 text-red-500 rounded-2xl active:scale-95 transition-all"
                            >
                              <Trash2 size={20}/>
@@ -919,13 +975,22 @@ export function AccessLogsModule({ onScan, currentUser }: { onScan?: () => void;
                         <span className="text-sm font-black text-[#004D71]">{log.durationMinutes ? `${log.durationMinutes} min` : '---'}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => openEditModal(log)}
-                          className="p-2 text-[#004D71] hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Editar Registo"
-                        >
-                          <Edit2 size={15}/>
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => openEditModal(log)}
+                            className="p-2 text-[#004D71] hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Editar Registo"
+                          >
+                            <Edit2 size={15}/>
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteLog(log)}
+                            className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+                            title="Eliminar Registo"
+                          >
+                            <Trash2 size={15}/>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     );
