@@ -180,11 +180,9 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
                           <MapPin size={9}/> {t.sala}
                         </span>
                       )}
-                      {t.professor && (
-                        <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 uppercase">
-                          <User size={9}/> {t.professor}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1 text-[9px] font-black text-slate-300 uppercase italic">
+                        <User size={9}/> Professor a definir
+                      </span>
                     </div>
 
                     {/* days pills */}
@@ -393,10 +391,85 @@ function CreateTurma({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── Professor Picker (step before attendance) ────────────────────────────────
+function ProfessorPicker({ turma, onSelect, onBack }:
+  { turma: Turma; onSelect: (name: string, id: string) => void; onBack: () => void }) {
+
+  const [professors, setProfessors] = useState<{ id: string; nome: string }[]>([]);
+  const [custom, setCustom] = useState('');
+
+  useEffect(() => {
+    getDocs(query(
+      collection(db, `artifacts/${APP_ID}/public/data/users`),
+      where('role', '==', 'professor')
+    )).then(snap => {
+      setProfessors(snap.docs.map(d => {
+        const data = d.data();
+        return { id: d.id, nome: data.n || data.nome || d.id };
+      }).sort((a, b) => a.nome.localeCompare(b.nome)));
+    }).catch(() => {});
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm flex justify-end animate-in fade-in">
+      <div className="bg-white h-full w-full max-w-lg shadow-2xl flex flex-col animate-in slide-in-from-right-10 duration-300">
+
+        {/* header */}
+        <div className={`${modColor(turma.modalidade)} px-7 pt-8 pb-6 text-white shrink-0`}>
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={onBack} className="p-2 bg-white/15 rounded-xl active:scale-90"><ArrowLeft size={16}/></button>
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/60">Presenças · {turma.nome}</p>
+              <h2 className="text-base font-black uppercase">Quem dá a aula hoje?</h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 hide-scrollbar space-y-3">
+          {/* registered professors */}
+          {professors.length > 0 && (
+            <>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Professores Registados</p>
+              {professors.map(p => (
+                <button key={p.id} onClick={() => onSelect(p.nome, p.id)}
+                  className="w-full flex items-center gap-4 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl hover:border-[#004D71]/30 hover:bg-[#004D71]/5 active:scale-[0.98] transition-all text-left">
+                  <div className="w-10 h-10 rounded-xl bg-[#004D71]/10 flex items-center justify-center shrink-0">
+                    <User size={18} className="text-[#004D71]"/>
+                  </div>
+                  <p className="font-black text-[#004D71] text-sm uppercase">{p.nome}</p>
+                  <ChevronDown size={14} className="ml-auto text-slate-300 -rotate-90 shrink-0"/>
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* custom entry */}
+          <div className="pt-2">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Ou escreve o nome</p>
+            <div className="flex gap-2">
+              <input value={custom} onChange={e => setCustom(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && custom.trim() && onSelect(custom.trim(), 'custom')}
+                placeholder="Nome do professor..."
+                className="flex-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:border-[#004D71] transition-colors"/>
+              <button onClick={() => custom.trim() && onSelect(custom.trim(), 'custom')}
+                disabled={!custom.trim()}
+                className="px-5 py-3 bg-[#004D71] text-[#F7B500] rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-30 shrink-0">
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Attendance Sheet ─────────────────────────────────────────────────────────
 function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   { turma: Turma; markerUserId: string; markerUserName: string; onBack: () => void }) {
 
+  const [professorName, setProfessorName] = useState<string | null>(null);
+  const [professorId,   setProfessorId]   = useState<string>('');
   const [marked, setMarked]   = useState<Set<string>>(new Set());
   const [logIds, setLogIds]   = useState<Record<string, string>>({});
   const [saving, setSaving]   = useState(false);
@@ -405,7 +478,9 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
 
   const dateStr = todayStr();
 
+  // Only run when professor is selected (professorName !== null)
   useEffect(() => {
+    if (!professorName) return;
     getDocs(query(collection(db, LOGS_PATH),
       where('turmaId', '==', turma.id),
       where('date', '==', dateStr)
@@ -419,11 +494,17 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
       setLogIds(ids);
       setMarked(m);
     }).catch(() => {});
-  }, [turma.id, dateStr]);
+  }, [turma.id, dateStr, professorName]);
 
   const toggle = useCallback((id: string) => {
     setMarked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
+
+  // Show professor picker first
+  if (!professorName) {
+    return <ProfessorPicker turma={turma} onBack={onBack}
+      onSelect={(name, id) => { setProfessorName(name); setProfessorId(id); }} />;
+  }
 
   const confirm = async () => {
     setSaving(true);
@@ -448,6 +529,8 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
             checkIn: checkInTime,
             date: dateStr,
             zone: turma.sala || turma.modalidade,
+            professorNome: professorName,
+            professorId: professorId,
             markedBy: markerUserId,
             markedByName: markerUserName,
             timestamp: serverTimestamp(),
@@ -487,12 +570,20 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
 
         {/* header */}
         <div className={`${modColor(turma.modalidade)} px-7 pt-8 pb-5 text-white shrink-0`}>
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-2">
             <button onClick={onBack} className="p-2 bg-white/15 rounded-xl active:scale-90"><ArrowLeft size={16}/></button>
             <div className="flex-1 min-w-0">
               <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/60">Marcação · {new Date().toLocaleDateString('pt-PT')}</p>
               <h2 className="text-base font-black uppercase leading-tight">{turma.nome}</h2>
             </div>
+          </div>
+          <div className="flex items-center gap-2 mb-3 bg-white/15 rounded-xl px-3 py-2">
+            <User size={12} className="text-white/60 shrink-0"/>
+            <p className="text-[10px] font-black text-white uppercase">{professorName}</p>
+            <button onClick={() => setProfessorName(null)}
+              className="ml-auto text-[8px] font-black text-white/50 uppercase hover:text-white transition-colors">
+              Alterar
+            </button>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[
