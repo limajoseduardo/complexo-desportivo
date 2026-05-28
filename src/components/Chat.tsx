@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  MessageSquare, Send, Search, X, Trash2, 
-  ChevronLeft, ChevronDown, User, Plus, Bell
+import {
+  MessageSquare, Send, Search, X, Trash2,
+  ChevronLeft, ChevronDown, User, Plus, Bell, Shield
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { 
@@ -23,8 +23,16 @@ interface Message {
   read: boolean;
 }
 
-function PickerModal({ users, unreadCounts, searchTerm, onSearch, onSelect, onClose }: {
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  staff: 'Receção',
+  chefia: 'Direção',
+  professor: 'Professor',
+};
+
+function PickerModal({ users, staffUsers, unreadCounts, searchTerm, onSearch, onSelect, onClose }: {
   users: UserProfile[];
+  staffUsers: UserProfile[];
   unreadCounts: Record<string, number>;
   searchTerm: string;
   onSearch: (v: string) => void;
@@ -34,8 +42,9 @@ function PickerModal({ users, unreadCounts, searchTerm, onSearch, onSelect, onCl
   const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
   const toggle = (k: string) => setCollapsed(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
-  const inside = users.filter(u => u.isInside);
-  const outside = users.filter(u => !u.isInside);
+  const staffIds = new Set(staffUsers.map(s => s.id));
+  const inside = users.filter(u => u.isInside && !staffIds.has(u.id));
+  const outside = users.filter(u => !u.isInside && !staffIds.has(u.id));
   const byLetter: Record<string, UserProfile[]> = {};
   outside.forEach(u => {
     const l = (u.n || u.nome || '?')[0].toUpperCase();
@@ -94,6 +103,42 @@ function PickerModal({ users, unreadCounts, searchTerm, onSearch, onSelect, onCl
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-3">
+        {/* Equipa */}
+        {staffUsers.length > 0 && (
+          <div className="rounded-[1.5rem] border-2 border-[#F7B500]/40 overflow-hidden">
+            <button onClick={() => toggle('__staff__')} className="w-full flex items-center justify-between px-5 py-3 bg-[#F7B500]/10">
+              <span className="flex items-center gap-2 text-[10px] font-black text-[#F7B500] uppercase tracking-widest">
+                <Shield size={14} className="text-[#F7B500]" /> Equipa
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black text-[#F7B500] bg-white/10 px-3 py-1 rounded-full">{staffUsers.length} membros</span>
+                <ChevronDown size={16} className={`text-[#F7B500] transition-transform ${collapsed.has('__staff__') ? '-rotate-90' : ''}`} />
+              </div>
+            </button>
+            {!collapsed.has('__staff__') && (
+              <div className="divide-y divide-white/5">
+                {staffUsers.map(u => (
+                  <button key={u.id} onClick={() => onSelect(u)} className="w-full p-4 flex items-center justify-between hover:bg-white/5 active:bg-[#F7B500]/10 transition-all text-left">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-[#F7B500]/40" />
+                        {unreadCounts[u.id] > 0 && (
+                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#004D71] animate-bounce">{unreadCounts[u.id]}</div>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-sm text-white uppercase leading-none line-clamp-1">{u.n || u.nome}</h4>
+                        <p className="text-[8px] font-bold text-[#F7B500]/70 uppercase tracking-widest mt-1">{ROLE_LABEL[u.role] || u.role}</p>
+                      </div>
+                    </div>
+                    <ChevronLeft className="rotate-180 text-[#F7B500]/40" size={16} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* No Recinto */}
         {inside.length > 0 && (
           <div className="rounded-[1.5rem] border-2 border-green-400/30 overflow-hidden">
@@ -124,7 +169,7 @@ function PickerModal({ users, unreadCounts, searchTerm, onSearch, onSelect, onCl
           </div>
         ))}
 
-        {users.length === 0 && (
+        {users.length === 0 && staffUsers.length === 0 && (
           <div className="text-center py-20 opacity-30">
             <User size={48} className="text-white mx-auto mb-4" />
             <p className="text-xs font-black text-white uppercase tracking-widest">Nenhum resultado</p>
@@ -150,10 +195,36 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
   const [showNovoAvisoModal, setShowNovoAvisoModal] = useState(false);
   const [novoAvisoTitulo, setNovoAvisoTitulo] = useState('');
   const [novoAvisoMensagem, setNovoAvisoMensagem] = useState('');
+  const [staffContacts, setStaffContacts] = useState<UserProfile[]>([]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
+
+  // Fetch staff/professors so utentes can message them
+  useEffect(() => {
+    const usersPath = `artifacts/${APP_ID}/public/data/users`;
+    const q = query(
+      collection(db, usersPath),
+      where('role', 'in', ['admin', 'staff', 'chefia', 'professor'])
+    );
+    const unsub = onSnapshot(q, snap => {
+      setStaffContacts(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
+    }, err => console.warn('Staff contacts fetch failed:', err));
+    return () => unsub();
+  }, []);
+
+  // Merge staff into contact list (deduped) so utentes can reach them
+  const allContacts = React.useMemo(() => {
+    const map = new Map<string, UserProfile>();
+    users.forEach(u => map.set(u.id, u));
+    staffContacts.forEach(u => map.set(u.id, u));
+    return Array.from(map.values());
+  }, [users, staffContacts]);
+
+  // Staff shown in dedicated picker section
+  const staffIds = React.useMemo(() => new Set(staffContacts.map(s => s.id)), [staffContacts]);
+  const pickerStaffUsers = React.useMemo(() => staffContacts.filter(s => s.id !== user.id), [staffContacts, user.id]);
 
   useEffect(() => {
     const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
@@ -338,15 +409,22 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
     }
   };
 
-  const sortedUsers = React.useMemo(() => users
-    .filter(u => u.id !== user.id)
+  // Non-staff users for the alphabetical section of the picker
+  const sortedUsers = React.useMemo(() => allContacts
+    .filter(u => u.id !== user.id && !staffIds.has(u.id))
     .filter(u => (u.n || u.nome || '').toLowerCase().includes(pickerSearch.toLowerCase()))
     .sort((a, b) => {
       const unreadA = unreadCounts[a.id] || 0;
       const unreadB = unreadCounts[b.id] || 0;
       if (unreadA !== unreadB) return unreadB - unreadA;
       return (a.n || a.nome || '').localeCompare(b.n || b.nome || '');
-    }), [users, user.id, pickerSearch, unreadCounts]);
+    }), [allContacts, staffIds, user.id, pickerSearch, unreadCounts]);
+
+  // Staff filtered by picker search
+  const sortedStaffUsers = React.useMemo(() => pickerStaffUsers
+    .filter(u => (u.n || u.nome || '').toLowerCase().includes(pickerSearch.toLowerCase()))
+    .sort((a, b) => (a.n || a.nome || '').localeCompare(b.n || b.nome || '')),
+    [pickerStaffUsers, pickerSearch]);
 
   if (selectedUser) {
     return (
@@ -444,7 +522,7 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
               </div>
             )}
             {recentConvos.map(c => {
-              const other = users.find(u => u.id === c.userId);
+              const other = allContacts.find(u => u.id === c.userId);
               if (!other) return null;
               const unread = unreadCounts[other.id] || 0;
               const time = c.lastTime?.toDate ? c.lastTime.toDate().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -529,6 +607,7 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
       {showPicker && (
         <PickerModal
           users={sortedUsers}
+          staffUsers={sortedStaffUsers}
           unreadCounts={unreadCounts}
           searchTerm={pickerSearch}
           onSearch={setPickerSearch}
