@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, LogIn, LogOut, Calendar, Search,
-  Download,
+  Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
   Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets
 } from 'lucide-react';
@@ -14,13 +14,14 @@ import {
   doc, serverTimestamp, deleteDoc, orderBy
 } from 'firebase/firestore';
 import { AccessLog, UserProfile } from '../types';
+import { TurmasModule } from './TurmasModule';
 import { isUserInZone } from '../lib/logic';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar } from 'recharts';
 
-export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
+export function AccessLogsModule({ onScan, currentUser }: { onScan?: () => void; currentUser?: UserProfile } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,6 +45,7 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
   const [editDate, setEditDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
+  const [showTurmas, setShowTurmas] = useState(false);
 
   const generateInviteCode = async () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -575,6 +577,12 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
               </button>
             )}
             <button
+              onClick={() => setShowTurmas(true)}
+              className="px-4 py-2 bg-[#004D71] text-white rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide border border-[#004D71]"
+            >
+              <BookOpen size={14}/> Turmas
+            </button>
+            <button
               onClick={() => setShowManualModal(true)}
               className="px-4 py-2 bg-[#F7B500] text-[#004D71] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 border border-[#F7B500] font-black uppercase text-[10px] tracking-wide"
             >
@@ -595,6 +603,14 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
           </div>
         </div>
       </div>
+
+      {showTurmas && (
+        <TurmasModule
+          onClose={() => setShowTurmas(false)}
+          markerUserId={currentUser?.id || 'staff'}
+          markerUserName={currentUser?.n || currentUser?.nome || 'Staff'}
+        />
+      )}
 
       {generatedInvite && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
@@ -770,22 +786,37 @@ export function AccessLogsModule({ onScan }: { onScan?: () => void } = {}) {
 
       {/* Quadrados em tempo real */}
       <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
-        {React.useMemo(() => [
-          { id: 'livre',    label: 'Piscina Livre', icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',      count: utentesInside.filter(u => isUserInZone(u, 'livre')).length },
-          { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',     count: utentesInside.filter(u => isUserInZone(u, 'pool_out')).length },
-          { id: 'nat',      label: 'Natação Nível 1-2-3',          icon: <Waves size={14}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',     count: utentesInside.filter(u => isUserInZone(u, 'nat')).length },
-          { id: 'hidro',    label: 'Hidroginástica',   icon: <Droplets size={14}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',     count: utentesInside.filter(u => isUserInZone(u, 'hidro')).length },
-          { id: 'bebes',    label: 'Bebés / AMA',      icon: <Users2 size={14}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500',   count: utentesInside.filter(u => isUserInZone(u, 'bebes')).length },
-          { id: 'fit',      label: 'Aulas Fitness',    icon: <Activity size={14}/>,  color: 'text-purple-200', bg: 'bg-purple-600',   count: utentesInside.filter(u => isUserInZone(u, 'fit')).length },
-          { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={14}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',    count: utentesInside.filter(u => isUserInZone(u, 'gym')).length },
-          { id: 'sauna',    label: 'Sauna',            icon: <Flame size={14}/>,     color: 'text-orange-200', bg: 'bg-orange-500',   count: utentesInside.filter(u => isUserInZone(u, 'sauna')).length },
-        ].sort((a, b) => b.count - a.count), [utentesInside]).map(z => (
+        {React.useMemo(() => {
+          const countMod = (mod: string) => allDateLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
+          return [
+            { id: 'livre',    label: 'Piscina Livre',       icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',    mod: 'Piscina Regime Livre' },
+            { id: 'pool_out', label: 'Piscina Exterior',    icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',   mod: 'Piscina Exterior'     },
+            { id: 'nat',      label: 'Natação Nível 1-2-3', icon: <Waves size={14}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',   mod: 'Natação'              },
+            { id: 'hidro',    label: 'Hidroginástica',      icon: <Droplets size={14}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',   mod: 'Hidroginástica'       },
+            { id: 'bebes',    label: 'Bebés / AMA',         icon: <Users2 size={14}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500', mod: 'Bebés/AMA'            },
+            { id: 'fit',      label: 'Aulas Fitness',       icon: <Activity size={14}/>,  color: 'text-purple-200', bg: 'bg-purple-600', mod: 'Aulas Fitness'        },
+            { id: 'gym',      label: 'Ginásio',             icon: <Dumbbell size={14}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',  mod: 'Ginásio'              },
+            { id: 'sauna',    label: 'Sauna',               icon: <Flame size={14}/>,     color: 'text-orange-200', bg: 'bg-orange-500', mod: 'Sauna'                },
+          ].map(z => ({
+            ...z,
+            count: countMod(z.mod),
+            liveCount: utentesInside.filter(u => isUserInZone(u, z.id)).length,
+          })).sort((a, b) => b.count - a.count);
+        }, [allDateLogs, utentesInside]).map(z => (
           <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex items-center justify-between gap-1.5 border border-white/10`}>
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <span className={`${z.color} bg-white/10 p-1 rounded-md shrink-0 shadow-sm`}>{z.icon}</span>
               <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight break-words line-clamp-2 drop-shadow-sm">{z.label}</p>
             </div>
-            <p className={`text-xl font-black tabular-nums leading-none ${z.color} shrink-0 drop-shadow-md`}>{z.count}</p>
+            <div className="text-right shrink-0">
+              <p className={`text-xl font-black tabular-nums leading-none ${z.color} drop-shadow-md`}>{z.count}</p>
+              {z.liveCount > 0 && (
+                <p className="text-[7px] font-black text-white/60 uppercase flex items-center justify-end gap-0.5">
+                  <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse inline-block"/>
+                  {z.liveCount} dentro
+                </p>
+              )}
+            </div>
           </div>
         ))}
       </div>

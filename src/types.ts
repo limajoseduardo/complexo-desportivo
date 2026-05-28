@@ -171,6 +171,26 @@ export interface Aula {
   cancelada?: boolean;
 }
 
+export interface TurmaAluno {
+  id: string;       // unique within turma (may be userId or generated)
+  nome: string;
+  userId?: string;  // links to users collection if registered
+}
+
+export interface Turma {
+  id: string;
+  nome: string;
+  modalidade: string;
+  professor: string;
+  diasSemana: number[];   // 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sab
+  horaInicio: string;     // "HH:MM"
+  horaFim: string;
+  sala?: string;
+  alunos: TurmaAluno[];
+  ativa?: boolean;
+  cor?: string;
+}
+
 export interface SwimmingClass {
   id: string;
   nome: string;
