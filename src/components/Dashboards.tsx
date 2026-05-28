@@ -544,102 +544,59 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
 
-      <div className="bg-gradient-to-br from-[#003d5c] via-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className="bg-[#004D71] rounded-[2.5rem] overflow-hidden shadow-2xl">
 
-        {/* ── Top bar ── */}
-        <div className="px-7 pt-6 pb-5 flex items-center justify-between">
+        {/* ── Cabeçalho ── */}
+        <div className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-white/10">
           <div>
-            <p className="text-[8px] font-black text-[#F7B500]/50 uppercase tracking-[0.25em]">Complexo Desportivo · Vila de Rei</p>
-            <div className="flex items-baseline gap-3 mt-2">
-              <span className="text-5xl font-black text-white tabular-nums leading-none">{monthlyStats?.total ?? '—'}</span>
-              <div>
-                <p className="text-[11px] font-black text-[#F7B500] uppercase leading-tight">entradas</p>
-                <p className="text-[9px] font-bold text-white/40 uppercase leading-tight">{new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</p>
-              </div>
-            </div>
+            <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Complexo Desportivo · Vila de Rei</p>
+            <p className="text-lg font-black text-white uppercase mt-0.5">
+              {monthlyStats?.total ?? '—'} <span className="text-[#F7B500]">entradas</span> em {new Date().toLocaleDateString('pt-PT', { month: 'long' })}
+            </p>
             {totalInside > 0 && (
-              <div className="flex items-center gap-1.5 mt-2.5">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse block"/>
-                <span className="text-[9px] font-black text-green-400 uppercase">{totalInside} {totalInside === 1 ? 'presente' : 'presentes'} agora</span>
-              </div>
+              <p className="text-[9px] font-bold text-green-400 mt-1 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>
+                {totalInside} {totalInside === 1 ? 'utente presente' : 'utentes presentes'} agora
+              </p>
             )}
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <div className="bg-[#F7B500] rounded-xl px-3 py-1.5">
-              <p className="text-[8px] font-black text-[#004D71] uppercase tracking-widest">Staff</p>
-            </div>
-            <button
-              onClick={generateMonthlyPDF}
-              disabled={pdfLoading || !monthlyStats}
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/15 text-white px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
-            >
-              {pdfLoading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Download size={13}/>}
-              Relatório PDF
-            </button>
-          </div>
+          <button
+            onClick={generateMonthlyPDF}
+            disabled={pdfLoading || !monthlyStats}
+            className="flex items-center gap-2 bg-[#F7B500] text-[#004D71] px-4 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 shadow-lg shrink-0"
+          >
+            {pdfLoading ? <div className="w-3 h-3 border-2 border-[#004D71]/30 border-t-[#004D71] rounded-full animate-spin"/> : <Download size={13}/>}
+            PDF
+          </button>
         </div>
 
-        {/* ── Modality cards ── */}
-        <div className="px-7 pb-7">
-          <div className="h-px bg-white/8 mb-5"/>
+        {/* ── Cards de modalidade ── */}
+        <div className="p-4">
           {(() => {
-            const maxCount = Math.max(...MODALITIES.map(m => monthlyStats?.byModality[m.dest] || 0), 1);
             const modList = MODALITIES.map(m => ({
               ...m,
               liveCount: utentes.filter(u => isUserInZone(u, m.id)).length,
               monthCount: monthlyStats?.byModality[m.dest] || 0,
-            })).sort((a, b) => b.monthCount - a.monthCount || a.label.localeCompare(b.label));
+            })).sort((a, b) => b.monthCount - a.monthCount);
 
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {modList.map(m => (
                   <button key={m.id} onClick={() => setSelectedMod(m)}
-                    className="group relative text-left rounded-2xl p-4 transition-all duration-200 active:scale-95 overflow-hidden border"
-                    style={{
-                      background: m.monthCount > 0
-                        ? 'rgba(255,255,255,0.09)'
-                        : 'rgba(255,255,255,0.03)',
-                      borderColor: m.monthCount > 0
-                        ? 'rgba(247,181,0,0.2)'
-                        : 'rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    {/* Gold glow background for active */}
-                    {m.monthCount > 0 && (
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#F7B500]/8 via-transparent to-transparent pointer-events-none"/>
-                    )}
-
-                    {/* Icon row */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                        m.monthCount > 0 ? 'bg-[#F7B500]/15 text-[#F7B500]' : 'bg-white/6 text-white/25'
-                      }`}>
-                        {m.icon}
-                      </div>
+                    className="bg-white rounded-2xl p-4 text-left active:scale-95 transition-all shadow-sm hover:shadow-md flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2 bg-[#004D71]/8 text-[#004D71] rounded-xl">{m.icon}</div>
                       {m.liveCount > 0 && (
-                        <span className="flex items-center gap-1 text-green-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse block"/>
-                          <span className="text-[9px] font-black">{m.liveCount}</span>
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse block"/>
+                          <span className="text-[9px] font-black text-green-600">{m.liveCount}</span>
+                        </div>
                       )}
                     </div>
-
-                    {/* Label */}
-                    <p className={`text-[10px] font-black uppercase leading-tight tracking-wide mb-3 line-clamp-2 ${
-                      m.monthCount > 0 ? 'text-white/80' : 'text-white/30'
-                    }`}>{m.label}</p>
-
-                    {/* Count */}
-                    <p className={`text-2xl font-black tabular-nums leading-none mb-1 ${
-                      m.monthCount > 0 ? 'text-[#F7B500]' : 'text-white/15'
-                    }`}>{m.monthCount}</p>
-
-                    {/* Progress bar */}
-                    <div className="h-0.5 rounded-full bg-white/8 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[#F7B500]/70 transition-all duration-500"
-                        style={{ width: `${(m.monthCount / maxCount) * 100}%` }}
-                      />
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide leading-tight line-clamp-2">{m.label}</p>
+                    <div>
+                      <p className="text-2xl font-black text-[#004D71] leading-none tabular-nums">{m.monthCount}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">entradas este mês</p>
                     </div>
                   </button>
                 ))}
