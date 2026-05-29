@@ -438,12 +438,12 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
   const statsByModality = React.useMemo(() => {
     const rows = modalities.map(m => ({
       label: m,
-      count: allDateLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
+      count: monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
     })).filter(s => s.count > 0);
-    const otherCount = allDateLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
+    const otherCount = monthlyLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
     if (otherCount > 0) rows.push({ label: 'Outro / Geral', count: otherCount });
     return rows;
-  }, [allDateLogs]);
+  }, [monthlyLogs]);
 
   const hourlyData = React.useMemo(() => {
     const hours = new Array(24).fill(0);
@@ -468,25 +468,23 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
   }, [allDateLogs]);
 
   const todayAffluenceByLocation = React.useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const rows = allDateLogs.filter(l => l.date === today);
     const counts: Record<string, number> = {};
-    rows.forEach((r) => {
+    monthlyLogs.forEach((r) => {
       const key = (r.modalidade || 'Outro / Geral').trim() || 'Outro / Geral';
       counts[key] = (counts[key] || 0) + 1;
     });
     return Object.entries(counts)
       .map(([local, entradas]) => ({ local, entradas }))
       .sort((a, b) => b.entradas - a.entradas);
-  }, [allDateLogs]);
+  }, [monthlyLogs]);
 
   const leaderboardByModality = React.useMemo(() => {
     const ranking: Record<string, Array<{ userId: string; userName: string; count: number }>> = {};
 
     modalities.forEach(m => {
-      const modalityLogs = allDateLogs.filter(l => normalizeModality(l.modalidade || '') === m);
+      const modalityLogs = monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === m);
       const userCounts: Record<string, { userName: string; count: number }> = {};
-      
+
       modalityLogs.forEach(l => {
         if (!l.userId) return;
         if (!userCounts[l.userId]) {
@@ -506,7 +504,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     });
 
     return ranking;
-  }, [allDateLogs]);
+  }, [monthlyLogs]);
 
   const downloadCSV = () => {
     let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
@@ -1209,7 +1207,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                     <Star className="text-[#F7B500]" size={14}/> Pódio de Assiduidade por Modalidade
                   </h3>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                    Top 3 utentes mais assíduos no período
+                    Top 3 utentes mais assíduos no mês corrente
                   </p>
                 </div>
               </div>
@@ -1284,10 +1282,10 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                  <Activity className="text-[#F7B500]" size={14}/> Totais do Período por Modalidade
+                  <Activity className="text-[#F7B500]" size={14}/> Totais do Mês por Modalidade
                 </h3>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                  Número de entradas no intervalo selecionado
+                  Número de entradas no mês corrente
                 </p>
               </div>
             </div>
@@ -1303,8 +1301,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
 
           <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest">Afluência de Hoje por Local</h3>
-              <span className="text-[9px] font-black text-slate-400 uppercase">{new Date().toISOString().split('T')[0]}</span>
+              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest">Afluência do Mês por Local</h3>
+              <span className="text-[9px] font-black text-slate-400 uppercase">{new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</span>
             </div>
             {todayAffluenceByLocation.length > 0 ? (
               <div className="h-52">
