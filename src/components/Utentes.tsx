@@ -641,12 +641,13 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
     setProcessing(true);
     try {
       if (confirm.action === 'entrada') {
-        await handleCheckIn(confirm.utente, confirm.modality);
+        await handleCheckIn(confirm.utente, confirm.modality, true); // staff bypass
       } else {
         await handleCheckOut(confirm.utente);
       }
       onResult({ ...confirm.utente, isInside: confirm.action === 'entrada', location: confirm.modality });
       setConfirm(null);
+      setStatus('✅ Acesso registado');
     } catch (e: any) {
       alert(e.message || 'Erro ao registar acesso.');
     } finally {
@@ -767,8 +768,8 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
                 <span className="font-black text-[#004D71]">{new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               {confirm.action === 'entrada' && (confirm.utente.entradas_disponiveis ?? 0) <= 0 && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-600 font-bold">
-                  ⚠️ Sem entradas disponíveis. A entrada não será registada.
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700 font-bold">
+                  ⚠️ Sem entradas carregadas — a entrada é validada pelo staff mas não desconta saldo.
                 </div>
               )}
             </div>
@@ -783,7 +784,7 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
               </button>
               <button
                 onClick={confirmAccess}
-                disabled={processing || (confirm.action === 'entrada' && (confirm.utente.entradas_disponiveis ?? 0) <= 0)}
+                disabled={processing}
                 className={`py-3 rounded-2xl font-black text-sm uppercase text-white active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${confirm.action === 'entrada' ? 'bg-green-500' : 'bg-orange-500'}`}
               >
                 {processing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}

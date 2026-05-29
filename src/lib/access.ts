@@ -6,9 +6,9 @@ import {
 } from 'firebase/firestore';
 import { UserProfile } from '../types';
 
-export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio') => {
+export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio', bypassLimit = false) => {
   const currentEntries = user.entradas_disponiveis || 0;
-  if (currentEntries <= 0) {
+  if (!bypassLimit && currentEntries <= 0) {
     throw new Error("Sem entradas disponíveis. Por favor, carregue o seu cartão na receção.");
   }
 
@@ -21,7 +21,7 @@ export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio'
       userId: user.id,
       userName: user.nome || user.n || 'Utente',
       userRole: user.role,
-      modalidade: user.modalidade || 'Acesso Livre',
+      modalidade: zone,
       checkIn: serverTimestamp(),
       zone,
       date: new Date().toISOString().split('T')[0]
@@ -33,7 +33,7 @@ export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio'
   await updateDoc(userRef, {
     isInside: true,
     location: zone,
-    entradas_disponiveis: currentEntries - 1,
+    ...(currentEntries > 0 ? { entradas_disponiveis: currentEntries - 1 } : {}),
     lastCheckInDate: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
