@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.env*
+documentos_manuais/
+scripts/
+extracted_names.json
+*.jsonl
+.claude/
