@@ -585,39 +585,73 @@ export function UtentesList({
   );
 }
 
+type ScanConfirm = {
+  utente: UserProfile;
+  modality: string;
+  action: 'entrada' | 'saida';
+};
+
 export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => void, onResult: (u: UserProfile) => void, utentes: UserProfile[] }) {
   const [scanning, setScanning] = useState(false);
   const [status, setStatus] = useState('Pronto para leitura');
   const [cameraError, setCameraError] = useState('');
+  const [confirm, setConfirm] = useState<ScanConfirm | null>(null);
+  const [processing, setProcessing] = useState(false);
   const scannerRegionId = 'qr-reader-region';
 
-  const processScanValue = async (scanValue: string) => {
-    const [portal, userId] = scanValue.split(':');
-    const utente = utentes.find(u => u.id === userId || u.qrToken === scanValue);
+  // Parse QR and show confirmation without writing yet
+  const handleQRDetected = (scanValue: string) => {
+    let userId = '';
+    let modality = 'Ginásio';
 
+    if (scanValue.startsWith('CPX:')) {
+      // New format: CPX:{userId}:{modality}:{epochMin}
+      const parts = scanValue.split(':');
+      userId = parts[1] || '';
+      modality = parts[2] || 'Ginásio';
+    } else {
+      // Legacy format: G_GINASIO:userId
+      const parts = scanValue.split(':');
+      const portal = parts[0];
+      userId = parts[1] || '';
+      const locationMap: Record<string, string> = {
+        'G_GINASIO': 'Ginásio',
+        'G_PISCINA': 'Piscina Coberta',
+        'G_MODALIDADE': 'Modalidade',
+        'G_LIVRE': 'Ginásio',
+      };
+      modality = locationMap[portal] || 'Ginásio';
+    }
+
+    const utente = utentes.find(u => u.id === userId);
     if (!utente) {
-      setStatus('QR inválido');
+      setStatus('❌ QR inválido ou utente não encontrado');
       return;
     }
 
-    const locationMap: {[key: string]: string} = {
-      'G_GINASIO': 'Ginásio',
-      'G_PISCINA': 'Piscina Coberta',
-      'G_MODALIDADE': utente.modalidade || 'Aula de Grupo',
-      'G_LIVRE': 'Ginásio'
-    };
+    const action: 'entrada' | 'saida' = utente.isInside ? 'saida' : 'entrada';
+    // If checking out, use the stored location, not the QR modality
+    const finalModality = action === 'entrada' ? modality : (utente.location || modality);
+    setConfirm({ utente, modality: finalModality, action });
+    setStatus('QR detetado');
+  };
 
-    const targetLocation = !utente.isInside ? (locationMap[portal] || 'Ginásio') : null;
-
-    if (!utente.isInside) {
-      await handleCheckIn(utente, targetLocation || 'Ginásio');
-      setStatus(`Entrada validada: ${utente.n || utente.nome}`);
-    } else {
-      await handleCheckOut(utente);
-      setStatus(`Saída validada: ${utente.n || utente.nome}`);
+  const confirmAccess = async () => {
+    if (!confirm) return;
+    setProcessing(true);
+    try {
+      if (confirm.action === 'entrada') {
+        await handleCheckIn(confirm.utente, confirm.modality);
+      } else {
+        await handleCheckOut(confirm.utente);
+      }
+      onResult({ ...confirm.utente, isInside: confirm.action === 'entrada', location: confirm.modality });
+      setConfirm(null);
+    } catch (e: any) {
+      alert(e.message || 'Erro ao registar acesso.');
+    } finally {
+      setProcessing(false);
     }
-
-    onResult({ ...utente, isInside: !utente.isInside, location: targetLocation || undefined });
   };
 
   const startRealCameraScan = async () => {
@@ -633,10 +667,9 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 230, height: 230 } },
         async (decodedText: string) => {
-          setStatus('QR detetado, a validar...');
           await scanner.stop();
           await scanner.clear();
-          await processScanValue(decodedText.trim());
+          handleQRDetected(decodedText.trim());
           setScanning(false);
         },
         () => {}
@@ -651,57 +684,115 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
         try { await scanner.clear(); } catch {}
       }
       setScanning(false);
-    } finally {
-      // keep scanning state until successful detection or explicit fail
     }
   };
 
-  const simulateScan = async () => {
-    setScanning(true);
-    try {
-      const sample = utentes.find(u => u.role === 'utente') || utentes[0];
-      if (!sample) return;
-      const portals = ['G_LIVRE', 'G_GINASIO', 'G_PISCINA', 'G_MODALIDADE'];
-      const randomPortal = portals[Math.floor(Math.random() * portals.length)];
-      await processScanValue(`${randomPortal}:${sample.id}`);
-    } catch (e) {
-      console.error(e);
-      alert("Erro ao processar leitura digital.");
-    } finally {
-      setScanning(false);
-    }
+  const simulateScan = () => {
+    const sample = utentes.find(u => u.role === 'utente') || utentes[0];
+    if (!sample) return;
+    handleQRDetected(`CPX:${sample.id}:Ginásio:${Math.floor(Date.now() / 60000)}`);
   };
 
   return (
     <div className="fixed inset-0 z-[10000] bg-[#004D71] flex flex-col items-center justify-center p-6 text-white text-center">
-       <button onClick={onBack} className="absolute top-8 left-6 p-3 bg-white/10 rounded-full active:scale-90 shadow-lg"><ArrowLeft size={24}/></button>
-       <div className="space-y-4 mb-12">
-          <div className="w-20 h-20 bg-[#F7B500] rounded-3xl mx-auto flex items-center justify-center shadow-lg border-4 border-white/20"><Scan size={40} className="text-[#004D71]"/></div>
-          <h2 className="text-2xl font-black uppercase tracking-tighter">Validador Vila de Rei</h2>
-          <p className="text-sm opacity-60 max-w-xs mx-auto uppercase text-[10px] tracking-widest">Aponte para o QR Code do Utente</p>
-       </div>
-       <div id={scannerRegionId} className="w-full max-w-[300px] aspect-square bg-black/40 rounded-[3rem] border-4 border-dashed border-[#F7B500] relative flex items-center justify-center overflow-hidden">
-          <div className={`scan-line w-full h-[2px] absolute top-0 bg-[#F7B500] shadow-[0_0_15px_#F7B500] ${scanning ? 'animate-bounce' : ''}`}></div>
-          <PicotoIcon size={40} className="text-white opacity-20" />
-       </div>
-       <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-white/70">{status}</p>
-       {cameraError && <p className="mt-2 text-[10px] font-black text-red-300 uppercase">{cameraError}</p>}
-       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-       <button 
-         onClick={startRealCameraScan} 
-         disabled={scanning}
-         className="bg-[#F7B500] text-[#004D71] px-8 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
-       >
-         {scanning ? 'A VALIDAR...' : 'Ler com Câmara'}
-       </button>
-       <button 
-         onClick={simulateScan} 
-         disabled={scanning}
-         className="bg-white text-[#004D71] px-8 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
-       >
-         Simular Leitura
-       </button>
-       </div>
+      <button onClick={onBack} className="absolute top-8 left-6 p-3 bg-white/10 rounded-full active:scale-90 shadow-lg"><ArrowLeft size={24}/></button>
+
+      <div className="space-y-4 mb-8">
+        <div className="w-20 h-20 bg-[#F7B500] rounded-3xl mx-auto flex items-center justify-center shadow-lg border-4 border-white/20">
+          <Scan size={40} className="text-[#004D71]"/>
+        </div>
+        <h2 className="text-2xl font-black uppercase tracking-tighter">Validador QR</h2>
+        <p className="text-[10px] uppercase tracking-widest text-white/50">Complexo Desportivo · Vila de Rei</p>
+      </div>
+
+      <div id={scannerRegionId} className="w-full max-w-[280px] aspect-square bg-black/40 rounded-[3rem] border-4 border-dashed border-[#F7B500] relative flex items-center justify-center overflow-hidden">
+        <div className={`scan-line w-full h-[2px] absolute top-0 bg-[#F7B500] shadow-[0_0_15px_#F7B500] ${scanning ? 'animate-bounce' : ''}`}/>
+        <PicotoIcon size={40} className="text-white opacity-20" />
+      </div>
+
+      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-white/70">{status}</p>
+      {cameraError && <p className="mt-2 text-[10px] font-black text-red-300 uppercase max-w-xs">{cameraError}</p>}
+
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <button
+          onClick={startRealCameraScan}
+          disabled={scanning}
+          className="bg-[#F7B500] text-[#004D71] px-8 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
+        >
+          {scanning ? 'A ler...' : 'Ler com Câmara'}
+        </button>
+        <button
+          onClick={simulateScan}
+          disabled={scanning}
+          className="bg-white/10 text-white border border-white/20 px-6 py-4 rounded-2xl font-black uppercase shadow-xl active:scale-95 text-xs disabled:opacity-50"
+        >
+          Simular QR
+        </button>
+      </div>
+
+      {/* Confirmation card */}
+      {confirm && (
+        <div className="fixed inset-0 z-[20000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className={`px-6 py-5 flex items-center gap-4 ${confirm.action === 'entrada' ? 'bg-green-500' : 'bg-orange-500'}`}>
+              <AvatarImage
+                src={confirm.utente.img}
+                alt={confirm.utente.nome}
+                className="w-16 h-16 rounded-2xl border-4 border-white/40 object-cover shrink-0"
+              />
+              <div className="text-white">
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-80">
+                  {confirm.action === 'entrada' ? '✅ Confirmar Entrada' : '🚪 Confirmar Saída'}
+                </p>
+                <h3 className="font-black text-xl leading-tight">{confirm.utente.n || confirm.utente.nome}</h3>
+                <p className="text-[10px] font-bold opacity-80 mt-0.5">{confirm.modality}</p>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="px-6 py-4 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-bold uppercase tracking-wide">Ação</span>
+                <span className={`font-black uppercase px-3 py-1 rounded-full text-[10px] ${confirm.action === 'entrada' ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
+                  {confirm.action === 'entrada' ? '→ Entrada' : '← Saída'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-bold uppercase tracking-wide">Modalidade</span>
+                <span className="font-black text-[#004D71] uppercase">{confirm.modality}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-bold uppercase tracking-wide">Hora</span>
+                <span className="font-black text-[#004D71]">{new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              {confirm.action === 'entrada' && (confirm.utente.entradas_disponiveis ?? 0) <= 0 && (
+                <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-600 font-bold">
+                  ⚠️ Sem entradas disponíveis. A entrada não será registada.
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 pb-6 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setConfirm(null); setStatus('Cancelado'); }}
+                className="py-3 rounded-2xl border-2 border-slate-200 text-slate-500 font-black text-sm uppercase active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmAccess}
+                disabled={processing || (confirm.action === 'entrada' && (confirm.utente.entradas_disponiveis ?? 0) <= 0)}
+                className={`py-3 rounded-2xl font-black text-sm uppercase text-white active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${confirm.action === 'entrada' ? 'bg-green-500' : 'bg-orange-500'}`}
+              >
+                {processing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : null}
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

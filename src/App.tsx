@@ -27,6 +27,7 @@ const KioskMode = React.lazy(() => import('./components/KioskMode').then(m => ({
 const SwimmingTeacherPortal = React.lazy(() => import('./components/SwimmingModule').then(m => ({ default: m.SwimmingTeacherPortal })));
 const DietModule = React.lazy(() => import('./components/DietModule').then(m => ({ default: m.DietModule })));
 const EventsModule = React.lazy(() => import('./components/Events').then(m => ({ default: m.EventsModule })));
+const UtenteQRCard = React.lazy(() => import('./components/UtenteQRCard').then(m => ({ default: m.UtenteQRCard })));
 import { seedUtentesTestData } from './lib/seedUtentes';
 import { seedExerciseLibrary } from './lib/seedExercises';
 import { seedWorkoutTemplates } from './lib/seedTemplates';
@@ -853,6 +854,12 @@ export default function App() {
                 {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
+                {activeTab === 'qr' && user.role === 'utente' && (
+                  <UtenteQRCard
+                    user={user}
+                    onEditProfile={() => setActiveTab('perfil')}
+                  />
+                )}
 
                 {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} />}
                 {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
