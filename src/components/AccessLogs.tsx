@@ -1019,8 +1019,13 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       {/* Quadrados em tempo real */}
       <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
         {React.useMemo(() => {
+          const todayStr = new Date().toISOString().split('T')[0];
           const countMod = (mod: string) => allDateLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
           const countMonthly = (mod: string) => monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
+          // Count today's logs without checkout — direct modality match, no isUserInZone needed
+          const countLive = (mod: string) => monthlyLogs.filter(l =>
+            l.date === todayStr && !l.checkOut && normalizeModality(l.modalidade || '') === mod
+          ).length;
           return [
             { id: 'livre',    label: 'Piscina Livre',       icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',    mod: 'Piscina Regime Livre' },
             { id: 'pool_out', label: 'Piscina Exterior',    icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',   mod: 'Piscina Exterior'     },
@@ -1034,9 +1039,9 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             ...z,
             count: countMod(z.mod),
             monthlyCount: countMonthly(z.mod),
-            liveCount: utentesInside.filter(u => isUserInZone(u, z.id)).length,
+            liveCount: countLive(z.mod),
           })).sort((a, b) => b.monthlyCount - a.monthlyCount);
-        }, [allDateLogs, monthlyLogs, utentesInside]).map(z => (
+        }, [allDateLogs, monthlyLogs]).map(z => (
           <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex flex-col gap-2 border border-white/10`}>
             {/* Label row */}
             <div className="flex items-center gap-1.5">
