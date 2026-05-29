@@ -153,8 +153,32 @@ export function ProfileViewModule({
   const canEdit = true;
 
   useEffect(() => {
-    if (!isEditing) setFormData({ ...user });
-  }, [user.id, user.updatedAt, user.isInside, user.location]);
+    if (!isEditing) {
+      let cartao_tipo = user.cartao_tipo || '';
+      let cartao_numero = user.cartao_numero || user.cartao_municipal || '';
+      let cartao_validade = user.cartao_validade || '';
+
+      if (!cartao_tipo && user.municipio_cartao) {
+        if (user.municipio_cartao.includes(' - Nº ')) {
+          const parts = user.municipio_cartao.split(' - Nº ');
+          cartao_tipo = parts[0];
+          if (!cartao_numero) cartao_numero = parts[1];
+        } else {
+          const known = ['Cartão Jovem Municipal', 'Cartão Municipal Idade-Ativa', 'Cartão do Idoso', 'Cartão Universal H2O'];
+          if (known.includes(user.municipio_cartao)) {
+            cartao_tipo = user.municipio_cartao;
+          }
+        }
+      }
+
+      setFormData({
+        ...user,
+        cartao_tipo,
+        cartao_numero,
+        cartao_validade
+      });
+    }
+  }, [user.id, user.updatedAt, user.isInside, user.location, user.cartao_tipo, user.cartao_numero, user.cartao_validade, user.cartao_municipal, user.municipio_cartao, isEditing]);
 
   useEffect(() => {
     const local = readLocalOverrides()[user.id];
@@ -546,13 +570,44 @@ export function ProfileViewModule({
           {formData.role === 'utente' && (
             <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
               <SectionTitle icon={<CreditCard size={16}/>} label="Cartão Municipal" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormInput label="Número do Cartão Municipal" icon={<CreditCard size={14}/>}
-                  value={formData.cartao_municipal || ''} disabled={!isEditing || !isStaff}
-                  onChange={v => set('cartao_municipal', v)} />
-                <FormInput label="Município" icon={<MapPin size={14}/>}
-                  value={formData.municipio_cartao || 'Vila de Rei'} disabled={!isEditing || !isStaff}
-                  onChange={v => set('municipio_cartao', v)} />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-1.5 text-left w-full">
+                  <div className="flex items-center gap-2 ml-1 text-[#004D71]">
+                    <CreditCard size={14}/> <label className="text-[10px] font-black uppercase tracking-widest">Tipo de Cartão</label>
+                  </div>
+                  <select
+                    value={formData.cartao_tipo || ''}
+                    disabled={!isEditing || !isStaff}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        cartao_tipo: val,
+                        municipio_cartao: val ? `${val} - Nº ${prev.cartao_numero || ''}` : ''
+                      }));
+                    }}
+                    className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Nenhum</option>
+                    <option value="Cartão Jovem Municipal">Cartão Jovem Municipal (0-35 anos)</option>
+                    <option value="Cartão Municipal Idade-Ativa">Cartão Municipal Idade-Ativa (35-65 anos)</option>
+                    <option value="Cartão do Idoso">Cartão do Idoso (65+ anos)</option>
+                    <option value="Cartão Universal H2O">Cartão Universal H2O</option>
+                  </select>
+                </div>
+                <FormInput label="Número do Cartão" icon={<CreditCard size={14}/>}
+                  value={formData.cartao_numero || ''} disabled={!isEditing || !isStaff}
+                  onChange={v => {
+                    setFormData(prev => ({
+                      ...prev,
+                      cartao_numero: v,
+                      cartao_municipal: v,
+                      municipio_cartao: prev.cartao_tipo ? `${prev.cartao_tipo} - Nº ${v}` : ''
+                    }));
+                  }} />
+                <FormInput label="Validade do Cartão" icon={<Calendar size={14}/>} type="date"
+                  value={formData.cartao_validade || ''} disabled={!isEditing || !isStaff}
+                  onChange={v => set('cartao_validade', v)} />
               </div>
             </div>
           )}

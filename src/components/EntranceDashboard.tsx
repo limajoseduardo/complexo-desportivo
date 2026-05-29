@@ -174,7 +174,14 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
 
   const zoneCounts = useMemo(() =>
     zones.map(z => {
-      const liveCount = utentesInside.filter(u => isUserInZone(u, z.id)).length;
+      const liveCount = todayLogs.filter(l => {
+        if (l.checkOut) return false;
+        const testProfile = {
+          isInside: true,
+          location: l.modalidade || l.zone
+        } as UserProfile;
+        return isUserInZone(testProfile, z.id);
+      }).length;
       const todayCount = todayLogs.filter(l => {
         const normLog = normalizeModality(l.modalidade || '');
         const normZone = normalizeModality(z.label || '');
@@ -183,10 +190,10 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
       return { ...z, liveCount, todayCount };
     })
     .sort((a, b) => b.todayCount - a.todayCount || b.liveCount - a.liveCount),
-    [utentesInside, todayLogs, zones]
+    [todayLogs, zones]
   );
 
-  const total = utentesInside.length;
+  const total = useMemo(() => todayLogs.filter(l => !l.checkOut).length, [todayLogs]);
 
   const todayClasses = useMemo(() =>
     agenda

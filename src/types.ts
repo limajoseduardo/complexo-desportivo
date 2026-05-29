@@ -36,6 +36,9 @@ export interface UserProfile {
   // Cartão Municipal
   cartao_municipal?: string;
   municipio_cartao?: string;
+  cartao_tipo?: string;
+  cartao_numero?: string;
+  cartao_validade?: string;
 
   // Menores (idade < 16)
   encarregado_email?: string;

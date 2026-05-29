@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as UserIcon, Activity, Mail, Smartphone, Shield, Calendar, MapPin, Scan, UserX, FileText } from 'lucide-react';
+import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as UserIcon, Activity, Mail, Smartphone, Shield, Calendar, MapPin, Scan, UserX, FileText, CreditCard } from 'lucide-react';
 import { UserProfile } from '../types';
 import { PicotoIcon, FormInput, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -73,7 +73,10 @@ export function UtentesList({
     modalidade: 'Atividade Geral',
     restricoes_medicas: '',
     role: 'utente' as const,
-    atestado_medico: false
+    atestado_medico: false,
+    cartao_tipo: '',
+    cartao_numero: '',
+    cartao_validade: ''
   });
 
   const getAge = (u: UserProfile) => {
@@ -110,7 +113,7 @@ export function UtentesList({
     let senior = 0;
     utenteProfiles.forEach(u => {
       const age = getAge(u);
-      if (age < 18) jovem++;
+      if (age < 35) jovem++;
       else if (age < 65) adulto++;
       else senior++;
     });
@@ -128,8 +131,8 @@ export function UtentesList({
         if (activeFilter === 'incomplete') return isIncomplete(u);
         if (activeFilter === 'atestado') return u.atestado_medico === true || !!u.restricoes_medicas;
         const age = getAge(u);
-        if (activeFilter === 'jovem') return age < 18;
-        if (activeFilter === 'adulto') return age >= 18 && age < 65;
+        if (activeFilter === 'jovem') return age < 35;
+        if (activeFilter === 'adulto') return age >= 35 && age < 65;
         if (activeFilter === 'senior') return age >= 65;
         return true;
       })
@@ -176,6 +179,8 @@ export function UtentesList({
         n: formData.nome.toUpperCase(),
         isInside: false,
         img: '',
+        cartao_municipal: formData.cartao_numero || '',
+        municipio_cartao: formData.cartao_tipo ? `${formData.cartao_tipo} - Nº ${formData.cartao_numero || ''}` : '',
         updatedAt: new Date().toISOString()
       };
 
@@ -185,7 +190,10 @@ export function UtentesList({
       setFormData({ 
         nome: '', idade: '', data_nasc: '', email: '', phone: '', 
         nif: '', endereco: '', modalidade: 'Atividade Geral', restricoes_medicas: '', role: 'utente',
-        atestado_medico: false
+        atestado_medico: false,
+        cartao_tipo: '',
+        cartao_numero: '',
+        cartao_validade: ''
       });
     } catch (e: any) {
       console.error("Save error:", e);
@@ -296,43 +304,43 @@ export function UtentesList({
             <span>Escalões</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 mt-2">
-            {/* Jovem (<18) */}
+            {/* Jovem (0-35) */}
             <button
               onClick={() => setActiveFilter(activeFilter === 'jovem' ? 'all' : 'jovem')}
               className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
                 activeFilter === 'jovem'
-                  ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
-                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-purple-500/35'
+                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-sm'
+                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-[#004D71]/35'
               }`}
             >
               <span className="text-[10px] font-black leading-none tabular-nums">{stats.jovem}</span>
-              <span className="text-[6px] font-bold uppercase tracking-wider mt-0.5 opacity-60">Jov</span>
+              <span className="text-[5.5px] font-bold uppercase tracking-wider mt-0.5 opacity-80">Jov (0-35)</span>
             </button>
             
-            {/* Adulto (18-64) */}
+            {/* Ativa (35-65) */}
             <button
               onClick={() => setActiveFilter(activeFilter === 'adulto' ? 'all' : 'adulto')}
               className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
                 activeFilter === 'adulto'
-                  ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
-                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-purple-500/35'
+                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-sm'
+                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-[#004D71]/35'
               }`}
             >
               <span className="text-[10px] font-black leading-none tabular-nums">{stats.adulto}</span>
-              <span className="text-[6px] font-bold uppercase tracking-wider mt-0.5 opacity-60">Adu</span>
+              <span className="text-[5.5px] font-bold uppercase tracking-wider mt-0.5 opacity-80">Ativa (35-65)</span>
             </button>
 
-            {/* Sénior (65+) */}
+            {/* Idoso (65+) */}
             <button
               onClick={() => setActiveFilter(activeFilter === 'senior' ? 'all' : 'senior')}
               className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
                 activeFilter === 'senior'
-                  ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
-                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-purple-500/35'
+                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-sm'
+                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-[#004D71]/35'
               }`}
             >
               <span className="text-[10px] font-black leading-none tabular-nums">{stats.senior}</span>
-              <span className="text-[6px] font-bold uppercase tracking-wider mt-0.5 opacity-60">Sén</span>
+              <span className="text-[5.5px] font-bold uppercase tracking-wider mt-0.5 opacity-80">Idoso (65+)</span>
             </button>
           </div>
         </div>
@@ -475,6 +483,42 @@ export function UtentesList({
                 value={formData.endereco} 
                 onChange={v => setFormData({...formData, endereco: v})} 
               />
+            </div>
+
+            {/* Cartão Municipal */}
+            <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 space-y-6">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2">Cartão Municipal</h4>
+              <div className="space-y-1.5 text-left w-full text-[#004D71]">
+                <div className="flex items-center gap-2 ml-1 text-[#004D71]">
+                  <CreditCard size={14}/> <label className="text-[10px] font-black uppercase tracking-widest">Tipo de Cartão</label>
+                </div>
+                <select
+                  value={formData.cartao_tipo || ''}
+                  onChange={e => setFormData({ ...formData, cartao_tipo: e.target.value })}
+                  className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all cursor-pointer"
+                >
+                  <option value="">Nenhum</option>
+                  <option value="Cartão Jovem Municipal">Cartão Jovem Municipal (0-35 anos)</option>
+                  <option value="Cartão Municipal Idade-Ativa">Cartão Municipal Idade-Ativa (35-65 anos)</option>
+                  <option value="Cartão do Idoso">Cartão do Idoso (65+ anos)</option>
+                  <option value="Cartão Universal H2O">Cartão Universal H2O</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormInput 
+                  label="Número do Cartão" 
+                  icon={<CreditCard size={14}/>}
+                  value={formData.cartao_numero || ''} 
+                  onChange={v => setFormData({...formData, cartao_numero: v})} 
+                />
+                <FormInput 
+                  label="Validade do Cartão" 
+                  type="date"
+                  icon={<Calendar size={14}/>}
+                  value={formData.cartao_validade || ''} 
+                  onChange={v => setFormData({...formData, cartao_validade: v})} 
+                />
+              </div>
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 space-y-6">
