@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Plus, Search, BookOpen, X, Edit, Trash2, Check, Copy, ChevronDown } from 'lucide-react';
+import { Dumbbell, Plus, Search, BookOpen, X, Edit, Trash2, Check, Copy, ChevronDown, ExternalLink, GraduationCap, Target, Zap, RefreshCw, TrendingUp, Clock, BarChart2, AlertCircle, ChevronRight } from 'lucide-react';
 import { motion } from "framer-motion";
 import { Edit2, Play, Users, Save, Eye, MoreVertical } from "lucide-react";
 import { db } from '../lib/firebase';
@@ -9,27 +9,34 @@ import { UserProfile, Exercise, WorkoutTemplate, WorkoutSession, WorkoutSet } fr
 import { AdvancedTemplateEditor } from "./AdvancedTemplateEditor";
 
 export function TrainerTrainingModule({ user }: { user: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'exercicios' | 'templates'>('exercicios');
+  const [activeTab, setActiveTab] = useState<'exercicios' | 'templates' | 'enciclopedia'>('exercicios');
 
   return (
     <div className="space-y-6 animate-in fade-in pb-24 text-left font-sans">
-      <div className="bg-white rounded-[2.5rem] p-4 flex gap-2 border-4 border-[#004D71]/5 sticky top-0 z-10">
+      <div className="bg-white rounded-[2.5rem] p-3 flex gap-2 border-4 border-[#004D71]/5 sticky top-0 z-10 overflow-x-auto">
         <button
           onClick={() => setActiveTab('exercicios')}
-          className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'exercicios' ? 'bg-[#004D71] text-[#F7B500] shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+          className={`flex-1 min-w-max py-3.5 px-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'exercicios' ? 'bg-[#004D71] text-[#F7B500] shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
         >
-          <Dumbbell size={18}/> Banco Exercícios
+          <Dumbbell size={16}/> Exercícios
         </button>
         <button
           onClick={() => setActiveTab('templates')}
-          className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'templates' ? 'bg-[#004D71] text-[#F7B500] shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+          className={`flex-1 min-w-max py-3.5 px-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'templates' ? 'bg-[#004D71] text-[#F7B500] shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
         >
-          <BookOpen size={18}/> Modelos (Templates)
+          <BookOpen size={16}/> Modelos
+        </button>
+        <button
+          onClick={() => setActiveTab('enciclopedia')}
+          className={`flex-1 min-w-max py-3.5 px-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'enciclopedia' ? 'bg-[#F7B500] text-[#004D71] shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+        >
+          <GraduationCap size={16}/> Enciclopédia
         </button>
       </div>
 
       {activeTab === 'exercicios' && <ExerciseBankTab />}
       {activeTab === 'templates' && <WorkoutTemplatesTab user={user} />}
+      {activeTab === 'enciclopedia' && <EnciclopediaTab />}
     </div>
   );
 }
@@ -772,6 +779,295 @@ function TemplateEditor({ template, onBack }: { template: WorkoutTemplate, onBac
          )}
       </div>
    );
+}
+
+// ==========================================
+// ENCICLOPÉDIA DE TREINO
+// ==========================================
+
+const PRINCIPIOS = [
+  {
+    icon: <TrendingUp size={18}/>, color: '#3B82F6', title: 'Sobrecarga Progressiva',
+    body: 'O principal motor de adaptação. Aumenta gradualmente o estímulo — mais peso, mais reps, menos descanso ou maior amplitude. Sem progressão não há evolução. Regra prática: quando um utente completa todas as séries com boa técnica, é hora de progredir (≈2,5–5 kg ou +1 rep por série).'
+  },
+  {
+    icon: <Target size={18}/>, color: '#8B5CF6', title: 'Especificidade',
+    body: 'O corpo adapta-se ao estímulo que recebe. Quem quer força treina com cargas pesadas (1–5 reps). Quem quer resistência muscular usa cargas leves (15–25 reps). Quem quer hipertrofia foca 6–12 reps. Escolhe exercícios que recrutam os músculos do objetivo.'
+  },
+  {
+    icon: <RefreshCw size={18}/>, color: '#10B981', title: 'Recuperação',
+    body: 'O crescimento acontece no descanso, não no treino. Músculos grandes (pernas, costas) precisam de 48–72h de recuperação. Músculos pequenos (bíceps, tríceps) 24–48h. Sono de 7–9h é obrigatório. Planeamento insuficiente de recuperação = lesões e estagnação.'
+  },
+  {
+    icon: <Zap size={18}/>, color: '#F59E0B', title: 'Variação',
+    body: 'O corpo adapta-se e estagna. Muda um variável a cada 4–8 semanas: ordem dos exercícios, equipamento (halteres vs barra), ângulo (inclinado vs plano), técnica de intensidade (drop sets, supersets). Nunca mudes tudo ao mesmo tempo — impossível identificar o que resultou.'
+  },
+  {
+    icon: <AlertCircle size={18}/>, color: '#EF4444', title: 'Individualidade',
+    body: 'Cada pessoa responde de forma diferente. Fatores: genética, historial de treino, alimentação, sono, stress. O mesmo plano produz resultados diferentes em pessoas diferentes. Monitoriza, ajusta e personaliza sempre que possível.'
+  },
+];
+
+const TABELA_OBJETIVOS = [
+  { objetivo: 'Força Máxima',    series: '3–6',  reps: '1–5',   carga: '85–100%', descanso: '3–5 min', freq: '2–4×/sem' },
+  { objetivo: 'Hipertrofia',     series: '3–5',  reps: '6–12',  carga: '67–85%',  descanso: '60–90s',  freq: '3–5×/sem' },
+  { objetivo: 'Resistência Musc.', series: '2–4', reps: '13–25', carga: '50–67%', descanso: '30–60s',  freq: '2–4×/sem' },
+  { objetivo: 'Potência',        series: '3–5',  reps: '1–5',   carga: '75–90%',  descanso: '2–4 min', freq: '2–3×/sem' },
+  { objetivo: 'Emagrecimento',   series: '3–4',  reps: '12–20', carga: '60–75%',  descanso: '30–45s',  freq: '3–5×/sem' },
+];
+
+const PASSOS_PLANO = [
+  { n: '1', titulo: 'Define o Objetivo', desc: 'Força? Hipertrofia? Resistência? Perda de peso? O objetivo determina tudo o resto. Sê específico: "ganhar massa no tronco" é melhor que "ficar mais forte".' },
+  { n: '2', titulo: 'Avalia o Nível', desc: 'Iniciante (< 6 meses): 2–3 treinos/semana, full-body, padrões básicos. Intermédio (6–24 meses): 3–4 treinos, divisão push/pull/legs ou upper/lower. Avançado (> 2 anos): 4–6 treinos, periodização.' },
+  { n: '3', titulo: 'Escolhe a Divisão', desc: 'Full-body (2–3×/sem) para iniciantes. Upper/Lower (4×/sem) para intermédios. Push/Pull/Legs (5–6×/sem) para avançados. A melhor divisão é a que o utente consegue cumprir.' },
+  { n: '4', titulo: 'Seleciona Exercícios', desc: 'Começa por compostos (agachamento, supino, peso morto, press militar, remada) — recrutam mais músculo por exercício. Adiciona isolados no fim. Regra: 2–3 compostos + 2–3 isolados por sessão.' },
+  { n: '5', titulo: 'Define Volume e Carga', desc: 'Usa a tabela de referência. Para hipertrofia: 10–20 séries por grupo muscular por semana. Distribui equitativamente pelos dias. Começa no mínimo eficaz e aumenta progressivamente.' },
+  { n: '6', titulo: 'Planeia a Progressão', desc: 'Define o mecanismo de progressão desde o início: dupla progressão (mais reps primeiro, depois mais peso), progressão linear simples, periodização ondulante. Documenta tudo para ajustar.' },
+];
+
+const PERIODIZACAO = [
+  { tipo: 'Linear', desc: 'Aumenta carga progressivamente semana a semana. Ideal para iniciantes. Ex: semana 1 → 3×10, semana 2 → 3×10+2,5kg.', ideal: 'Iniciantes' },
+  { tipo: 'Ondulante (DUP)', desc: 'Varia volume e intensidade dentro da mesma semana. Ex: seg → força (5×5), qua → hipertrofia (4×10), sex → resistência (3×15). Maior variedade, menos adaptação.', ideal: 'Intermédio / Avançado' },
+  { tipo: 'Bloco', desc: 'Divide o macrociclo em blocos de 3–6 semanas com foco diferente: Acumulação (volume alto) → Intensificação (carga alta) → Realização (pico de performance).', ideal: 'Avançado / Competição' },
+];
+
+function AccordionSection({ icon, color, title, body }: { icon: React.ReactNode; color: string; title: string; body: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white rounded-[1.5rem] border-2 border-slate-100 overflow-hidden">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-4 p-5 text-left hover:bg-slate-50/50 transition-colors"
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '18', color }}>
+          {icon}
+        </div>
+        <span className="flex-1 font-black text-[#004D71] uppercase text-sm">{title}</span>
+        <ChevronDown size={16} className={`text-slate-300 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}/>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 text-sm text-slate-600 leading-relaxed border-t-2 border-slate-50 pt-4">
+          {body}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function EnciclopediaTab() {
+  const [section, setSection] = useState<'principios' | 'como' | 'tabela' | 'periodizacao' | 'builder'>('principios');
+
+  const NAV = [
+    { key: 'principios' as const,    label: 'Princípios',    icon: <Zap size={13}/> },
+    { key: 'como' as const,          label: 'Como Criar',    icon: <Target size={13}/> },
+    { key: 'tabela' as const,        label: 'Referência',    icon: <BarChart2 size={13}/> },
+    { key: 'periodizacao' as const,  label: 'Periodização',  icon: <Clock size={13}/> },
+    { key: 'builder' as const,       label: 'workout.cool',  icon: <ExternalLink size={13}/> },
+  ];
+
+  return (
+    <div className="space-y-4 animate-in fade-in">
+      {/* Sub-nav */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {NAV.map(n => (
+          <button
+            key={n.key}
+            onClick={() => setSection(n.key)}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${section === n.key ? 'bg-[#004D71] text-[#F7B500] shadow-md' : 'bg-white text-slate-400 border-2 border-slate-100 hover:border-[#004D71]/20'}`}
+          >
+            {n.icon} {n.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Princípios */}
+      {section === 'principios' && (
+        <div className="space-y-3">
+          <div className="px-1">
+            <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">5 Princípios</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Base científica do treino eficaz</p>
+          </div>
+          {PRINCIPIOS.map(p => (
+            <AccordionSection key={p.title} icon={p.icon} color={p.color} title={p.title} body={p.body}/>
+          ))}
+        </div>
+      )}
+
+      {/* Como Criar */}
+      {section === 'como' && (
+        <div className="space-y-3">
+          <div className="px-1">
+            <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Como Criar um Plano</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">6 passos do zero ao treino completo</p>
+          </div>
+          {PASSOS_PLANO.map(p => (
+            <div key={p.n} className="bg-white rounded-[1.5rem] p-5 border-2 border-slate-100 flex gap-4">
+              <div className="w-9 h-9 rounded-xl bg-[#004D71] text-[#F7B500] flex items-center justify-center font-black text-lg shrink-0">{p.n}</div>
+              <div>
+                <h4 className="font-black text-[#004D71] uppercase text-sm">{p.titulo}</h4>
+                <p className="text-sm text-slate-600 leading-relaxed mt-1">{p.desc}</p>
+              </div>
+            </div>
+          ))}
+          {/* Dica extra */}
+          <div className="bg-[#004D71]/5 rounded-[1.5rem] p-5 border-2 border-[#004D71]/10">
+            <p className="text-[9px] font-black text-[#004D71] uppercase tracking-widest mb-2">Dica de ouro</p>
+            <p className="text-sm text-[#004D71] leading-relaxed font-medium">A ordem dos exercícios importa: compostos multiarticulares primeiro (quando o sistema nervoso está fresco), isolados no fim. Nunca faças leg press antes do agachamento.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabela de Referência */}
+      {section === 'tabela' && (
+        <div className="space-y-4">
+          <div className="px-1">
+            <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Tabela de Referência</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Séries · Repetições · Descanso por objetivo</p>
+          </div>
+          <div className="bg-white rounded-[1.5rem] border-2 border-slate-100 overflow-hidden">
+            {TABELA_OBJETIVOS.map((row, i) => (
+              <div key={row.objetivo} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-4 ${i !== TABELA_OBJETIVOS.length - 1 ? 'border-b-2 border-slate-50' : ''}`}>
+                <div className="w-full sm:w-36 shrink-0">
+                  <span className="font-black text-[#004D71] uppercase text-xs">{row.objetivo}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[10px]">
+                  <span className="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full font-black text-slate-600"><span className="text-slate-400">Séries</span> {row.series}</span>
+                  <span className="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full font-black text-slate-600"><span className="text-slate-400">Reps</span> {row.reps}</span>
+                  <span className="bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full font-black text-slate-600"><span className="text-slate-400">Carga</span> {row.carga}</span>
+                  <span className="bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full font-black text-amber-700"><span className="text-amber-400">Descanso</span> {row.descanso}</span>
+                  <span className="bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full font-black text-blue-700"><span className="text-blue-400">Freq.</span> {row.freq}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Regras rápidas */}
+          <div className="space-y-2">
+            {[
+              { cor: '#10B981', texto: 'Volume semanal mínimo por grupo muscular: 10 séries (iniciante) a 20+ séries (avançado).' },
+              { cor: '#3B82F6', texto: 'Aquecimento: 5–10 min cardio leve + mobilidade articular + 1–2 séries de ativação com carga baixa.' },
+              { cor: '#F59E0B', texto: 'Arrefecimento: alongamentos estáticos (30s/músculo), especialmente dos grupos trabalhados.' },
+              { cor: '#8B5CF6', texto: 'Regra 2/3: se um utente completar 2 séries acima do mínimo de reps por 3 sessões consecutivas → aumenta a carga.' },
+            ].map(r => (
+              <div key={r.texto} className="bg-white rounded-2xl p-4 border-2 border-slate-100 flex gap-3 items-start">
+                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: r.cor }}/>
+                <p className="text-sm text-slate-600 leading-relaxed">{r.texto}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Periodização */}
+      {section === 'periodizacao' && (
+        <div className="space-y-4">
+          <div className="px-1">
+            <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">Periodização</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Como estruturar o treino a longo prazo</p>
+          </div>
+          {PERIODIZACAO.map(p => (
+            <div key={p.tipo} className="bg-white rounded-[1.5rem] p-5 border-2 border-slate-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="font-black text-[#004D71] uppercase text-sm">{p.tipo}</h4>
+                <span className="text-[9px] font-black bg-[#004D71]/8 text-[#004D71] px-2.5 py-1 rounded-full uppercase tracking-widest">{p.ideal}</span>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">{p.desc}</p>
+            </div>
+          ))}
+          {/* Macrociclo visual */}
+          <div className="bg-white rounded-[1.5rem] p-5 border-2 border-slate-100 space-y-3">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Estrutura Temporal</p>
+            <div className="space-y-2 text-sm">
+              {[
+                { label: 'Microciclo', dur: '1 semana', desc: 'Unidade básica de treino (ex: seg/qua/sex)' },
+                { label: 'Mesociclo', dur: '3–6 semanas', desc: 'Bloco com foco definido (ex: hipertrofia)' },
+                { label: 'Macrociclo', dur: '3–12 meses', desc: 'Ciclo completo até ao objetivo final' },
+              ].map(t => (
+                <div key={t.label} className="flex items-start gap-3">
+                  <div className="w-24 shrink-0">
+                    <span className="font-black text-[#004D71] text-xs uppercase">{t.label}</span>
+                    <p className="text-[9px] font-bold text-[#F7B500] uppercase">{t.dur}</p>
+                  </div>
+                  <p className="text-slate-500 text-xs leading-relaxed pt-0.5">{t.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-[#004D71] rounded-[1.5rem] p-5 text-white space-y-1.5">
+            <p className="text-[9px] font-black uppercase tracking-widest text-[#F7B500]">Deload</p>
+            <p className="text-sm leading-relaxed opacity-90">Após cada mesociclo, inclui 1 semana de deload: reduz volume em 40–50% mas mantém intensidade. Permite recuperação completa e prepara para o próximo bloco mais pesado.</p>
+          </div>
+        </div>
+      )}
+
+      {/* workout.cool */}
+      {section === 'builder' && (
+        <div className="space-y-4">
+          <div className="px-1">
+            <h2 className="text-2xl font-black text-[#004D71] uppercase tracking-tighter">workout.cool</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Construtor de treinos e biblioteca de exercícios</p>
+          </div>
+
+          {/* Feature cards */}
+          {[
+            {
+              title: 'Construtor de Treinos',
+              desc: 'Cria planos personalizados selecionando equipamento disponível e grupos musculares. Gera treinos estruturados automaticamente.',
+              url: 'https://www.workout.cool',
+              color: '#004D71',
+              tag: 'Para Professores',
+            },
+            {
+              title: 'Biblioteca de Exercícios',
+              desc: 'Centenas de exercícios com vídeos, instruções detalhadas e músculos trabalhados. Filtra por equipamento, grupo muscular ou dificuldade.',
+              url: 'https://www.workout.cool',
+              color: '#3B82F6',
+              tag: 'Para Todos',
+            },
+            {
+              title: 'Programas Pré-feitos',
+              desc: 'Programas de treino completos com periodização definida para diferentes objetivos: força, hipertrofia, resistência.',
+              url: 'https://www.workout.cool/programs',
+              color: '#8B5CF6',
+              tag: 'Para Professores',
+            },
+          ].map(card => (
+            <a
+              key={card.title}
+              href={card.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-white rounded-[1.5rem] p-5 border-2 border-slate-100 hover:border-blue-200 transition-all group active:scale-[0.98]"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full" style={{ background: card.color + '15', color: card.color }}>{card.tag}</span>
+                  </div>
+                  <h4 className="font-black text-[#004D71] uppercase text-sm">{card.title}</h4>
+                  <p className="text-sm text-slate-500 leading-relaxed mt-1">{card.desc}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform" style={{ background: card.color + '15' }}>
+                  <ExternalLink size={18} style={{ color: card.color }}/>
+                </div>
+              </div>
+            </a>
+          ))}
+
+          {/* Open source note */}
+          <div className="bg-slate-50 rounded-[1.5rem] p-5 border-2 border-slate-100 flex gap-3">
+            <div className="w-2 h-2 rounded-full bg-green-400 mt-1.5 shrink-0"/>
+            <div>
+              <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Projeto Open-Source</p>
+              <p className="text-sm text-slate-500 leading-relaxed mt-1">workout.cool é gratuito e de código aberto. Suporta Português, Inglês, Francês, Espanhol e mais. Disponível sem necessidade de conta para uso básico.</p>
+              <a href="https://github.com/Snouzy/workout-cool" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[10px] font-black text-blue-600 uppercase tracking-widest mt-2 hover:underline">
+                Ver código-fonte <ExternalLink size={10}/>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ==========================================

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Play, ChevronRight, Bookmark, Search, Filter, BookOpen, X, Plus, Check } from 'lucide-react';
+import { Dumbbell, Play, ChevronRight, Bookmark, Search, Filter, BookOpen, X, Plus, Check, ExternalLink } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { collection, onSnapshot, query, where, addDoc, Timestamp, doc, updateDoc } from 'firebase/firestore';
@@ -259,7 +259,30 @@ export function UtenteTrainingModule({ user }: { user: UserProfile }) {
       )}
 
       {activeTab === 'biblioteca' && (
-        <ExerciseBankTab readOnly />
+        <div className="space-y-4 animate-in fade-in">
+          {/* workout.cool card */}
+          <a
+            href="https://www.workout.cool"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block bg-gradient-to-br from-[#004D71] to-[#003a55] rounded-[2rem] p-6 text-white shadow-lg active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#F7B500] mb-2">Ferramenta Online · Gratuita</p>
+                <h3 className="font-black text-xl uppercase leading-tight">workout.cool</h3>
+                <p className="text-sm opacity-80 leading-relaxed mt-2">Cria o teu próprio treino por equipamento e grupo muscular, sem precisar de professor. Centenas de exercícios com vídeos e instruções.</p>
+                <div className="flex items-center gap-1.5 mt-3 text-[#F7B500] text-[10px] font-black uppercase tracking-widest">
+                  Abrir <ExternalLink size={11}/>
+                </div>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+                <Dumbbell size={28} className="text-[#F7B500]"/>
+              </div>
+            </div>
+          </a>
+          <ExerciseBankTab readOnly />
+        </div>
       )}
 
       {showRequest && (
