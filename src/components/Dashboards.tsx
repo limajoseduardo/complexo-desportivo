@@ -994,9 +994,39 @@ export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick,
 export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserProfile, utentes?: UserProfile[] }) => {
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [insideUsers, setInsideUsers] = useState<UserProfile[]>([]);
+  const [todayLogs, setTodayLogs] = useState<{ modalidade?: string }[]>([]);
 
   const termsOk = !!(user.termo_imagens && user.termo_responsabilidade);
-  const totalInside = utentes.filter(u => u.isInside).length;
+
+  // Live: who is inside right now
+  useEffect(() => {
+    const q = query(
+      collection(db, `artifacts/${APP_ID}/public/data/users`),
+      where('isInside', '==', true)
+    );
+    return onSnapshot(q, snap => {
+      setInsideUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
+    }, () => {});
+  }, []);
+
+  // Today's access logs (for per-zone totals)
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
+      where('date', '==', today)
+    );
+    return onSnapshot(q, snap => {
+      setTodayLogs(snap.docs.map(d => d.data() as { modalidade?: string }));
+    }, () => {});
+  }, []);
+
+  const totalInside = insideUsers.length;
+  const todayTotal  = todayLogs.length;
+
+  const normMod = (m: string) => (m?.startsWith('Natação Nível') ? 'Natação' : m || '');
+  const countToday = (dest: string) => todayLogs.filter(l => normMod(l.modalidade || '') === dest).length;
 
   const qrValue = selectedDest
     ? JSON.stringify({ id: user.id, dest: selectedDest })
@@ -1031,14 +1061,23 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
             <>
               <div className="flex items-baseline justify-between mb-3">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
-                <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
-                  Neste momento tem{' '}
-                  <span className="text-[#F7B500] text-sm font-black">{totalInside}</span>
-                  {' '}{totalInside === 1 ? 'utente' : 'utentes'}
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-[9px] font-black text-white/50 uppercase tracking-wide">
+                    Hoje: <span className="text-[#F7B500] font-black">{todayTotal}</span> entradas
+                  </p>
+                  <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
+                    Agora: <span className="text-[#F7B500] text-sm font-black">{totalInside}</span> dentro
+                  </p>
+                </div>
               </div>
               <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {React.useMemo(() => MODALITIES.map(m => ({ ...m, count: utentes.filter(u => isUserInZone(u, m.id)).length })).sort((a, b) => b.count - a.count), [utentes]).map(m => (
+                {React.useMemo(() =>
+                  MODALITIES.map(m => ({
+                    ...m,
+                    liveCount:  insideUsers.filter(u => isUserInZone(u, m.id)).length,
+                    todayCount: countToday(m.dest),
+                  })).sort((a, b) => b.todayCount - a.todayCount),
+                [insideUsers, todayLogs]).map(m => (
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDest(m.dest); setShowQR(true); }}
@@ -1048,14 +1087,20 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                         {m.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90">
+                        <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90 mb-1.5">
                           {m.label}
                         </p>
-                        <p className="text-[9px] font-bold text-white/50 mt-1 leading-none">
-                          tem{' '}
-                          <span className="text-white font-black text-xs">{m.count}</span>
-                          {' '}{m.count === 1 ? 'utente' : 'utentes'}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 bg-white/10 rounded-md px-1.5 py-0.5">
+                            <span className="text-[8px] text-white/50 uppercase font-bold">Hoje</span>
+                            <span className="text-[#F7B500] font-black text-xs">{m.todayCount}</span>
+                          </span>
+                          <span className="flex items-center gap-1 bg-white/10 rounded-md px-1.5 py-0.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${m.liveCount > 0 ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}/>
+                            <span className="text-white font-black text-xs">{m.liveCount}</span>
+                            <span className="text-[8px] text-white/50 uppercase font-bold">agora</span>
+                          </span>
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -1078,9 +1123,6 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
         </div>
 
       </div>
-
-      {/* Módulo de Natação Swim Track */}
-      <SwimmingStudentPortal user={user} />
 
       {/* ── QR Full Screen ── */}
       {showQR && (

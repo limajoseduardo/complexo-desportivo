@@ -30,6 +30,7 @@ const EventsModule = React.lazy(() => import('./components/Events').then(m => ({
 import { seedUtentesTestData } from './lib/seedUtentes';
 import { seedExerciseLibrary } from './lib/seedExercises';
 import { seedWorkoutTemplates } from './lib/seedTemplates';
+import { seedPoolMapsData } from './lib/seedPoolMaps';
 import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react';
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
@@ -69,7 +70,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
   chefia:    ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'utentes', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'mensagens', 'perfil'],
+  professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'mensagens', 'perfil'],
   utente:    ['inicio', 'treino', 'nutricao', 'eventos', 'mensagens', 'agenda', 'perfil'],
 };
 
@@ -319,6 +320,11 @@ export default function App() {
       seedWorkoutTemplates();
     }
 
+    // Auto-inserir dados de análises de piscinas
+    if (!localStorage.getItem('cpx_seed_pool_maps_v1')) {
+      seedPoolMapsData();
+    }
+
     return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
@@ -349,7 +355,7 @@ export default function App() {
     const isStaff = ['admin', 'chefia', 'staff', 'professor'].includes(user.role);
     
     if (isStaff) {
-      const qRecent = query(collection(db, usersPath), limit(500));
+      const qRecent = query(collection(db, usersPath));
       unsubRecent = onSnapshot(qRecent, (snap) => {
         setUtentesRecent(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
       });
@@ -414,7 +420,7 @@ export default function App() {
 
   // Sync Logs
   useEffect(() => {
-    if (!user || user.role === 'utente') return;
+    if (!user) return;
     
     const pathC = `artifacts/${APP_ID}/public/data/mapas_coberta`;
     const pathD = `artifacts/${APP_ID}/public/data/mapas_descoberta`;
@@ -776,7 +782,7 @@ export default function App() {
         />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} unreadCount={totalUnread} />
+          <Header user={user} unreadCount={totalUnread} logs={logs} />
           
           <React.Suspense fallback={null}>
             <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
@@ -835,7 +841,7 @@ export default function App() {
                     utentes={utentes}
                   />
                 )}
-                {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'chefia'].includes(user.role)} />}
+                {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'professor'].includes(user.role)} />}
                 {activeTab === 'alunos' && (
                   ['professor', 'admin'].includes(user.role) ? (
                     <SwimmingTeacherPortal user={user} utentes={utentes} />
@@ -848,7 +854,7 @@ export default function App() {
                 {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
 
-                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} />}
+                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} />}
                 {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                 {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}

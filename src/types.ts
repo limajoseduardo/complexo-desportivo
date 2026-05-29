@@ -51,6 +51,7 @@ export interface UserProfile {
 
   // Saúde
   restricoes_medicas?: string;
+  atestado_medico?: boolean;
   alergias?: string;
   objetivos?: string;
   modalidade?: string;

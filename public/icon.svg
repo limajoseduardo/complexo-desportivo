@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="512" height="512">
+  <!-- Rounded blue background -->
+  <rect width="24" height="24" rx="5" fill="#004D71"/>
+  
+  <!-- Picoto in Gold -->
+  <g fill="none" stroke="#F7B500" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 21h16" />
+    <path d="M6 21l3-14h6l3 14" />
+    <path d="M12 7V3" />
+    <circle cx="12" cy="3" r="1.2" fill="#F7B500" stroke="none" />
+  </g>
+</svg>

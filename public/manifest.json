@@ -1,0 +1,21 @@
+{
+  "name": "Complexo Desportivo Vila de Rei",
+  "short_name": "Vila de Rei",
+  "description": "Acesso ao Complexo Desportivo Municipal de Vila de Rei",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#004D71",
+  "background_color": "#004D71",
+  "lang": "pt",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["sports", "health", "fitness"]
+}

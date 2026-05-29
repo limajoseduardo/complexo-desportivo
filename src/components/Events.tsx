@@ -9,6 +9,7 @@ import {
   deleteDoc, doc, orderBy, Timestamp, writeBatch 
 } from 'firebase/firestore';
 import { UserProfile } from '../types';
+import { normalizeSearchString } from '../lib/logic';
 
 interface Evento {
   id: string;
@@ -366,7 +367,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
 
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
 
-  const isStaff = ['admin', 'staff', 'chefia', 'professor'].includes(user.role);
+  const isStaff = ['admin', 'staff', 'professor'].includes(user.role);
 
   const ESTILOS = ['Crawl', 'Costas', 'Bruços', 'Mariposa'];
 
@@ -604,7 +605,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
         return !['admin', 'staff', 'chefia', 'professor'].includes(r);
       })
       .filter(u => !viewingInscritos.inscritos.some(i => i.id === u.id))
-      .filter(u => (u.nome || u.n || '').toLowerCase().includes(searchUtente.toLowerCase()))
+      .filter(u => normalizeSearchString(u.nome || u.n || '').includes(normalizeSearchString(searchUtente)))
       .slice(0, 5);
   }, [utentes, viewingInscritos, searchUtente]);
 
@@ -619,7 +620,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
           </h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Gestão de Provas de Natação e Atividades CD</p>
         </div>
-        {['admin', 'staff', 'chefia'].includes(user.role) && (
+        {['admin', 'staff'].includes(user.role) && (
           <button 
             onClick={() => { setShowAddModal(true); setSelectedTeachers([]); }}
             className="bg-[#004D71] text-[#F7B500] p-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
@@ -1292,7 +1293,7 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
       {/* MODAL: VER SÉRIES DE PARTIDA / HEATS */}
       {viewingHeats && (() => {
         const styleAthletes = viewingHeats.inscritos.filter(i => i.provas.includes(activeHeatsStyle));
-        const heatsMap: Record<number, { pista: number; atleta: any; idade?: string }[]> = {};
+        const heatsMap: Record<number, { pista: number; atleta: any; idade?: string; img?: string }[]> = {};
         
         styleAthletes.forEach((atleta) => {
           const ut = utentes.find(u => u.id === atleta.id);

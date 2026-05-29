@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as UserIcon, Activity, Mail, Smartphone, Shield, Calendar, MapPin, Scan, UserX } from 'lucide-react';
+import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as UserIcon, Activity, Mail, Smartphone, Shield, Calendar, MapPin, Scan, UserX, FileText } from 'lucide-react';
 import { UserProfile } from '../types';
 import { PicotoIcon, FormInput, AvatarImage } from './Common';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { APP_ID } from '../App';
+import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { MODALIDADES } from './Profile';
 
 import { handleCheckIn, handleCheckOut } from '../lib/access';
+import { normalizeSearchString } from '../lib/logic';
 
 function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void, key?: any }) {
   return (
@@ -54,6 +54,7 @@ export function UtentesList({
 }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'jovem' | 'adulto' | 'senior'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -71,19 +72,68 @@ export function UtentesList({
     endereco: '',
     modalidade: 'Atividade Geral',
     restricoes_medicas: '',
-    role: 'utente' as const
+    role: 'utente' as const,
+    atestado_medico: false
   });
+
+  const getAge = (u: UserProfile) => {
+    if (u.idade) {
+      const parsed = parseInt(u.idade);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (u.data_nasc) {
+      const birthYear = new Date(u.data_nasc).getFullYear();
+      const currentYear = new Date().getFullYear();
+      return currentYear - birthYear;
+    }
+    return 30;
+  };
+
+  const isIncomplete = (u: UserProfile) => {
+    return !u.data_nasc || !u.nif || !(u.phone || u.telemovel || u.telefone) || !u.endereco;
+  };
+
+  const utenteProfiles = useMemo(() => {
+    return utentes.filter(u => {
+      const r = (u.role || '').toLowerCase();
+      return !['admin', 'staff', 'chefia', 'professor'].includes(r);
+    });
+  }, [utentes]);
+
+  const stats = useMemo(() => {
+    const total = utenteProfiles.length;
+    const incomplete = utenteProfiles.filter(isIncomplete).length;
+    const atestado = utenteProfiles.filter(u => u.atestado_medico === true || !!u.restricoes_medicas).length;
+    
+    let jovem = 0;
+    let adulto = 0;
+    let senior = 0;
+    utenteProfiles.forEach(u => {
+      const age = getAge(u);
+      if (age < 18) jovem++;
+      else if (age < 65) adulto++;
+      else senior++;
+    });
+
+    return { total, incomplete, atestado, jovem, adulto, senior };
+  }, [utenteProfiles]);
 
   const filtered = useMemo(() => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    return utentes
+    return utenteProfiles
       .filter(u => {
-        const r = (u.role || '').toLowerCase();
-        return !['admin', 'staff', 'chefia', 'professor'].includes(r);
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'incomplete') return isIncomplete(u);
+        if (activeFilter === 'atestado') return u.atestado_medico === true || !!u.restricoes_medicas;
+        const age = getAge(u);
+        if (activeFilter === 'jovem') return age < 18;
+        if (activeFilter === 'adulto') return age >= 18 && age < 65;
+        if (activeFilter === 'senior') return age >= 65;
+        return true;
       })
-      .filter(u => (u.n || u.nome || '').toLowerCase().includes(search.toLowerCase()))
+      .filter(u => normalizeSearchString(u.n || u.nome || '').includes(normalizeSearchString(search)))
       .filter(u => {
         if (filterMode === 'all') return true;
         if (filterMode === 'at_risk') {
@@ -93,13 +143,12 @@ export function UtentesList({
         return true;
       })
       .sort((a, b) => (a.n || a.nome || '').localeCompare(b.n || b.nome || '', 'pt'));
-  }, [search, utentes, filterMode]);
+  }, [search, utenteProfiles, filterMode, activeFilter]);
 
   const groups = useMemo(() => {
     const inside = filtered.filter(u => u.isInside);
-    const outside = filtered.filter(u => !u.isInside);
     const byLetter: Record<string, typeof filtered> = {};
-    outside.forEach(u => {
+    filtered.forEach(u => {
       const letter = (u.n || u.nome || '?')[0].toUpperCase();
       if (!byLetter[letter]) byLetter[letter] = [];
       byLetter[letter].push(u);
@@ -135,7 +184,8 @@ export function UtentesList({
       setShowAddModal(false);
       setFormData({ 
         nome: '', idade: '', data_nasc: '', email: '', phone: '', 
-        nif: '', endereco: '', modalidade: 'Atividade Geral', restricoes_medicas: '', role: 'utente' 
+        nif: '', endereco: '', modalidade: 'Atividade Geral', restricoes_medicas: '', role: 'utente',
+        atestado_medico: false
       });
     } catch (e: any) {
       console.error("Save error:", e);
@@ -180,6 +230,114 @@ export function UtentesList({
         )}
       </div>
 
+      {/* ── PAINEL INFORMATIVO ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
+        {/* Total de Utentes */}
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`p-5 rounded-[2rem] text-left transition-all border-2 flex flex-col justify-between min-h-[120px] ${
+            activeFilter === 'all'
+              ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-lg'
+              : 'bg-white text-[#004D71] border-slate-100 hover:border-[#004D71]/20 shadow-sm'
+          }`}
+        >
+          <div className="flex items-center justify-between w-full">
+            <UserIcon size={18} className={activeFilter === 'all' ? 'text-[#F7B500]' : 'text-slate-400'} />
+            {activeFilter === 'all' && <span className="w-1.5 h-1.5 rounded-full bg-[#F7B500]" />}
+          </div>
+          <div className="mt-4">
+            <p className="text-2xl font-black leading-none tabular-nums">{stats.total}</p>
+            <p className={`text-[8px] font-black uppercase tracking-wider mt-1 ${activeFilter === 'all' ? 'text-white/60' : 'text-slate-400'}`}>Total de Utentes</p>
+          </div>
+        </button>
+
+        {/* Perfis Incompletos */}
+        <button
+          onClick={() => setActiveFilter(activeFilter === 'incomplete' ? 'all' : 'incomplete')}
+          className={`p-5 rounded-[2rem] text-left transition-all border-2 flex flex-col justify-between min-h-[120px] ${
+            activeFilter === 'incomplete'
+              ? 'bg-amber-500 text-white border-amber-500 shadow-lg'
+              : 'bg-white text-slate-700 border-slate-100 hover:border-amber-500/20 shadow-sm'
+          }`}
+        >
+          <div className="flex items-center justify-between w-full">
+            <FileText size={18} className={activeFilter === 'incomplete' ? 'text-white' : 'text-slate-400'} />
+            {activeFilter === 'incomplete' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+          </div>
+          <div className="mt-4">
+            <p className="text-2xl font-black leading-none tabular-nums">{stats.incomplete}</p>
+            <p className={`text-[8px] font-black uppercase tracking-wider mt-1 ${activeFilter === 'incomplete' ? 'text-white/80' : 'text-slate-400'}`}>Perfis Incompletos</p>
+          </div>
+        </button>
+
+        {/* Com Atestado */}
+        <button
+          onClick={() => setActiveFilter(activeFilter === 'atestado' ? 'all' : 'atestado')}
+          className={`p-5 rounded-[2rem] text-left transition-all border-2 flex flex-col justify-between min-h-[120px] ${
+            activeFilter === 'atestado'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg'
+              : 'bg-white text-slate-700 border-slate-100 hover:border-emerald-500/20 shadow-sm'
+          }`}
+        >
+          <div className="flex items-center justify-between w-full">
+            <Shield size={18} className={activeFilter === 'atestado' ? 'text-white' : 'text-slate-400'} />
+            {activeFilter === 'atestado' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+          </div>
+          <div className="mt-4">
+            <p className="text-2xl font-black leading-none tabular-nums">{stats.atestado}</p>
+            <p className={`text-[8px] font-black uppercase tracking-wider mt-1 ${activeFilter === 'atestado' ? 'text-white/80' : 'text-slate-400'}`}>Com Atestado</p>
+          </div>
+        </button>
+
+        {/* Escalões Etários */}
+        <div className="bg-white p-4 rounded-[2rem] border-2 border-slate-100 shadow-sm flex flex-col justify-between min-h-[120px]">
+          <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none border-b pb-1.5">
+            <Calendar size={10} className="text-slate-400" />
+            <span>Escalões</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 mt-2">
+            {/* Jovem (<18) */}
+            <button
+              onClick={() => setActiveFilter(activeFilter === 'jovem' ? 'all' : 'jovem')}
+              className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                activeFilter === 'jovem'
+                  ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
+                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-purple-500/35'
+              }`}
+            >
+              <span className="text-[10px] font-black leading-none tabular-nums">{stats.jovem}</span>
+              <span className="text-[6px] font-bold uppercase tracking-wider mt-0.5 opacity-60">Jov</span>
+            </button>
+            
+            {/* Adulto (18-64) */}
+            <button
+              onClick={() => setActiveFilter(activeFilter === 'adulto' ? 'all' : 'adulto')}
+              className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                activeFilter === 'adulto'
+                  ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
+                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-purple-500/35'
+              }`}
+            >
+              <span className="text-[10px] font-black leading-none tabular-nums">{stats.adulto}</span>
+              <span className="text-[6px] font-bold uppercase tracking-wider mt-0.5 opacity-60">Adu</span>
+            </button>
+
+            {/* Sénior (65+) */}
+            <button
+              onClick={() => setActiveFilter(activeFilter === 'senior' ? 'all' : 'senior')}
+              className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                activeFilter === 'senior'
+                  ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
+                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-purple-500/35'
+              }`}
+            >
+              <span className="text-[10px] font-black leading-none tabular-nums">{stats.senior}</span>
+              <span className="text-[6px] font-bold uppercase tracking-wider mt-0.5 opacity-60">Sén</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="relative">
         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         <input 
@@ -190,7 +348,7 @@ export function UtentesList({
         />
       </div>
 
-      <div className="flex px-1">
+      <div className="flex px-1 items-center justify-between">
         <button
           onClick={() => setFilterMode(prev => prev === 'all' ? 'at_risk' : 'all')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -201,6 +359,15 @@ export function UtentesList({
         >
           <UserX size={14}/> {filterMode === 'at_risk' ? 'Mostrar Todos' : 'Ver Risco de Desistência (> 30 dias)'}
         </button>
+
+        {activeFilter !== 'all' && (
+          <button
+            onClick={() => setActiveFilter('all')}
+            className="text-[9px] font-black text-[#004D71] uppercase tracking-widest hover:underline flex items-center gap-1"
+          >
+            × Limpar Filtro ({activeFilter})
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -328,6 +495,18 @@ export function UtentesList({
                 />
               </div>
 
+              <div className="pt-2 flex items-center gap-3 border-t border-slate-50">
+                <input 
+                  type="checkbox"
+                  id="manual_atestado"
+                  checked={formData.atestado_medico}
+                  onChange={e => setFormData({...formData, atestado_medico: e.target.checked})}
+                  className="w-5 h-5 rounded border-slate-200 text-[#004D71] focus:ring-[#004D71] cursor-pointer"
+                />
+                <label htmlFor="manual_atestado" className="text-[9px] font-black text-[#004D71] uppercase tracking-widest cursor-pointer select-none">
+                  Atestado Médico Entregue
+                </label>
+              </div>
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200/50 space-y-4">

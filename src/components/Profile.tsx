@@ -96,7 +96,7 @@ export function ProfileViewModule({
   const [saving, setSaving] = useState(false);
   const [accessLoading, setAccessLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'treino' | 'termos'>('geral');
-  const isStaff = ['admin', 'staff', 'chefia', 'professor'].includes(currentRole);
+  const isStaff = ['admin', 'staff', 'professor'].includes(currentRole);
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [plan, setPlan] = useState<any | null>(null);
@@ -301,7 +301,7 @@ export function ProfileViewModule({
             )}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {['admin', 'staff', 'chefia', 'professor'].includes(currentRole) && (
+            {['admin', 'staff', 'professor'].includes(currentRole) && (
               !user.isInside ? (
                 <button onClick={() => handleAccessAction('IN', 'C. Desportivo')} disabled={accessLoading}
                   className="bg-emerald-500 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase flex items-center gap-1.5 active:scale-95 shadow-lg">
@@ -558,7 +558,7 @@ export function ProfileViewModule({
           )}
 
           {/* Financeiro (Gestão de Entradas) */}
-          {['admin', 'staff', 'chefia'].includes(currentRole) && formData.role === 'utente' && (
+          {['admin', 'staff'].includes(currentRole) && formData.role === 'utente' && (
             <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
               <SectionTitle icon={<CreditCard size={16}/>} label="Gestão de Entradas (Carregamentos)" />
               
@@ -1020,6 +1020,20 @@ export function ProfileViewModule({
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-[2rem] p-6 text-xs font-black text-[#003350] outline-none min-h-[120px] focus:ring-2 ring-[#004D71]/5 transition-all"
                   placeholder="Indique se tem alguma restrição médica..."
                 />
+              </div>
+
+              <div className="col-span-full pt-2 flex items-center gap-3">
+                <input 
+                  type="checkbox"
+                  id="atestado_medico_profile"
+                  checked={formData.atestado_medico || false}
+                  disabled={!isEditing}
+                  onChange={e => set('atestado_medico', e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-200 text-[#004D71] focus:ring-[#004D71] cursor-pointer disabled:opacity-50"
+                />
+                <label htmlFor="atestado_medico_profile" className="text-[10px] font-black text-[#004D71] uppercase tracking-widest cursor-pointer select-none disabled:opacity-50">
+                  Atestado Médico Entregue
+                </label>
               </div>
             </div>
           </div>

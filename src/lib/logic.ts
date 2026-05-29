@@ -58,3 +58,13 @@ export const isUserInZone = (user: UserProfile, zoneId: string) => {
 
   return false;
 };
+
+export function normalizeSearchString(str: string): string {
+  if (!str) return '';
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+

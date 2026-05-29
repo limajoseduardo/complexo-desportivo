@@ -19,6 +19,41 @@ const formatDate = (date: Date) => date.toLocaleDateString('pt-PT', { weekday: '
 const getTodayNumber = (date: Date) => date.getDay() === 0 ? 7 : date.getDay();
 const EXCLUDE_MODALITIES = ['ginásio livre', 'ginasio livre', 'piscina livre'];
 
+const normalizeModality = (m: string): string => {
+  const norm = (m || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  if (norm.startsWith('natacao') || norm.startsWith('natacao nivel') || norm.startsWith('natacao nivel')) {
+    return 'natacao';
+  }
+  if (norm.includes('bebe') || norm.includes('ama')) {
+    return 'bebes/ama';
+  }
+  if (norm.includes('piscina regime livre') || norm.includes('piscina livre') || norm.includes('regime livre')) {
+    return 'livre';
+  }
+  if (norm.includes('piscina exterior') || norm.includes('exterior') || norm.includes('descoberta')) {
+    return 'exterior';
+  }
+  if (norm.includes('hidro')) {
+    return 'hidroginastica';
+  }
+  if (norm.includes('fit') || norm.includes('fitness') || norm.includes('aulas fit') || norm.includes('aula fit')) {
+    return 'fitness';
+  }
+  if (norm.includes('ginasio')) {
+    return 'ginasio';
+  }
+  if (norm.includes('padel')) {
+    return 'padel';
+  }
+  if (norm.includes('pavilhao')) {
+    return 'pavilhao';
+  }
+  if (norm.includes('sauna') || norm.includes('turco')) {
+    return 'sauna';
+  }
+  return norm;
+};
+
 function WeatherIcon({ code, size = 32 }: { code: number; size?: number }) {
   if (code === 0)          return <Sun size={size} className="text-[#F7B500]" />;
   if (code <= 2)           return <Sun size={size} className="text-yellow-300" />;
@@ -56,6 +91,7 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [cobertaLogs, setCobertaLogs] = useState<any[]>([]);
   const [descobertaLogs, setDescobertaLogs] = useState<any[]>([]);
+  const [todayLogs, setTodayLogs] = useState<any[]>([]);
   const [agenda, setAgenda] = useState<Aula[]>([]);
   const { weather, aqi } = useWeather();
 
@@ -63,6 +99,18 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
     const interval = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const path = `artifacts/${appId}/public/data/logs_acesso`;
+    const q = query(collection(db, path), where('date', '==', today));
+    const unsub = onSnapshot(q, (snap) => {
+      setTodayLogs(snap.docs.map(d => d.data()));
+    }, (error) => {
+      console.error("Error loading daily logs for EntranceDashboard:", error);
+    });
+    return unsub;
+  }, [appId]);
 
   useEffect(() => {
     const usersPath = `artifacts/${appId}/public/data/users`;
@@ -81,14 +129,24 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
 
   useEffect(() => {
     const path = `artifacts/${appId}/public/data/mapas_coberta`;
-    const q = query(collection(db, path), orderBy('timestamp', 'desc'), limit(3));
-    return onSnapshot(q, (snap) => { setCobertaLogs(snap.docs.map(d => d.data())); });
+    const q = query(collection(db, path), orderBy('timestamp', 'desc'), limit(30));
+    return onSnapshot(q, (snap) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const logs = snap.docs.map(d => d.data());
+      const todayLogs = logs.filter(l => l.data === todayStr).slice(0, 3);
+      setCobertaLogs(todayLogs);
+    });
   }, [appId]);
 
   useEffect(() => {
     const path = `artifacts/${appId}/public/data/mapas_descoberta`;
-    const q = query(collection(db, path), orderBy('timestamp', 'desc'), limit(3));
-    return onSnapshot(q, (snap) => { setDescobertaLogs(snap.docs.map(d => d.data())); });
+    const q = query(collection(db, path), orderBy('timestamp', 'desc'), limit(30));
+    return onSnapshot(q, (snap) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const logs = snap.docs.map(d => d.data());
+      const todayLogs = logs.filter(l => l.data === todayStr).slice(0, 3);
+      setDescobertaLogs(todayLogs);
+    });
   }, [appId]);
 
   useEffect(() => {
@@ -115,9 +173,17 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   ], []);
 
   const zoneCounts = useMemo(() =>
-    zones.map(z => ({ ...z, count: utentesInside.filter(u => isUserInZone(u, z.id)).length }))
-         .sort((a, b) => b.count - a.count),
-    [utentesInside, zones]
+    zones.map(z => {
+      const liveCount = utentesInside.filter(u => isUserInZone(u, z.id)).length;
+      const todayCount = todayLogs.filter(l => {
+        const normLog = normalizeModality(l.modalidade || '');
+        const normZone = normalizeModality(z.label || '');
+        return normLog === normZone;
+      }).length;
+      return { ...z, liveCount, todayCount };
+    })
+    .sort((a, b) => b.todayCount - a.todayCount || b.liveCount - a.liveCount),
+    [utentesInside, todayLogs, zones]
   );
 
   const total = utentesInside.length;
@@ -236,15 +302,38 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
               {zoneCounts.map(z => (
                 <div
                   key={z.id}
-                  className="bg-white/5 border border-white/10 rounded-2xl p-3 lg:p-4 flex flex-col justify-center items-center gap-2 lg:gap-3"
+                  className="bg-white/5 border border-white/10 rounded-2xl p-3 lg:p-4 flex flex-col justify-between gap-2 lg:gap-3"
                 >
                   <div className="flex items-center justify-between w-full">
                     <div className={`p-2 lg:p-2.5 rounded-xl ${z.bg} ${z.color} shrink-0`}>
                       {React.cloneElement(z.icon, { size: 22 })}
                     </div>
-                    <p className="text-3xl lg:text-4xl font-black text-white tabular-nums leading-none">
-                      {z.count}
-                    </p>
+                    {/* Counts Container */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      {/* Agora (Occupancy) */}
+                      <div className="text-right">
+                        <p className="text-[7px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">Agora</p>
+                        <div className="flex items-center gap-1 justify-end leading-none">
+                          {z.liveCount > 0 && (
+                            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+                          )}
+                          <p className={`text-base sm:text-lg font-black tabular-nums leading-none ${z.liveCount > 0 ? 'text-green-400' : 'text-slate-400'}`}>
+                            {z.liveCount}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Separator */}
+                      <div className="h-5 sm:h-6 w-[1px] bg-white/10" />
+
+                      {/* Hoje (Today's entries) */}
+                      <div className="text-right">
+                        <p className="text-[7px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">Hoje</p>
+                        <p className="text-lg sm:text-xl font-black text-white tabular-nums leading-none">
+                          {z.todayCount}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <p className="text-xs lg:text-sm font-black uppercase tracking-widest text-slate-300 w-full text-left leading-tight truncate">
                     {z.label}

@@ -28,7 +28,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const [viewingAulaNome, setViewingAulaNome] = useState('');
   const [activeHorarioImg, setActiveHorarioImg] = useState<string | null>(null);
 
-  const canEdit = ['admin', 'staff', 'chefia', 'professor'].includes(userRole);
+  const canEdit = ['admin', 'staff', 'professor'].includes(userRole);
 
   const dias = [
     { id: 1, label: 'Segunda', short: 'SEG' },

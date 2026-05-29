@@ -593,7 +593,7 @@ export function ChatModule({ user, users }: { user: UserProfile, users: UserProf
           <Plus size={32} className="group-hover:rotate-90 transition-transform duration-300" />
         </button>
       ) : (
-        ['admin', 'chefia', 'professor'].includes(user.role) && (
+        ['admin', 'professor'].includes(user.role) && (
           <button 
             onClick={() => setShowNovoAvisoModal(true)}
             className="fixed bottom-24 right-6 w-16 h-16 bg-[#004D71] text-[#F7B500] rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all z-[50] group"
