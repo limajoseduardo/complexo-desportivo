@@ -10,7 +10,7 @@ import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase
 import {
   collection, query, where, onSnapshot,
   Timestamp, limit, getDocs, setDoc, updateDoc,
-  doc, serverTimestamp, deleteDoc, orderBy
+  doc, serverTimestamp, deleteDoc, orderBy, writeBatch
 } from 'firebase/firestore';
 import { AccessLog, UserProfile } from '../types';
 import { TurmasModule } from './TurmasModule';
@@ -24,12 +24,19 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const today = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [monthlyLogs, setMonthlyLogs] = useState<AccessLog[]>([]);
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const usersMap = React.useMemo(() => {
     const m: Record<string, UserProfile> = {};
@@ -53,12 +60,92 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('inside');
   const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
   const [showTurmas, setShowTurmas] = useState(false);
   const [confirmDeleteLog, setConfirmDeleteLog] = useState<AccessLog | null>(null);
   const [deletingLog, setDeletingLog] = useState(false);
   const readOnly = currentUser?.role === 'chefia';
+
+  const [modalMode, setModalMode] = useState<'single' | 'outdoor_pool'>('single');
+  const [outdoorEntradas, setOutdoorEntradas] = useState(1);
+  const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas'>('diario');
+
+  const handleOutdoorPoolSubmit = () => {
+    if (outdoorEntradas === 0) {
+      alert("Por favor, selecione um número diferente de zero.");
+      return;
+    }
+    
+    // 1. Mostrar feedback de carregamento
+    setIsSubmitting(true);
+    
+    // 2. Usar setTimeout para libertar o botão imediatamente da stack principal
+    setTimeout(() => {
+      try {
+        const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+        const today = new Date().toISOString().split('T')[0];
+        
+        const batch = writeBatch(db);
+
+        if (outdoorEntradas > 0) {
+          // ADICIONAR
+          for (let i = 0; i < outdoorEntradas; i++) {
+            const timestampMs = Date.now() + i;
+            const logId = `ext_${timestampMs}`;
+            const logDocRef = doc(db, path, logId);
+            
+            batch.set(logDocRef, {
+              userId: `ext_entrada`,
+              userName: `PISCINA EXTERIOR (ENTRADA)`,
+              userRole: 'utente',
+              checkIn: Timestamp.now(),
+              checkOut: Timestamp.now(), // Auto-checkout to not pollute the 'DENTRO' list
+              durationMinutes: 0,
+              date: today,
+              zone: 'Piscina Exterior',
+              modalidade: 'Piscina Exterior',
+              timestamp: serverTimestamp()
+            });
+          }
+        } else {
+          // REMOVER
+          const numberToRemove = Math.abs(outdoorEntradas);
+          const recentLogs = allDateLogs
+            .filter(l => l.userId === 'ext_entrada' && l.date === today)
+            .sort((a, b) => {
+               const timeA = a.checkIn instanceof Timestamp ? a.checkIn.toMillis() : 0;
+               const timeB = b.checkIn instanceof Timestamp ? b.checkIn.toMillis() : 0;
+               return timeB - timeA;
+            })
+            .slice(0, numberToRemove);
+
+          if (recentLogs.length === 0) {
+            alert("Não existem registos de Piscina Exterior recentes hoje para remover.");
+            setIsSubmitting(false);
+            return;
+          }
+
+          recentLogs.forEach(log => {
+            const logDocRef = doc(db, path, log.id);
+            batch.delete(logDocRef);
+          });
+        }
+
+        // 3. Executar o batch de forma "Optimista" sem usar 'await'.
+        batch.commit().catch(error => {
+          console.error("Erro ao enviar batch para o servidor:", error);
+        });
+
+        // 4. Limpar a UI imediatamente
+        setOutdoorEntradas(1);
+      } catch (error) {
+        console.error("Error building batch:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, 50);
+  };
 
   const generateInviteCode = async () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -256,6 +343,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     setIsRegisteringNewUser(false);
     setNewUserName('');
     setNewUserPhone('');
+    setModalMode('single');
+    setOutdoorEntradas(1);
   };
 
   const handleRegisterAndCheckIn = async () => {
@@ -412,6 +501,80 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       } catch (_) {}
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'logs_acesso');
+    }
+  };
+
+  const handleCheckOutAll = async () => {
+    const insideLogs = filteredLogs.filter(l => !l.checkOut);
+    if (insideLogs.length === 0) {
+      alert("Não há utentes para dar saída nesta lista.");
+      return;
+    }
+    if (!window.confirm(`Tem a certeza que quer dar saída a TODOS os ${insideLogs.length} utentes que ainda estão no recinto?`)) return;
+
+    setIsSubmitting(true);
+    try {
+      const batch = writeBatch(db);
+      const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+      const checkOutTime = new Date();
+
+      insideLogs.forEach(log => {
+        let checkInDate: Date;
+        if (log.checkIn instanceof Timestamp) {
+          checkInDate = log.checkIn.toDate();
+        } else if (log.checkIn && typeof (log.checkIn as any).seconds === 'number') {
+          checkInDate = new Date((log.checkIn as any).seconds * 1000);
+        } else if (log.checkIn) {
+          checkInDate = new Date(log.checkIn as string | number);
+        } else {
+          checkInDate = new Date();
+        }
+        
+        if (isNaN(checkInDate.getTime())) {
+          checkInDate = new Date();
+        }
+
+        const durationMs = checkOutTime.getTime() - checkInDate.getTime();
+        const durationMinutes = Math.max(1, Math.round(durationMs / (1000 * 60)));
+
+        const logRef = doc(db, path, log.id);
+        batch.update(logRef, {
+          checkOut: Timestamp.fromDate(checkOutTime),
+          durationMinutes: durationMinutes
+        });
+
+        if (log.userId && log.userId !== 'ext_entrada') {
+           const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
+           batch.update(userRef, { isInside: false, location: null, lastOut: serverTimestamp() });
+        }
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error("Error checking out all:", error);
+      alert("Ocorreu um erro ao dar saídas.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const setDateFilter = (type: 'hoje' | 'ontem' | 'mes') => {
+    const now = new Date();
+    if (type === 'hoje') {
+      const ts = now.toISOString().split('T')[0];
+      setStartDate(ts);
+      setEndDate(ts);
+    } else if (type === 'ontem') {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const ys = yesterday.toISOString().split('T')[0];
+      setStartDate(ys);
+      setEndDate(ys);
+    } else if (type === 'mes') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setStartDate(firstDay.toISOString().split('T')[0]);
+      setEndDate(lastDay.toISOString().split('T')[0]);
     }
   };
 
@@ -646,6 +809,11 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         </div>
         <div className="flex flex-wrap gap-2 w-full xl:w-auto">
           <div className="flex items-center gap-2">
+            <div className="hidden sm:flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button onClick={() => setDateFilter('hoje')} className="px-2 py-1 rounded text-[9px] font-black uppercase text-slate-500 hover:text-[#004D71] hover:bg-white transition-colors">Hoje</button>
+              <button onClick={() => setDateFilter('ontem')} className="px-2 py-1 rounded text-[9px] font-black uppercase text-slate-500 hover:text-[#004D71] hover:bg-white transition-colors">Ontem</button>
+              <button onClick={() => setDateFilter('mes')} className="px-2 py-1 rounded text-[9px] font-black uppercase text-slate-500 hover:text-[#004D71] hover:bg-white transition-colors">Mês</button>
+            </div>
             <div className="relative w-28 md:w-36">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input 
@@ -1014,7 +1182,73 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         </div>
       )}
 
-      {/* Quadrados em tempo real */}
+      {/* BARRA DE REGISTO RÁPIDO PISCINA EXTERIOR */}
+      <div className="bg-cyan-50/50 border border-cyan-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-2 mt-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center text-cyan-500">
+            <Sun size={20} className="animate-[spin_4s_linear_infinite]" />
+          </div>
+          <div>
+            <h4 className="font-black text-[#004D71] text-xs uppercase">Piscina Exterior</h4>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registo Rápido Múltiplo</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 bg-white px-2 py-1 rounded-xl shadow-sm border border-slate-100">
+            <button
+              type="button"
+              onClick={() => setOutdoorEntradas(prev => prev - 1)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
+            >
+              -
+            </button>
+            <span className={`text-2xl font-black w-10 text-center ${outdoorEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{outdoorEntradas}</span>
+            <button
+              type="button"
+              onClick={() => setOutdoorEntradas(prev => prev + 1)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
+            >
+              +
+            </button>
+          </div>
+
+          <button
+            disabled={isSubmitting || outdoorEntradas === 0}
+            onClick={handleOutdoorPoolSubmit}
+            className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${outdoorEntradas < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+          >
+            {isSubmitting ? (
+              <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
+            ) : outdoorEntradas < 0 ? (
+              <Trash2 size={14} />
+            ) : (
+              <LogIn size={14} />
+            )}
+            {outdoorEntradas < 0 ? `Remover ${Math.abs(outdoorEntradas)} Entrada(s)` : `Registar ${outdoorEntradas} Entrada(s)`}
+          </button>
+        </div>
+      </div>
+
+      {/* TABS */}
+      <div className="flex bg-slate-200/50 p-1 rounded-xl w-full sm:w-fit overflow-hidden border border-slate-100 mb-4">
+        <button
+          onClick={() => setActiveTab('diario')}
+          className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'diario' ? 'bg-white text-[#004D71] shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <Users size={14}/> Controlo Diário
+        </button>
+        <button
+          onClick={() => setActiveTab('estatisticas')}
+          className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'estatisticas' ? 'bg-[#004D71] text-[#F7B500] shadow-sm border border-[#004D71]' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <FileText size={14}/> Relatórios & Estatísticas
+        </button>
+      </div>
+
+      {activeTab === 'diario' && (
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+          {/* Quadrados em tempo real */}
       <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
         {React.useMemo(() => {
           const todayStr = new Date().toISOString().split('T')[0];
@@ -1053,14 +1287,21 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                 <p className={`text-lg font-black tabular-nums leading-none ${z.color}`}>{z.count}</p>
                 <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">hoje</p>
               </div>
-              {/* Live now */}
-              <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
-                <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
-                  {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>}
-                  {z.liveCount}
-                </p>
-                <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
-              </div>
+              {/* Live now / Monthly */}
+              {z.id === 'pool_out' ? (
+                <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
+                  <p className="text-lg font-black tabular-nums leading-none text-white">{z.monthlyCount}</p>
+                  <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">mês</p>
+                </div>
+              ) : (
+                <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
+                  <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
+                    {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>}
+                    {z.liveCount}
+                  </p>
+                  <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -1081,38 +1322,50 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                   className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#F7B500] transition-colors shadow-sm"
                 />
               </div>
-              <div className="flex bg-slate-200 p-0.5 rounded-lg w-full sm:w-auto overflow-hidden">
-                <button
-                  onClick={() => setFilterStatus('all')}
-                  className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'all' ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Todas
-                </button>
-                <button
-                  onClick={() => setFilterStatus('inside')}
-                  className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'inside' ? 'bg-[#004D71] text-[#F7B500] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Dentro
-                </button>
-                <button
-                  onClick={() => setFilterStatus('left')}
-                  className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'left' ? 'bg-slate-400 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Saíram
-                </button>
+              <div className="flex items-center gap-2">
+                {!readOnly && filterStatus === 'inside' && filteredLogs.some(l => !l.checkOut) && (
+                  <button
+                    onClick={handleCheckOutAll}
+                    disabled={isSubmitting}
+                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase hover:bg-red-500 hover:text-white transition-colors shadow-sm border border-red-200 flex items-center gap-1"
+                  >
+                    <LogOut size={12} />
+                    {isSubmitting ? '...' : 'Dar Saída a Todos'}
+                  </button>
+                )}
+                <div className="flex bg-slate-200 p-0.5 rounded-lg w-full sm:w-auto overflow-hidden">
+                  <button
+                    onClick={() => setFilterStatus('all')}
+                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'all' ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Todas
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus('inside')}
+                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'inside' ? 'bg-[#004D71] text-[#F7B500] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Dentro
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus('left')}
+                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'left' ? 'bg-slate-400 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Saíram
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative">
               <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">Utente</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">Data</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">Modalidade</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Entrada</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Saída</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center">Dur.</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center"></th>
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Utente</th>
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Data</th>
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Modalidade</th>
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Entrada</th>
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Saída</th>
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Dur.</th>
+                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -1163,7 +1416,38 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                         )}
                       </td>
                       <td className="px-3 py-1.5 text-center">
-                        <span className="text-[10px] font-black text-[#004D71]">{log.durationMinutes ? `${log.durationMinutes}m` : '---'}</span>
+                        {log.durationMinutes ? (
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                            log.durationMinutes <= 60 ? 'bg-green-100 text-green-700' :
+                            log.durationMinutes <= 90 ? 'bg-orange-100 text-orange-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {log.durationMinutes}m
+                          </span>
+                        ) : (
+                          (() => {
+                            let checkInDate: Date;
+                            if (log.checkIn instanceof Timestamp) {
+                              checkInDate = log.checkIn.toDate();
+                            } else if (log.checkIn && typeof (log.checkIn as any).seconds === 'number') {
+                              checkInDate = new Date((log.checkIn as any).seconds * 1000);
+                            } else if (log.checkIn) {
+                              checkInDate = new Date(log.checkIn as string | number);
+                            } else {
+                              return <span className="text-[10px] font-bold text-slate-300">---</span>;
+                            }
+                            const liveMins = Math.max(0, Math.floor((currentTime.getTime() - checkInDate.getTime()) / 60000));
+                            return (
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-md animate-pulse ${
+                                liveMins <= 60 ? 'text-green-600 bg-green-50' :
+                                liveMins <= 90 ? 'text-orange-600 bg-orange-50' :
+                                'text-red-600 bg-red-50'
+                              }`}>
+                                {liveMins}m
+                              </span>
+                            );
+                          })()
+                        )}
                       </td>
                       {!readOnly && (
                         <td className="px-3 py-1.5 text-center">
@@ -1197,87 +1481,92 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
               </table>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  )}
 
-          {/* Visual Podium Section */}
-          {Object.keys(leaderboardByModality).length > 0 && (
-            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                    <Star className="text-[#F7B500]" size={14}/> Pódio de Assiduidade por Modalidade
-                  </h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                    Top 3 utentes mais assíduos no mês corrente
-                  </p>
-                </div>
-              </div>
+  {activeTab === 'estatisticas' && (
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+      {/* Visual Podium Section */}
+      {Object.keys(leaderboardByModality).length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                <Star className="text-[#F7B500]" size={14}/> Pódio de Assiduidade por Modalidade
+              </h3>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                Top 3 utentes mais assíduos no mês corrente
+              </p>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {Object.entries(leaderboardByModality).map(([modality, users]) => {
-                  const first = users[0];
-                  const second = users[1] || null;
-                  const third = users[2] || null;
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Object.entries(leaderboardByModality).map(([modality, users]) => {
+              const first = users[0];
+              const second = users[1] || null;
+              const third = users[2] || null;
 
-                  return (
-                    <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col justify-between">
-                      <h4 className="text-[9px] font-black text-[#004D71] uppercase tracking-wider mb-3 text-center border-b pb-2 border-slate-100">
-                        {modality}
-                      </h4>
+              return (
+                <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col justify-between">
+                  <h4 className="text-[9px] font-black text-[#004D71] uppercase tracking-wider mb-3 text-center border-b pb-2 border-slate-100">
+                    {modality}
+                  </h4>
 
-                      {/* Visual Podium */}
-                      <div className="flex items-end justify-center gap-2 h-20">
-                        {/* 2nd Place */}
-                        <div className="flex-1 flex flex-col items-center">
-                          {second ? (
-                            <>
-                              <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={second.userName}>
-                                {second.userName.split(' ')[0]}
-                              </span>
-                              <span className="text-[7px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
-                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-[8px] rounded-t-lg h-8 flex items-center justify-center border-t border-slate-300">
-                                2º
-                              </div>
-                            </>
-                          ) : (
-                            <div className="w-full bg-slate-100 rounded-t-lg h-4" />
-                          )}
-                        </div>
-
-                        {/* 1st Place */}
-                        <div className="flex-1 flex flex-col items-center">
-                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5 flex items-center gap-0.5" title={first.userName}>
-                            👑 {first.userName.split(' ')[0]}
+                  {/* Visual Podium */}
+                  <div className="flex items-end justify-center gap-2 h-20">
+                    {/* 2nd Place */}
+                    <div className="flex-1 flex flex-col items-center">
+                      {second ? (
+                        <>
+                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={second.userName}>
+                            {second.userName.split(' ')[0]}
                           </span>
-                          <span className="text-[8px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
-                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[9px] rounded-t-xl h-12 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
-                            1º
+                          <span className="text-[7px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
+                          <div className="w-full bg-slate-200 text-[#004D71] font-black text-[8px] rounded-t-lg h-8 flex items-center justify-center border-t border-slate-300">
+                            2º
                           </div>
-                        </div>
+                        </>
+                      ) : (
+                        <div className="w-full bg-slate-100 rounded-t-lg h-4" />
+                      )}
+                    </div>
 
-                        {/* 3rd Place */}
-                        <div className="flex-1 flex flex-col items-center">
-                          {third ? (
-                            <>
-                              <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={third.userName}>
-                                {third.userName.split(' ')[0]}
-                              </span>
-                              <span className="text-[7px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
-                              <div className="w-full bg-orange-100 text-orange-800 font-black text-[8px] rounded-t-lg h-5 flex items-center justify-center border-t border-orange-200">
-                                3º
-                              </div>
-                            </>
-                          ) : (
-                            <div className="w-full bg-slate-100 rounded-t-lg h-4" />
-                          )}
-                        </div>
+                    {/* 1st Place */}
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5 flex items-center gap-0.5" title={first.userName}>
+                        👑 {first.userName.split(' ')[0]}
+                      </span>
+                      <span className="text-[8px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
+                      <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[9px] rounded-t-xl h-12 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
+                        1º
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
+                    {/* 3rd Place */}
+                    <div className="flex-1 flex flex-col items-center">
+                      {third ? (
+                        <>
+                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={third.userName}>
+                            {third.userName.split(' ')[0]}
+                          </span>
+                          <span className="text-[7px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
+                          <div className="w-full bg-orange-100 text-orange-800 font-black text-[8px] rounded-t-lg h-5 flex items-center justify-center border-t border-orange-200">
+                            3º
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full bg-slate-100 rounded-t-lg h-4" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
           <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -1323,8 +1612,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             )}
           </div>
         </div>
+      )}
 
-      </div>
     </div>
   );
 }
