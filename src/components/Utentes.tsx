@@ -54,7 +54,7 @@ export function UtentesList({
 }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'c_jovem' | 'c_ativa' | 'c_idoso' | 'c_h2o'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'c_jovem' | 'c_ativa' | 'c_idoso'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -111,15 +111,13 @@ export function UtentesList({
     let c_jovem = 0;
     let c_ativa = 0;
     let c_idoso = 0;
-    let c_h2o = 0;
     utenteProfiles.forEach(u => {
       if (u.cartao_tipo === 'Cartão Jovem Municipal') c_jovem++;
       else if (u.cartao_tipo === 'Cartão Municipal Idade-Ativa') c_ativa++;
       else if (u.cartao_tipo === 'Cartão do Idoso') c_idoso++;
-      else if (u.cartao_tipo === 'Cartão Universal H2O') c_h2o++;
     });
 
-    return { total, incomplete, atestado, c_jovem, c_ativa, c_idoso, c_h2o };
+    return { total, incomplete, atestado, c_jovem, c_ativa, c_idoso };
   }, [utenteProfiles]);
 
   const filtered = useMemo(() => {
@@ -134,7 +132,6 @@ export function UtentesList({
         if (activeFilter === 'c_jovem') return u.cartao_tipo === 'Cartão Jovem Municipal';
         if (activeFilter === 'c_ativa') return u.cartao_tipo === 'Cartão Municipal Idade-Ativa';
         if (activeFilter === 'c_idoso') return u.cartao_tipo === 'Cartão do Idoso';
-        if (activeFilter === 'c_h2o') return u.cartao_tipo === 'Cartão Universal H2O';
         return true;
       })
       .filter(u => {
@@ -253,7 +250,6 @@ export function UtentesList({
           { key: 'c_jovem',    value: stats.c_jovem,     label: 'Cartão Jovem Municipal',       icon: <CreditCard size={16}/> },
           { key: 'c_ativa',    value: stats.c_ativa,     label: 'Cartão Municipal Idade-Ativa', icon: <CreditCard size={16}/> },
           { key: 'c_idoso',    value: stats.c_idoso,     label: 'Cartão do Idoso',              icon: <CreditCard size={16}/> },
-          { key: 'c_h2o',      value: stats.c_h2o,       label: 'Cartão Universal H2O',         icon: <CreditCard size={16}/> },
         ] as const).map(({ key, value, label, icon }) => (
           <button
             key={key}

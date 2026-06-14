@@ -164,7 +164,7 @@ export function ProfileViewModule({
           cartao_tipo = parts[0];
           if (!cartao_numero) cartao_numero = parts[1];
         } else {
-          const known = ['Cartão Jovem Municipal', 'Cartão Municipal Idade-Ativa', 'Cartão do Idoso', 'Cartão Universal H2O'];
+          const known = ['Cartão Jovem Municipal', 'Cartão Municipal Idade-Ativa', 'Cartão do Idoso'];
           if (known.includes(user.municipio_cartao)) {
             cartao_tipo = user.municipio_cartao;
           }
@@ -563,7 +563,7 @@ export function ProfileViewModule({
                     <option value="Cartão Jovem Municipal">Cartão Jovem Municipal (0-35 anos)</option>
                     <option value="Cartão Municipal Idade-Ativa">Cartão Municipal Idade-Ativa (35-65 anos)</option>
                     <option value="Cartão do Idoso">Cartão do Idoso (65+ anos)</option>
-                    <option value="Cartão Universal H2O">Cartão Universal H2O</option>
+
                   </select>
                 </div>
                 <FormInput label="Número do Cartão" icon={<CreditCard size={14}/>}
