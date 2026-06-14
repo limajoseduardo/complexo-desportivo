@@ -245,28 +245,32 @@ export function UtentesList({
       </div>
 
       {/* ── PAINEL INFORMATIVO ── */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 px-1">
+      <div className="flex flex-wrap gap-3 px-1">
         {([
-          { key: 'all',        value: stats.total,      label: 'Total',       icon: <UserIcon size={14}/> },
-          { key: 'incomplete', value: stats.incomplete,  label: 'Incompletos', icon: <FileText size={14}/> },
-          { key: 'atestado',   value: stats.atestado,   label: 'Atestado',    icon: <Shield size={14}/> },
-          { key: 'c_jovem',    value: stats.c_jovem,    label: 'C. Jovem',    icon: <CreditCard size={14}/> },
-          { key: 'c_ativa',    value: stats.c_ativa,    label: 'C. Ativa',    icon: <CreditCard size={14}/> },
-          { key: 'c_idoso',    value: stats.c_idoso,    label: 'C. Idoso',    icon: <CreditCard size={14}/> },
-          { key: 'c_h2o',      value: stats.c_h2o,      label: 'C. H2O',      icon: <CreditCard size={14}/> },
+          { key: 'all',        value: stats.total,       label: 'Total',       icon: <UserIcon size={16}/> },
+          { key: 'incomplete', value: stats.incomplete,  label: 'Incompletos', icon: <FileText size={16}/> },
+          { key: 'atestado',   value: stats.atestado,    label: 'Atestado',    icon: <Shield size={16}/> },
+          { key: 'c_jovem',    value: stats.c_jovem,     label: 'C. Jovem',    icon: <CreditCard size={16}/> },
+          { key: 'c_ativa',    value: stats.c_ativa,     label: 'C. Ativa',    icon: <CreditCard size={16}/> },
+          { key: 'c_idoso',    value: stats.c_idoso,     label: 'C. Idoso',    icon: <CreditCard size={16}/> },
+          { key: 'c_h2o',      value: stats.c_h2o,       label: 'Univ. H2O',   icon: <CreditCard size={16}/> },
         ] as const).map(({ key, value, label, icon }) => (
           <button
             key={key}
             onClick={() => setActiveFilter(key === 'all' ? 'all' : (activeFilter === key ? 'all' : key))}
-            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl border-2 transition-all ${
+            className={`flex-1 min-w-[120px] flex items-center gap-3 px-4 py-3 rounded-[1.5rem] border-2 transition-all ${
               activeFilter === key
-                ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-md'
-                : 'bg-white text-slate-500 border-slate-100 hover:border-[#004D71]/30 shadow-sm'
+                ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-xl scale-[1.02]'
+                : 'bg-white text-slate-500 border-slate-100 hover:border-[#004D71]/30 hover:shadow-md shadow-sm'
             }`}
           >
-            <span className={activeFilter === key ? 'text-[#F7B500]' : 'text-slate-300'}>{icon}</span>
-            <span className="text-lg font-black leading-none tabular-nums">{value}</span>
-            <span className="text-[7px] font-bold uppercase tracking-wider leading-none">{label}</span>
+            <div className={`p-2 rounded-xl shrink-0 ${activeFilter === key ? 'bg-white/10 text-[#F7B500]' : 'bg-slate-50 text-slate-400'}`}>
+              {icon}
+            </div>
+            <div className="flex flex-col items-start text-left">
+              <span className="text-2xl font-black leading-none tabular-nums tracking-tighter">{value}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest opacity-80 mt-1">{label}</span>
+            </div>
           </button>
         ))}
       </div>
