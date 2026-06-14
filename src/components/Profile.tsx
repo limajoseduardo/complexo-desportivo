@@ -489,36 +489,7 @@ export function ProfileViewModule({
       {activeTab === 'geral' && (
         <div className="space-y-6 animate-in fade-in">
 
-          {/* Cartão Digital de Acesso */}
-          {formData.role === 'utente' && (
-            <div className="bg-[#004D71] rounded-[3rem] p-8 text-white relative overflow-hidden shadow-xl border-4 border-[#F7B500]/20 flex flex-col md:flex-row items-center gap-6">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#F7B500]/10 rounded-bl-[8rem] pointer-events-none" />
-              <div className="bg-white p-4 rounded-[2rem] shadow-2xl shrink-0 flex items-center justify-center border-4 border-[#F7B500]">
-                <QRCodeCanvas 
-                  value={formData.id} 
-                  size={120} 
-                  level="H" 
-                  includeMargin={false}
-                />
-              </div>
-              <div className="flex-1 text-center md:text-left space-y-2">
-                <div className="flex items-center justify-center md:justify-start gap-2">
-                  <PicotoIcon size={14} className="text-[#F7B500]"/>
-                  <span className="text-[8px] font-black text-[#F7B500]/80 uppercase tracking-[0.2em]">Passe de Acesso Digital</span>
-                </div>
-                <h3 className="text-xl font-black uppercase leading-tight">{formData.nome || formData.n}</h3>
-                <p className="text-[10px] font-mono font-black text-[#F7B500] tracking-widest">#{formData.id.slice(-8).toUpperCase()}</p>
-                <div className="pt-2">
-                  <span className="bg-[#F7B500] text-[#004D71] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider">
-                    QR Code Ativo
-                  </span>
-                </div>
-                <p className="text-[9px] text-white/50 leading-relaxed font-bold uppercase tracking-wider pt-2">
-                  Apresente este código QR na receção ou passe no leitor para validar a sua entrada/saída.
-                </p>
-              </div>
-            </div>
-          )}
+
 
           {/* Dados Pessoais */}
           <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
