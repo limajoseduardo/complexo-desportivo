@@ -220,9 +220,9 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
       {/* Centro + Direita: Meteorologia completa + Relógio */}
       <div className="flex items-center gap-4 justify-end shrink-0">
 
-        {/* Bloco Piscina Coberta — xl+ */}
+        {/* Bloco Piscina Coberta — 2xl+ */}
         {latestCoberta && (
-          <div className="hidden xl:flex items-center gap-3 p-2 border-l-2 border-slate-100 pl-4 text-left">
+          <div className="hidden 2xl:flex items-center gap-3 p-2 border-l-2 border-slate-100 pl-4 text-left">
             <div className="text-[#004D71] drop-shadow-sm">
               <Waves size={24} className="text-[#004D71]" />
             </div>
@@ -252,9 +252,9 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
           </div>
         )}
 
-        {/* Bloco Piscina Exterior — xl+ */}
+        {/* Bloco Piscina Exterior — 2xl+ */}
         {latestDescoberta && (
-          <div className="hidden xl:flex items-center gap-3 p-2 border-l-2 border-slate-100 pl-4 text-left">
+          <div className="hidden 2xl:flex items-center gap-3 p-2 border-l-2 border-slate-100 pl-4 text-left">
             <div className="text-amber-500 drop-shadow-sm">
               <Sun size={24} className="text-[#F7B500]" />
             </div>
@@ -281,19 +281,27 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
           </div>
         )}
 
-        {/* Piscina compacta — md to xl */}
-        {latestCoberta && (
-          <div className="hidden md:flex xl:hidden items-center gap-2 text-[#004D71] border-l-2 border-slate-100 pl-4 text-left">
-            <Waves size={16} className="text-sky-500 animate-pulse" />
-            <span className="text-xs font-black tabular-nums">{latestCoberta.tempAgua ? `${latestCoberta.tempAgua}°C` : '—'}</span>
-            <span className="text-[9px] font-bold text-orange-600">pH {latestCoberta.ph || '—'}</span>
-            <span className="text-[9px] font-bold text-slate-400">{latestCoberta.utaHum ? `${latestCoberta.utaHum}%` : '—'}<Droplets size={10} className="inline ml-0.5 text-sky-400"/></span>
-          </div>
-        )}
+        {/* Piscinas compactas — md to 2xl */}
+        <div className="hidden md:flex 2xl:hidden items-center gap-4 border-l-2 border-slate-100 pl-4">
+          {latestCoberta && (
+            <div className="flex items-center gap-1.5 text-[#004D71]">
+              <Waves size={16} className="text-sky-500" />
+              <span className="text-xs font-black tabular-nums">{latestCoberta.tempAgua ? `${latestCoberta.tempAgua}°C` : '—'}</span>
+              <span className="text-[10px] font-bold text-orange-600">pH {latestCoberta.ph || '—'}</span>
+            </div>
+          )}
+          {latestDescoberta && (
+            <div className="flex items-center gap-1.5 text-amber-700">
+              <Sun size={16} className="text-amber-500" />
+              <span className="text-xs font-black tabular-nums">{latestDescoberta.tempAgua ? `${latestDescoberta.tempAgua}°C` : '—'}</span>
+              <span className="text-[10px] font-bold text-orange-600">pH {latestDescoberta.ph || '—'}</span>
+            </div>
+          )}
+        </div>
 
-        {/* Bloco meteorologia — xl+ */}
+        {/* Bloco meteorologia — 2xl+ */}
         {weather && (
-          <div className="hidden xl:flex items-center gap-4 p-2">
+          <div className="hidden 2xl:flex items-center gap-4 p-2">
             <div className="text-[#004D71] drop-shadow-sm">
               <HeaderWeatherIcon code={weather.weatherCode} size={32} />
             </div>
@@ -326,9 +334,9 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
           </div>
         )}
 
-        {/* Meteorologia compacta — sm */}
+        {/* Meteorologia compacta — até 2xl */}
         {weather && (
-          <div className="flex xl:hidden items-center gap-1.5 text-[#004D71]">
+          <div className="flex 2xl:hidden items-center gap-1.5 text-[#004D71]">
             <HeaderWeatherIcon code={weather.weatherCode} size={20} />
             <span className="text-base font-black tabular-nums">{weather.temperature}°C</span>
             <span className="text-[10px] font-bold text-slate-400">{weather.humidity}%<Droplets size={10} className="inline ml-0.5"/></span>
