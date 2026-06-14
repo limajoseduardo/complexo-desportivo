@@ -605,31 +605,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           })()}
         </div>
 
-        {/* PÓDIO DE ASSIDUIDADE */}
-        {leaderboard.length > 0 && (
-          <div className="mx-6 mb-6 bg-white/5 rounded-3xl p-6 border border-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-              <Star size={100} />
-            </div>
-            <h3 className="text-[10px] font-black text-[#F7B500] uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
-              <Target size={14}/> Top Assiduidade (Últimos 30 Dias)
-            </h3>
-            <div className="flex gap-4 relative z-10 overflow-x-auto hide-scrollbar pb-2">
-              {leaderboard.map((item, idx) => (
-                <button key={item.user.id} onClick={() => onUserClick(item.user)} className="bg-black/20 hover:bg-black/40 transition-all rounded-2xl p-4 flex flex-col items-center min-w-[120px] max-w-[140px] active:scale-95 border border-white/5">
-                  <div className="relative mb-3">
-                    <AvatarImage src={item.user.img} alt={item.user.nome} className="w-16 h-16 rounded-full border-2 border-[#F7B500] object-cover" />
-                    <div className="absolute -top-2 -right-2 w-7 h-7 bg-[#F7B500] text-[#004D71] rounded-full flex items-center justify-center font-black text-xs shadow-lg">
-                      #{idx + 1}
-                    </div>
-                  </div>
-                  <p className="font-black text-white text-[11px] uppercase text-center line-clamp-1 w-full">{item.user.n || item.user.nome}</p>
-                  <p className="text-[9px] font-bold text-white/50 uppercase mt-1">{item.count} presenças</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+
       </div>
 
       {selectedMod && (() => {
