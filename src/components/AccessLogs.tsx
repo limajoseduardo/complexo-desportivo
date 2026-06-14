@@ -20,7 +20,32 @@ import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar } from 'recharts';
 
-export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[] } = {}) {
+class ErrorBoundary extends React.Component<any, any> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 bg-red-50 text-red-600 rounded-xl m-4 border border-red-200">
+          <h1 className="text-xl font-black mb-2">Um erro ocorreu no React!</h1>
+          <pre className="text-xs overflow-auto bg-white p-4 rounded-lg shadow-inner">{this.state.error?.message}</pre>
+          <pre className="text-xs overflow-auto mt-2 text-slate-500">{this.state.error?.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[] } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +70,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     });
     return m;
   }, [utentes]);
-  
+
   // Manual Entry States
   const [showManualModal, setShowManualModal] = useState(false);
   const [userSearchText, setUserSearchText] = useState('');
@@ -76,16 +101,16 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       alert("Por favor, selecione um número diferente de zero.");
       return;
     }
-    
+
     // 1. Mostrar feedback de carregamento
     setIsSubmitting(true);
-    
+
     // 2. Usar setTimeout para libertar o botão imediatamente da stack principal
     setTimeout(() => {
       try {
         const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
         const today = new Date().toISOString().split('T')[0];
-        
+
         const batch = writeBatch(db);
 
         if (outdoorEntradas > 0) {
@@ -94,7 +119,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             const timestampMs = Date.now() + i;
             const logId = `ext_${timestampMs}`;
             const logDocRef = doc(db, path, logId);
-            
+
             batch.set(logDocRef, {
               userId: `ext_entrada`,
               userName: `PISCINA EXTERIOR (ENTRADA)`,
@@ -114,9 +139,9 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
           const recentLogs = allDateLogs
             .filter(l => l.userId === 'ext_entrada' && l.date === today)
             .sort((a, b) => {
-               const timeA = a.checkIn instanceof Timestamp ? a.checkIn.toMillis() : 0;
-               const timeB = b.checkIn instanceof Timestamp ? b.checkIn.toMillis() : 0;
-               return timeB - timeA;
+              const timeA = a.checkIn instanceof Timestamp ? a.checkIn.toMillis() : 0;
+              const timeB = b.checkIn instanceof Timestamp ? b.checkIn.toMillis() : 0;
+              return timeB - timeA;
             })
             .slice(0, numberToRemove);
 
@@ -183,7 +208,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     const q = query(collection(db, path), where('isInside', '==', true));
     return onSnapshot(q, snap => {
       setUtentesInside(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
-    }, () => {});
+    }, () => { });
   }, []);
 
   useEffect(() => {
@@ -194,7 +219,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     const q = query(collection(db, path), where('date', '>=', monthStart), where('date', '<=', monthEnd));
     return onSnapshot(q, snap => {
       setMonthlyLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as AccessLog)));
-    }, () => {});
+    }, () => { });
   }, []);
 
 
@@ -202,7 +227,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
   useEffect(() => {
     setLoading(true);
     const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
-    
+
     const q = query(
       collection(db, path),
       where('date', '>=', startDate),
@@ -269,11 +294,11 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       if (editingLogId) {
         // Update mode
         const logDoc = doc(db, path, editingLogId);
-        
+
         // Convert time strings back to timestamps
         const checkInDate = new Date(`${editDate}T${editCheckIn}`);
         const checkOutDate = editCheckOut ? new Date(`${editDate}T${editCheckOut}`) : null;
-        
+
         let durationMinutes = 0;
         if (checkOutDate) {
           const durationMs = checkOutDate.getTime() - checkInDate.getTime();
@@ -429,17 +454,17 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     setSelectedUser({ id: log.userId, n: log.userName } as any);
     setSelectedModality(log.modalidade || 'Piscina Regime Livre');
     setEditDate(log.date);
-    
+
     const checkInDate = log.checkIn instanceof Timestamp ? log.checkIn.toDate() : new Date(log.checkIn);
     setEditCheckIn(checkInDate.toTimeString().substring(0, 5));
-    
+
     if (log.checkOut) {
       const checkOutDate = log.checkOut instanceof Timestamp ? log.checkOut.toDate() : new Date(log.checkOut);
       setEditCheckOut(checkOutDate.toTimeString().substring(0, 5));
     } else {
       setEditCheckOut('');
     }
-    
+
     setShowManualModal(true);
   };
 
@@ -467,7 +492,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
 
   const handleManualCheckOut = async (log: AccessLog) => {
     if (!window.confirm(`Confirmar saída para ${log.userName}?`)) return;
-    
+
     try {
       const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
       const checkOutTime = new Date();
@@ -498,7 +523,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       try {
         const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
         await updateDoc(userRef, { isInside: false, location: null, lastOut: serverTimestamp() });
-      } catch (_) {}
+      } catch (_) { }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'logs_acesso');
     }
@@ -529,7 +554,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         } else {
           checkInDate = new Date();
         }
-        
+
         if (isNaN(checkInDate.getTime())) {
           checkInDate = new Date();
         }
@@ -544,8 +569,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         });
 
         if (log.userId && log.userId !== 'ext_entrada') {
-           const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
-           batch.update(userRef, { isInside: false, location: null, lastOut: serverTimestamp() });
+          const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
+          batch.update(userRef, { isInside: false, location: null, lastOut: serverTimestamp() });
         }
       });
 
@@ -580,14 +605,34 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
 
   // All logs within date range — used for charts and stats (unaffected by search/status)
   const allDateLogs = React.useMemo(() => logs.filter(l => {
-    let lDate = l.date;
-    if (!lDate) {
-      if (l.checkIn instanceof Timestamp) lDate = l.checkIn.toDate().toISOString().split('T')[0];
-      else if (l.timestamp && (l.timestamp as any).toDate) lDate = (l.timestamp as any).toDate().toISOString().split('T')[0];
-      else lDate = '2024-01-01';
-    }
+    const lDate = l.date || (l.checkIn instanceof Timestamp ? l.checkIn.toDate().toISOString().split('T')[0] : '');
     return lDate >= startDate && lDate <= endDate;
   }), [logs, startDate, endDate]);
+
+  const dailyStats = React.useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const countMod = (mod: string) => allDateLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
+    const countMonthly = (mod: string) => monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
+    // Count today's logs without checkout — direct modality match, no isUserInZone needed
+    const countLive = (mod: string) => monthlyLogs.filter(l =>
+      l.date === todayStr && !l.checkOut && normalizeModality(l.modalidade || '') === mod
+    ).length;
+    return [
+      { id: 'livre', label: 'Piscina Livre', icon: <Star size={14} />, color: 'text-sky-300', bg: 'bg-sky-600', mod: 'Piscina Regime Livre' },
+      { id: 'pool_out', label: 'Piscina Exterior', icon: <Sun size={14} />, color: 'text-cyan-200', bg: 'bg-cyan-500', mod: 'Piscina Exterior' },
+      { id: 'nat', label: 'Natação Nível 1-2-3', icon: <Waves size={14} />, color: 'text-blue-300', bg: 'bg-blue-600', mod: 'Natação' },
+      { id: 'hidro', label: 'Hidroginástica', icon: <Droplets size={14} />, color: 'text-teal-200', bg: 'bg-teal-500', mod: 'Hidroginástica' },
+      { id: 'bebes', label: 'Bebés / AMA', icon: <Users2 size={14} />, color: 'text-indigo-200', bg: 'bg-indigo-500', mod: 'Bebés/AMA' },
+      { id: 'fit', label: 'Aulas Fitness', icon: <Activity size={14} />, color: 'text-purple-200', bg: 'bg-purple-600', mod: 'Aulas Fitness' },
+      { id: 'gym', label: 'Ginásio', icon: <Dumbbell size={14} />, color: 'text-[#F7B500]', bg: 'bg-[#004D71]', mod: 'Ginásio' },
+      { id: 'sauna', label: 'Sauna', icon: <Flame size={14} />, color: 'text-orange-200', bg: 'bg-orange-500', mod: 'Sauna' },
+    ].map(z => ({
+      ...z,
+      count: countMod(z.mod),
+      monthlyCount: countMonthly(z.mod),
+      liveCount: countLive(z.mod),
+    })).sort((a, b) => b.monthlyCount - a.monthlyCount);
+  }, [allDateLogs, monthlyLogs]);
 
   // Table view — additionally filtered by search and status toggle
   const filteredLogs = React.useMemo(() => allDateLogs.filter(l => {
@@ -676,7 +721,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       const checkOut = l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString() : l.checkOut) : '---';
       csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}\n`;
     });
-    
+
     csv += "\nResumo por Modalidade\nModalidade,Total de Entradas\n";
     statsByModality.forEach(s => {
       csv += `"${s.label}",${s.count}\n`;
@@ -690,7 +735,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         csv += `"${modality}",${i + 1}º Lugar,"${u.userName}",${u.count}\n`;
       });
     });
-    
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -703,17 +748,17 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
 
   const downloadPDF = () => {
     const doc = new jsPDF();
-    
+
     // Header
     doc.setFontSize(20);
     doc.setTextColor(0, 77, 113); // #004D71
     doc.text('Relatório de Acessos', 14, 22);
-    
+
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Período: ${startDate} a ${endDate}`, 14, 30);
     doc.text(`Total de Entradas: ${filteredLogs.length}`, 14, 35);
-    
+
     const tableData = filteredLogs.map(l => [
       l.date,
       l.userName,
@@ -734,7 +779,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 15;
-    
+
     doc.setFontSize(14);
     doc.setTextColor(0, 77, 113);
     doc.text('Resumo por Modalidade', 14, finalY);
@@ -765,14 +810,14 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
 
     if (rankTableData.length > 0) {
       const rankY = (doc as any).lastAutoTable.finalY + 15;
-      
+
       // Page break check if near the bottom
       if (rankY > 240) {
         doc.addPage();
         doc.setFontSize(14);
         doc.setTextColor(0, 77, 113);
         doc.text('Maiores Utilizadores (Top 3 por Modalidade)', 14, 22);
-        
+
         autoTable(doc, {
           startY: 28,
           head: [['Modalidade', 'Posição', 'Utente', 'Presenças']],
@@ -784,7 +829,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         doc.setFontSize(14);
         doc.setTextColor(0, 77, 113);
         doc.text('Maiores Utilizadores (Top 3 por Modalidade)', 14, rankY);
-        
+
         autoTable(doc, {
           startY: rankY + 5,
           head: [['Modalidade', 'Posição', 'Utente', 'Presenças']],
@@ -803,7 +848,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       <div className="px-1 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3">
         <div>
           <h2 className="text-lg font-black text-[#004D71] uppercase tracking-tighter flex items-center gap-2">
-            <Users size={18} className="text-[#F7B500]"/> Registo de Acessos
+            <Users size={18} className="text-[#F7B500]" /> Registo de Acessos
           </h2>
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Controlo histórico de entradas e saídas</p>
         </div>
@@ -816,8 +861,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             </div>
             <div className="relative w-28 md:w-36">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="pl-9 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
@@ -826,8 +871,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             <span className="text-slate-400 font-bold text-[10px] uppercase">a</span>
             <div className="relative w-28 md:w-36">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="pl-9 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#004D71]/20 shadow-sm w-full"
@@ -840,7 +885,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                 onClick={generateInviteCode}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
               >
-                <Key size={14}/> Gerar Convite
+                <Key size={14} /> Gerar Convite
               </button>
             )}
             {!readOnly && onScan && (
@@ -848,7 +893,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                 onClick={onScan}
                 className="px-4 py-2 bg-[#004D71] text-[#F7B500] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
               >
-                <PicotoIcon size={14}/> Ler QR
+                <PicotoIcon size={14} /> Ler QR
               </button>
             )}
             {!readOnly && (
@@ -856,7 +901,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                 onClick={() => setShowTurmas(true)}
                 className="px-4 py-2 bg-[#004D71] text-white rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide border border-[#004D71]"
               >
-                <BookOpen size={14}/> Turmas
+                <BookOpen size={14} /> Turmas
               </button>
             )}
             {!readOnly && (
@@ -864,20 +909,20 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                 onClick={() => setShowManualModal(true)}
                 className="px-4 py-2 bg-[#F7B500] text-[#004D71] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 border border-[#F7B500] font-black uppercase text-[10px] tracking-wide"
               >
-                <Plus size={14}/> Registo Manual
+                <Plus size={14} /> Registo Manual
               </button>
             )}
-            <button 
+            <button
               onClick={downloadCSV}
               className="px-3 py-2 bg-[#004D71] text-[#F7B500] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <Download size={14}/> <span className="text-[10px] font-black uppercase tracking-wide">CSV</span>
+              <Download size={14} /> <span className="text-[10px] font-black uppercase tracking-wide">CSV</span>
             </button>
-            <button 
+            <button
               onClick={downloadPDF}
               className="px-3 py-2 bg-[#F7B500] text-[#004D71] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
             >
-              <FileText size={14}/> <span className="text-[10px] font-black uppercase tracking-wide">PDF</span>
+              <FileText size={14} /> <span className="text-[10px] font-black uppercase tracking-wide">PDF</span>
             </button>
           </div>
         </div>
@@ -887,7 +932,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl max-w-sm w-full animate-in zoom-in text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={28} className="text-red-500"/>
+              <Trash2 size={28} className="text-red-500" />
             </div>
             <h3 className="text-lg font-black text-[#004D71] uppercase mb-1">Eliminar Registo?</h3>
             <p className="text-sm font-bold text-slate-600 mb-1">{confirmDeleteLog.userName}</p>
@@ -912,8 +957,8 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
                 className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {deletingLog
-                  ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                  : <Trash2 size={12}/>}
+                  ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  : <Trash2 size={12} />}
                 Eliminar
               </button>
             </div>
@@ -937,12 +982,12 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             </div>
             <h3 className="text-xl font-black text-[#004D71] uppercase mb-2">Código Gerado</h3>
             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-6">Partilha este código com o utente</p>
-            
+
             <div className="bg-slate-50 border-2 border-slate-100 rounded-2xl py-6 mb-6">
               <span className="text-5xl font-black tracking-[0.2em] text-[#004D71]">{generatedInvite}</span>
             </div>
 
-            <button 
+            <button
               onClick={() => setGeneratedInvite(null)}
               className="w-full py-4 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
             >
@@ -954,231 +999,231 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
 
       {showManualModal && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-           <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in">
-              <button 
-                onClick={closeModal}
-                className="absolute top-6 right-6 p-4 bg-slate-50 text-slate-400 rounded-full hover:bg-slate-100 transition-colors"
-              >
-                <X size={20}/>
-              </button>
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in">
+            <button
+              onClick={closeModal}
+              className="absolute top-6 right-6 p-4 bg-slate-50 text-slate-400 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
 
-              <div className="mb-8">
-                 <h3 className="text-xl font-black text-[#004D71] uppercase">
-                   {editingLogId ? 'Corrigir Registo' : 'Entrada Manual (Contingência)'}
-                 </h3>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                   {editingLogId ? 'Ajustar horários ou modalidade' : 'Registo sem QR Code'}
-                 </p>
-              </div>
+            <div className="mb-8">
+              <h3 className="text-xl font-black text-[#004D71] uppercase">
+                {editingLogId ? 'Corrigir Registo' : 'Entrada Manual (Contingência)'}
+              </h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                {editingLogId ? 'Ajustar horários ou modalidade' : 'Registo sem QR Code'}
+              </p>
+            </div>
 
-              <div className="space-y-6">
-                  {isRegisteringNewUser ? (
-                     <div className="space-y-4 animate-in slide-in-from-bottom-4 text-left">
-                        <div className="space-y-3">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome Completo</label>
-                           <input 
-                             type="text" 
-                             placeholder="Ex: Maria Albertina Sousa" 
-                             value={newUserName}
-                             onChange={(e) => setNewUserName(e.target.value)}
-                             className="w-full px-6 py-4 bg-slate-50 border-4 border-slate-50 rounded-2xl text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500]/20 transition-all uppercase"
-                           />
-                        </div>
+            <div className="space-y-6">
+              {isRegisteringNewUser ? (
+                <div className="space-y-4 animate-in slide-in-from-bottom-4 text-left">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Nome Completo</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Maria Albertina Sousa"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      className="w-full px-6 py-4 bg-slate-50 border-4 border-slate-50 rounded-2xl text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500]/20 transition-all uppercase"
+                    />
+                  </div>
 
-                        <div className="space-y-3">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Telemóvel (Opcional)</label>
-                           <input 
-                             type="text" 
-                             placeholder="Ex: 912345678" 
-                             value={newUserPhone}
-                             onChange={(e) => setNewUserPhone(e.target.value)}
-                             className="w-full px-6 py-4 bg-slate-50 border-4 border-slate-50 rounded-2xl text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500]/20 transition-all"
-                           />
-                        </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Telemóvel (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 912345678"
+                      value={newUserPhone}
+                      onChange={(e) => setNewUserPhone(e.target.value)}
+                      className="w-full px-6 py-4 bg-slate-50 border-4 border-slate-50 rounded-2xl text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500]/20 transition-all"
+                    />
+                  </div>
 
-                        <div className="space-y-3">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Escolher Modalidade de Entrada</label>
-                           <div className="grid grid-cols-2 gap-2">
-                              {modalities.map(m => (
-                                <button 
-                                  key={m}
-                                  type="button"
-                                  onClick={() => setSelectedModality(m)}
-                                  className={`px-4 py-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${selectedModality === m ? 'bg-[#004D71] border-[#004D71] text-[#F7B500]' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
-                                >
-                                  {m}
-                                </button>
-                              ))}
-                           </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                           <button
-                             type="button"
-                             onClick={() => setIsRegisteringNewUser(false)}
-                             className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all"
-                           >
-                             Voltar à Pesquisa
-                           </button>
-                           <button
-                             type="button"
-                             onClick={handleRegisterAndCheckIn}
-                             disabled={isSubmitting || !newUserName.trim()}
-                             className="flex-1 py-4 bg-[#F7B500] text-[#004D71] rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 border border-[#F7B500]"
-                           >
-                             {isSubmitting ? (
-                                <div className="w-3 h-3 border-2 border-[#004D71]/30 border-t-[#004D71] rounded-full animate-spin"/>
-                             ) : (
-                                <Plus size={14}/>
-                             )}
-                             Registar e Entrar
-                           </button>
-                        </div>
-                     </div>
-                  ) : !selectedUser ? (
-                     <div className="space-y-4">
-                        <div className="relative">
-                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                           <input 
-                             autoFocus
-                             type="text" 
-                             placeholder="Nome do utente..." 
-                             value={userSearchText}
-                             onChange={(e) => setUserSearchText(e.target.value)}
-                             className="w-full pl-12 pr-6 py-4 bg-slate-50 border-4 border-slate-50 rounded-2xl text-sm font-black text-[#004D71] placeholder-slate-300 outline-none focus:border-[#F7B500]/20 transition-all"
-                           />
-                        </div>
-
-                        <div className="max-h-[380px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                           {foundUsers.map(u => (
-                             <button 
-                               key={u.id}
-                               onClick={() => setSelectedUser(u)}
-                               className="w-full p-4 rounded-xl border-2 border-slate-100 flex items-center gap-3 hover:border-[#F7B500] text-left transition-all"
-                             >
-                                <AvatarImage 
-                                  src={u.img} 
-                                  alt={u.n || u.nome} 
-                                  className="w-12 h-12 rounded-xl shrink-0 border border-slate-100 shadow-sm" 
-                                />
-                                <div>
-                                   <p className="font-black text-[#004D71] text-sm uppercase">{u.n || u.nome}</p>
-                                </div>
-                             </button>
-                           ))}
-                           {userSearchText.length >= 2 && foundUsers.length === 0 && (
-                             <p className="text-center py-8 text-[10px] font-black text-slate-300 uppercase tracking-widest">Utente não encontrado</p>
-                           )}
-                           {userSearchText.length < 2 && (
-                             <p className="text-center py-8 text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Digite pelo menos 2 caracteres</p>
-                           )}
-                        </div>
-
-                        <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center gap-2">
-                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Não encontra o utente?</p>
-                           <button
-                             type="button"
-                             onClick={() => {
-                               setIsRegisteringNewUser(true);
-                               if (userSearchText.trim().length > 0) {
-                                 setNewUserName(userSearchText.toUpperCase());
-                               }
-                             }}
-                             className="px-4 py-2 bg-[#004D71]/5 hover:bg-[#004D71]/10 text-[#004D71] rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
-                           >
-                             + Registar no Momento
-                           </button>
-                        </div>
-                     </div>
-                  ) : (
-                    <div className="space-y-6 animate-in slide-in-from-bottom-4">
-                       <div className="p-4 bg-slate-50 rounded-2xl border-2 border-[#004D71]/10 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                             <AvatarImage 
-                               src={selectedUser.img} 
-                               alt={selectedUser.n || selectedUser.nome} 
-                               className="w-12 h-12 rounded-xl shrink-0 border border-slate-100 shadow-sm" 
-                             />
-                             <div>
-                                <p className="font-black text-[#004D71] text-sm uppercase">{selectedUser.n || selectedUser.nome}</p>
-                                <p className="text-[9px] font-bold text-[#F7B500] uppercase">Utente Selecionado</p>
-                             </div>
-                          </div>
-                          <button onClick={() => setSelectedUser(null)} className="text-[10px] font-black text-red-500 uppercase underline">Trocar</button>
-                       </div>
-
-                       <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Escolher Modalidade</label>
-                          <div className="grid grid-cols-2 gap-2">
-                             {modalities.map(m => (
-                               <button 
-                                 key={m}
-                                 onClick={() => setSelectedModality(m)}
-                                 className={`px-4 py-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${selectedModality === m ? 'bg-[#004D71] border-[#004D71] text-[#F7B500]' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
-                               >
-                                 {m}
-                               </button>
-                             ))}
-                          </div>
-                       </div>
-
-                       {editingLogId && (
-                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                           <div className="space-y-2">
-                             <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Data</label>
-                             <input 
-                               type="date"
-                               value={editDate}
-                               onChange={e => setEditDate(e.target.value)}
-                               className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none text-xs"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Entrada</label>
-                             <input 
-                               type="time"
-                               value={editCheckIn}
-                               onChange={e => setEditCheckIn(e.target.value)}
-                               className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none text-xs"
-                             />
-                           </div>
-                           <div className="space-y-2">
-                             <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Saída</label>
-                             <input 
-                               type="time"
-                               value={editCheckOut}
-                               onChange={e => setEditCheckOut(e.target.value)}
-                               className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none text-xs"
-                             />
-                           </div>
-                         </div>
-                       )}
-
-                       <div className="flex gap-3">
-                         {editingLogId && (
-                           <button
-                            type="button"
-                             onClick={() => {
-                               const log = filteredLogs.find(l => l.id === editingLogId);
-                               if (log) { closeModal(); setConfirmDeleteLog(log); }
-                             }}
-                             className="p-5 bg-red-50 text-red-500 rounded-2xl active:scale-95 transition-all"
-                           >
-                             <Trash2 size={20}/>
-                           </button>
-                         )}
-                         <button 
-                           disabled={isSubmitting}
-                           onClick={handleManualCheckIn}
-                           className="flex-1 bg-[#004D71] text-[#F7B500] py-5 rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                         >
-                           {isSubmitting ? 'A Processar...' : <>{editingLogId ? <Save size={18}/> : <LogIn size={18}/>} {editingLogId ? 'Guardar Correção' : 'Confirmar Entrada'}</>}
-                         </button>
-                       </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Escolher Modalidade de Entrada</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {modalities.map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSelectedModality(m)}
+                          className={`px-4 py-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${selectedModality === m ? 'bg-[#004D71] border-[#004D71] text-[#F7B500]' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                        >
+                          {m}
+                        </button>
+                      ))}
                     </div>
-                 )}
-              </div>
-           </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsRegisteringNewUser(false)}
+                      className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all"
+                    >
+                      Voltar à Pesquisa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRegisterAndCheckIn}
+                      disabled={isSubmitting || !newUserName.trim()}
+                      className="flex-1 py-4 bg-[#F7B500] text-[#004D71] rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 border border-[#F7B500]"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-3 h-3 border-2 border-[#004D71]/30 border-t-[#004D71] rounded-full animate-spin" />
+                      ) : (
+                        <Plus size={14} />
+                      )}
+                      Registar e Entrar
+                    </button>
+                  </div>
+                </div>
+              ) : !selectedUser ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Nome do utente..."
+                      value={userSearchText}
+                      onChange={(e) => setUserSearchText(e.target.value)}
+                      className="w-full pl-12 pr-6 py-4 bg-slate-50 border-4 border-slate-50 rounded-2xl text-sm font-black text-[#004D71] placeholder-slate-300 outline-none focus:border-[#F7B500]/20 transition-all"
+                    />
+                  </div>
+
+                  <div className="max-h-[380px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    {foundUsers.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => setSelectedUser(u)}
+                        className="w-full p-4 rounded-xl border-2 border-slate-100 flex items-center gap-3 hover:border-[#F7B500] text-left transition-all"
+                      >
+                        <AvatarImage
+                          src={u.img}
+                          alt={u.n || u.nome}
+                          className="w-12 h-12 rounded-xl shrink-0 border border-slate-100 shadow-sm"
+                        />
+                        <div>
+                          <p className="font-black text-[#004D71] text-sm uppercase">{u.n || u.nome}</p>
+                        </div>
+                      </button>
+                    ))}
+                    {userSearchText.length >= 2 && foundUsers.length === 0 && (
+                      <p className="text-center py-8 text-[10px] font-black text-slate-300 uppercase tracking-widest">Utente não encontrado</p>
+                    )}
+                    {userSearchText.length < 2 && (
+                      <p className="text-center py-8 text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Digite pelo menos 2 caracteres</p>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center gap-2">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Não encontra o utente?</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegisteringNewUser(true);
+                        if (userSearchText.trim().length > 0) {
+                          setNewUserName(userSearchText.toUpperCase());
+                        }
+                      }}
+                      className="px-4 py-2 bg-[#004D71]/5 hover:bg-[#004D71]/10 text-[#004D71] rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+                    >
+                      + Registar no Momento
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border-2 border-[#004D71]/10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <AvatarImage
+                        src={selectedUser.img}
+                        alt={selectedUser.n || selectedUser.nome}
+                        className="w-12 h-12 rounded-xl shrink-0 border border-slate-100 shadow-sm"
+                      />
+                      <div>
+                        <p className="font-black text-[#004D71] text-sm uppercase">{selectedUser.n || selectedUser.nome}</p>
+                        <p className="text-[9px] font-bold text-[#F7B500] uppercase">Utente Selecionado</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setSelectedUser(null)} className="text-[10px] font-black text-red-500 uppercase underline">Trocar</button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Escolher Modalidade</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {modalities.map(m => (
+                        <button
+                          key={m}
+                          onClick={() => setSelectedModality(m)}
+                          className={`px-4 py-3 rounded-xl border-2 text-[10px] font-black uppercase transition-all ${selectedModality === m ? 'bg-[#004D71] border-[#004D71] text-[#F7B500]' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {editingLogId && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Data</label>
+                        <input
+                          type="date"
+                          value={editDate}
+                          onChange={e => setEditDate(e.target.value)}
+                          className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Entrada</label>
+                        <input
+                          type="time"
+                          value={editCheckIn}
+                          onChange={e => setEditCheckIn(e.target.value)}
+                          className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Saída</label>
+                        <input
+                          type="time"
+                          value={editCheckOut}
+                          onChange={e => setEditCheckOut(e.target.value)}
+                          className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    {editingLogId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const log = filteredLogs.find(l => l.id === editingLogId);
+                          if (log) { closeModal(); setConfirmDeleteLog(log); }
+                        }}
+                        className="p-5 bg-red-50 text-red-500 rounded-2xl active:scale-95 transition-all"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    )}
+                    <button
+                      disabled={isSubmitting}
+                      onClick={handleManualCheckIn}
+                      className="flex-1 bg-[#004D71] text-[#F7B500] py-5 rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'A Processar...' : <>{editingLogId ? <Save size={18} /> : <LogIn size={18} />} {editingLogId ? 'Guardar Correção' : 'Confirmar Entrada'}</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1219,7 +1264,7 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
             className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${outdoorEntradas < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
           >
             {isSubmitting ? (
-              <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin"/>
+              <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
             ) : outdoorEntradas < 0 ? (
               <Trash2 size={14} />
             ) : (
@@ -1236,342 +1281,317 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
           onClick={() => setActiveTab('diario')}
           className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'diario' ? 'bg-white text-[#004D71] shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
         >
-          <Users size={14}/> Controlo Diário
+          <Users size={14} /> Controlo Diário
         </button>
         <button
           onClick={() => setActiveTab('estatisticas')}
           className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'estatisticas' ? 'bg-[#004D71] text-[#F7B500] shadow-sm border border-[#004D71]' : 'text-slate-500 hover:text-slate-700'}`}
         >
-          <FileText size={14}/> Relatórios & Estatísticas
+          <FileText size={14} /> Relatórios & Estatísticas
         </button>
       </div>
 
       {activeTab === 'diario' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
           {/* Quadrados em tempo real */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
-        {React.useMemo(() => {
-          const todayStr = new Date().toISOString().split('T')[0];
-          const countMod = (mod: string) => allDateLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
-          const countMonthly = (mod: string) => monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
-          // Count today's logs without checkout — direct modality match, no isUserInZone needed
-          const countLive = (mod: string) => monthlyLogs.filter(l =>
-            l.date === todayStr && !l.checkOut && normalizeModality(l.modalidade || '') === mod
-          ).length;
-          return [
-            { id: 'livre',    label: 'Piscina Livre',       icon: <Star size={14}/>,      color: 'text-sky-300',    bg: 'bg-sky-600',    mod: 'Piscina Regime Livre' },
-            { id: 'pool_out', label: 'Piscina Exterior',    icon: <Sun size={14}/>,       color: 'text-cyan-200',   bg: 'bg-cyan-500',   mod: 'Piscina Exterior'     },
-            { id: 'nat',      label: 'Natação Nível 1-2-3', icon: <Waves size={14}/>,     color: 'text-blue-300',   bg: 'bg-blue-600',   mod: 'Natação'              },
-            { id: 'hidro',    label: 'Hidroginástica',      icon: <Droplets size={14}/>,  color: 'text-teal-200',   bg: 'bg-teal-500',   mod: 'Hidroginástica'       },
-            { id: 'bebes',    label: 'Bebés / AMA',         icon: <Users2 size={14}/>,    color: 'text-indigo-200', bg: 'bg-indigo-500', mod: 'Bebés/AMA'            },
-            { id: 'fit',      label: 'Aulas Fitness',       icon: <Activity size={14}/>,  color: 'text-purple-200', bg: 'bg-purple-600', mod: 'Aulas Fitness'        },
-            { id: 'gym',      label: 'Ginásio',             icon: <Dumbbell size={14}/>,  color: 'text-[#F7B500]',  bg: 'bg-[#004D71]',  mod: 'Ginásio'              },
-            { id: 'sauna',    label: 'Sauna',               icon: <Flame size={14}/>,     color: 'text-orange-200', bg: 'bg-orange-500', mod: 'Sauna'                },
-          ].map(z => ({
-            ...z,
-            count: countMod(z.mod),
-            monthlyCount: countMonthly(z.mod),
-            liveCount: countLive(z.mod),
-          })).sort((a, b) => b.monthlyCount - a.monthlyCount);
-        }, [allDateLogs, monthlyLogs]).map(z => (
-          <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex flex-col gap-2 border border-white/10`}>
-            {/* Label row */}
-            <div className="flex items-center gap-1.5">
-              <span className={`${z.color} bg-white/10 p-1 rounded-md shrink-0`}>{z.icon}</span>
-              <p className="text-[8px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2">{z.label}</p>
-            </div>
-            {/* Stats row */}
-            <div className="flex items-center gap-1.5">
-              {/* Today total */}
-              <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
-                <p className={`text-lg font-black tabular-nums leading-none ${z.color}`}>{z.count}</p>
-                <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">hoje</p>
-              </div>
-              {/* Live now / Monthly */}
-              {z.id === 'pool_out' ? (
-                <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
-                  <p className="text-lg font-black tabular-nums leading-none text-white">{z.monthlyCount}</p>
-                  <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">mês</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
+            {dailyStats.map(z => (
+              <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex flex-col gap-2 border border-white/10`}>
+                {/* Label row */}
+                <div className="flex items-center gap-1.5">
+                  <span className={`${z.color} bg-white/10 p-1 rounded-md shrink-0`}>{z.icon}</span>
+                  <p className="text-[8px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2">{z.label}</p>
                 </div>
-              ) : (
-                <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
-                  <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
-                    {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>}
-                    {z.liveCount}
-                  </p>
-                  <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-4">
-        <div className="space-y-4">
-
-          <div className="bg-white rounded-2xl border-2 border-slate-100 overflow-hidden shadow-sm">
-            <div className="px-3 py-2.5 border-b border-slate-100 flex flex-col sm:flex-row gap-2 items-center justify-between bg-slate-50/50">
-              <div className="relative w-full sm:w-56">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
-                <input
-                  type="text"
-                  placeholder="Pesquisar utente..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#F7B500] transition-colors shadow-sm"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                {!readOnly && filterStatus === 'inside' && filteredLogs.some(l => !l.checkOut) && (
-                  <button
-                    onClick={handleCheckOutAll}
-                    disabled={isSubmitting}
-                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase hover:bg-red-500 hover:text-white transition-colors shadow-sm border border-red-200 flex items-center gap-1"
-                  >
-                    <LogOut size={12} />
-                    {isSubmitting ? '...' : 'Dar Saída a Todos'}
-                  </button>
-                )}
-                <div className="flex bg-slate-200 p-0.5 rounded-lg w-full sm:w-auto overflow-hidden">
-                  <button
-                    onClick={() => setFilterStatus('all')}
-                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'all' ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    Todas
-                  </button>
-                  <button
-                    onClick={() => setFilterStatus('inside')}
-                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'inside' ? 'bg-[#004D71] text-[#F7B500] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    Dentro
-                  </button>
-                  <button
-                    onClick={() => setFilterStatus('left')}
-                    className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'left' ? 'bg-slate-400 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    Saíram
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative">
-              <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Utente</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Data</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Modalidade</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Entrada</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Saída</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Dur.</th>
-                    <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filteredLogs.map(log => {
-                    const profile = usersMap[log.userId];
-                    return (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-3 py-1.5">
-                        <div className="flex items-center gap-2">
-                          <AvatarImage
-                            src={profile?.img}
-                            alt={log.userName}
-                            className="w-7 h-7 rounded-lg border border-slate-100 shadow-sm shrink-0 object-cover"
-                          />
-                          <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">{log.userName}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <span className="text-[10px] font-bold text-slate-500">{log.date}</span>
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">{log.modalidade || '---'}</span>
-                      </td>
-                      <td className="px-3 py-1.5 text-center">
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg font-black text-[10px]">
-                          <LogIn size={11}/>
-                          {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkIn}
-                        </div>
-                      </td>
-                      <td className="px-3 py-1.5 text-center">
-                        {log.checkOut ? (
-                          <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px]">
-                            <LogOut size={11}/>
-                            {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="text-[9px] font-black text-[#F7B500] uppercase animate-pulse">No Recinto</span>
-                            {!readOnly && (
-                              <button
-                                onClick={() => handleManualCheckOut(log)}
-                                className="px-2 py-0.5 bg-red-500 text-white rounded-md text-[9px] font-black uppercase hover:bg-red-600 transition-colors"
-                              >
-                                Dar Saída
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-1.5 text-center">
-                        {log.durationMinutes ? (
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                            log.durationMinutes <= 60 ? 'bg-green-100 text-green-700' :
-                            log.durationMinutes <= 90 ? 'bg-orange-100 text-orange-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {log.durationMinutes}m
-                          </span>
-                        ) : (
-                          (() => {
-                            let checkInDate: Date;
-                            if (log.checkIn instanceof Timestamp) {
-                              checkInDate = log.checkIn.toDate();
-                            } else if (log.checkIn && typeof (log.checkIn as any).seconds === 'number') {
-                              checkInDate = new Date((log.checkIn as any).seconds * 1000);
-                            } else if (log.checkIn) {
-                              checkInDate = new Date(log.checkIn as string | number);
-                            } else {
-                              return <span className="text-[10px] font-bold text-slate-300">---</span>;
-                            }
-                            const liveMins = Math.max(0, Math.floor((currentTime.getTime() - checkInDate.getTime()) / 60000));
-                            return (
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-md animate-pulse ${
-                                liveMins <= 60 ? 'text-green-600 bg-green-50' :
-                                liveMins <= 90 ? 'text-orange-600 bg-orange-50' :
-                                'text-red-600 bg-red-50'
-                              }`}>
-                                {liveMins}m
-                              </span>
-                            );
-                          })()
-                        )}
-                      </td>
-                      {!readOnly && (
-                        <td className="px-3 py-1.5 text-center">
-                          <div className="flex items-center justify-center gap-0.5">
-                            <button
-                              onClick={() => openEditModal(log)}
-                              className="p-1 text-[#004D71] hover:bg-slate-100 rounded-md transition-colors"
-                              title="Editar Registo"
-                            >
-                              <Edit2 size={12}/>
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteLog(log)}
-                              className="p-1 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors"
-                              title="Eliminar Registo"
-                            >
-                              <Trash2 size={12}/>
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                    );
-                  })}
-                  {filteredLogs.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan={readOnly ? 6 : 7} className="px-6 py-12 text-center text-slate-300 font-black text-[10px] uppercase tracking-widest">Sem registos para este dia</td>
-                    </tr>
+                {/* Stats row */}
+                <div className="flex items-center gap-1.5">
+                  {/* Today total */}
+                  <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
+                    <p className={`text-lg font-black tabular-nums leading-none ${z.color}`}>{z.count}</p>
+                    <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">hoje</p>
+                  </div>
+                  {/* Live now / Monthly */}
+                  {z.id === 'pool_out' ? (
+                    <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
+                      <p className="text-lg font-black tabular-nums leading-none text-white">{z.monthlyCount}</p>
+                      <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">mês</p>
+                    </div>
+                  ) : (
+                    <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
+                      <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
+                        {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
+                        {z.liveCount}
+                      </p>
+                      <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )}
-
-  {activeTab === 'estatisticas' && (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-      {/* Visual Podium Section */}
-      {Object.keys(leaderboardByModality).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                <Star className="text-[#F7B500]" size={14}/> Pódio de Assiduidade por Modalidade
-              </h3>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                Top 3 utentes mais assíduos no mês corrente
-              </p>
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {Object.entries(leaderboardByModality).map(([modality, users]) => {
-              const first = users[0];
-              const second = users[1] || null;
-              const third = users[2] || null;
+          <div className="flex flex-col gap-4">
+            <div className="space-y-4">
 
-              return (
-                <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col justify-between">
-                  <h4 className="text-[9px] font-black text-[#004D71] uppercase tracking-wider mb-3 text-center border-b pb-2 border-slate-100">
-                    {modality}
-                  </h4>
-
-                  {/* Visual Podium */}
-                  <div className="flex items-end justify-center gap-2 h-20">
-                    {/* 2nd Place */}
-                    <div className="flex-1 flex flex-col items-center">
-                      {second ? (
-                        <>
-                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={second.userName}>
-                            {second.userName.split(' ')[0]}
-                          </span>
-                          <span className="text-[7px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
-                          <div className="w-full bg-slate-200 text-[#004D71] font-black text-[8px] rounded-t-lg h-8 flex items-center justify-center border-t border-slate-300">
-                            2º
-                          </div>
-                        </>
-                      ) : (
-                        <div className="w-full bg-slate-100 rounded-t-lg h-4" />
-                      )}
-                    </div>
-
-                    {/* 1st Place */}
-                    <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5 flex items-center gap-0.5" title={first.userName}>
-                        👑 {first.userName.split(' ')[0]}
-                      </span>
-                      <span className="text-[8px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
-                      <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[9px] rounded-t-xl h-12 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
-                        1º
-                      </div>
-                    </div>
-
-                    {/* 3rd Place */}
-                    <div className="flex-1 flex flex-col items-center">
-                      {third ? (
-                        <>
-                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={third.userName}>
-                            {third.userName.split(' ')[0]}
-                          </span>
-                          <span className="text-[7px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
-                          <div className="w-full bg-orange-100 text-orange-800 font-black text-[8px] rounded-t-lg h-5 flex items-center justify-center border-t border-orange-200">
-                            3º
-                          </div>
-                        </>
-                      ) : (
-                        <div className="w-full bg-slate-100 rounded-t-lg h-4" />
-                      )}
+              <div className="bg-white rounded-2xl border-2 border-slate-100 overflow-hidden shadow-sm">
+                <div className="px-3 py-2.5 border-b border-slate-100 flex flex-col sm:flex-row gap-2 items-center justify-between bg-slate-50/50">
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                    <input
+                      type="text"
+                      placeholder="Pesquisar utente..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase text-[#004D71] outline-none focus:border-[#F7B500] transition-colors shadow-sm"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!readOnly && filterStatus === 'inside' && filteredLogs.some(l => !l.checkOut) && (
+                      <button
+                        onClick={handleCheckOutAll}
+                        disabled={isSubmitting}
+                        className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase hover:bg-red-500 hover:text-white transition-colors shadow-sm border border-red-200 flex items-center gap-1"
+                      >
+                        <LogOut size={12} />
+                        {isSubmitting ? '...' : 'Dar Saída a Todos'}
+                      </button>
+                    )}
+                    <div className="flex bg-slate-200 p-0.5 rounded-lg w-full sm:w-auto overflow-hidden">
+                      <button
+                        onClick={() => setFilterStatus('all')}
+                        className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'all' ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Todas
+                      </button>
+                      <button
+                        onClick={() => setFilterStatus('inside')}
+                        className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'inside' ? 'bg-[#004D71] text-[#F7B500] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Dentro
+                      </button>
+                      <button
+                        onClick={() => setFilterStatus('left')}
+                        className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all whitespace-nowrap ${filterStatus === 'left' ? 'bg-slate-400 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Saíram
+                      </button>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto relative">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Utente</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Data</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Modalidade</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Entrada</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Saída</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Dur.</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {filteredLogs.map(log => {
+                        const profile = usersMap[log.userId];
+                        return (
+                          <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-3 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <AvatarImage
+                                  src={profile?.img}
+                                  alt={log.userName}
+                                  className="w-7 h-7 rounded-lg border border-slate-100 shadow-sm shrink-0 object-cover"
+                                />
+                                <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">{log.userName}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className="text-[10px] font-bold text-slate-500">{log.date}</span>
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">{log.modalidade || '---'}</span>
+                            </td>
+                            <td className="px-3 py-1.5 text-center">
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg font-black text-[10px]">
+                                <LogIn size={11} />
+                                {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkIn}
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5 text-center">
+                              {log.checkOut ? (
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px]">
+                                  <LogOut size={11} />
+                                  {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="text-[9px] font-black text-[#F7B500] uppercase animate-pulse">No Recinto</span>
+                                  {!readOnly && (
+                                    <button
+                                      onClick={() => handleManualCheckOut(log)}
+                                      className="px-2 py-0.5 bg-red-500 text-white rounded-md text-[9px] font-black uppercase hover:bg-red-600 transition-colors"
+                                    >
+                                      Dar Saída
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-1.5 text-center">
+                              {log.durationMinutes ? (
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${log.durationMinutes <= 60 ? 'bg-green-100 text-green-700' :
+                                    log.durationMinutes <= 90 ? 'bg-orange-100 text-orange-700' :
+                                      'bg-red-100 text-red-700'
+                                  }`}>
+                                  {log.durationMinutes}m
+                                </span>
+                              ) : (
+                                (() => {
+                                  let checkInDate: Date;
+                                  if (log.checkIn instanceof Timestamp) {
+                                    checkInDate = log.checkIn.toDate();
+                                  } else if (log.checkIn && typeof (log.checkIn as any).seconds === 'number') {
+                                    checkInDate = new Date((log.checkIn as any).seconds * 1000);
+                                  } else if (log.checkIn) {
+                                    checkInDate = new Date(log.checkIn as string | number);
+                                  } else {
+                                    return <span className="text-[10px] font-bold text-slate-300">---</span>;
+                                  }
+                                  const liveMins = Math.max(0, Math.floor((currentTime.getTime() - checkInDate.getTime()) / 60000));
+                                  return (
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md animate-pulse ${liveMins <= 60 ? 'text-green-600 bg-green-50' :
+                                        liveMins <= 90 ? 'text-orange-600 bg-orange-50' :
+                                          'text-red-600 bg-red-50'
+                                      }`}>
+                                      {liveMins}m
+                                    </span>
+                                  );
+                                })()
+                              )}
+                            </td>
+                            {!readOnly && (
+                              <td className="px-3 py-1.5 text-center">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <button
+                                    onClick={() => openEditModal(log)}
+                                    className="p-1 text-[#004D71] hover:bg-slate-100 rounded-md transition-colors"
+                                    title="Editar Registo"
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmDeleteLog(log)}
+                                    className="p-1 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors"
+                                    title="Eliminar Registo"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                      {filteredLogs.length === 0 && !loading && (
+                        <tr>
+                          <td colSpan={readOnly ? 6 : 7} className="px-6 py-12 text-center text-slate-300 font-black text-[10px] uppercase tracking-widest">Sem registos para este dia</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+      {activeTab === 'estatisticas' && (
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+          {/* Visual Podium Section */}
+          {Object.keys(leaderboardByModality).length > 0 && (
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                    <Star className="text-[#F7B500]" size={14} /> Pódio de Assiduidade por Modalidade
+                  </h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                    Top 3 utentes mais assíduos no mês corrente
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {Object.entries(leaderboardByModality).map(([modality, users]) => {
+                  const first = users[0];
+                  const second = users[1] || null;
+                  const third = users[2] || null;
+
+                  return (
+                    <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col justify-between">
+                      <h4 className="text-[9px] font-black text-[#004D71] uppercase tracking-wider mb-3 text-center border-b pb-2 border-slate-100">
+                        {modality}
+                      </h4>
+
+                      {/* Visual Podium */}
+                      <div className="flex items-end justify-center gap-2 h-20">
+                        {/* 2nd Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          {second ? (
+                            <>
+                              <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={second.userName}>
+                                {second.userName.split(' ')[0]}
+                              </span>
+                              <span className="text-[7px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
+                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-[8px] rounded-t-lg h-8 flex items-center justify-center border-t border-slate-300">
+                                2º
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full bg-slate-100 rounded-t-lg h-4" />
+                          )}
+                        </div>
+
+                        {/* 1st Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5 flex items-center gap-0.5" title={first.userName}>
+                            👑 {first.userName.split(' ')[0]}
+                          </span>
+                          <span className="text-[8px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
+                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[9px] rounded-t-xl h-12 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
+                            1º
+                          </div>
+                        </div>
+
+                        {/* 3rd Place */}
+                        <div className="flex-1 flex flex-col items-center">
+                          {third ? (
+                            <>
+                              <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={third.userName}>
+                                {third.userName.split(' ')[0]}
+                              </span>
+                              <span className="text-[7px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
+                              <div className="w-full bg-orange-100 text-orange-800 font-black text-[8px] rounded-t-lg h-5 flex items-center justify-center border-t border-orange-200">
+                                3º
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full bg-slate-100 rounded-t-lg h-4" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                  <Activity className="text-[#F7B500]" size={14}/> Totais do Mês por Modalidade
+                  <Activity className="text-[#F7B500]" size={14} /> Totais do Mês por Modalidade
                 </h3>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
                   Número de entradas no mês corrente
@@ -1615,5 +1635,13 @@ export function AccessLogsModule({ onScan, currentUser, utentes = [] }: { onScan
       )}
 
     </div>
+  );
+}
+
+export function AccessLogsModule(props: any) {
+  return (
+    <ErrorBoundary>
+      <AccessLogsModuleInner {...props} />
+    </ErrorBoundary>
   );
 }

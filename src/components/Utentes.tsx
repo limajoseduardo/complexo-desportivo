@@ -231,119 +231,37 @@ export function UtentesList({
         {canAdd && (
           <button 
             onClick={() => setShowAddModal(true)}
-            className="bg-[#004D71] text-[#F7B500] p-4 rounded-2xl shadow-lg active:scale-95 transition-all"
+            className="bg-[#004D71] text-[#F7B500] p-2.5 rounded-xl shadow-lg active:scale-95 transition-all"
           >
-            <Plus size={24}/>
+            <Plus size={18}/>
           </button>
         )}
       </div>
 
       {/* ── PAINEL INFORMATIVO ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-1">
-        {/* Total de Utentes */}
-        <button
-          onClick={() => setActiveFilter('all')}
-          className={`p-5 rounded-[2rem] text-left transition-all border-2 flex flex-col justify-between min-h-[120px] ${
-            activeFilter === 'all'
-              ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-lg'
-              : 'bg-white text-[#004D71] border-slate-100 hover:border-[#004D71]/20 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full">
-            <UserIcon size={18} className={activeFilter === 'all' ? 'text-[#F7B500]' : 'text-slate-400'} />
-            {activeFilter === 'all' && <span className="w-1.5 h-1.5 rounded-full bg-[#F7B500]" />}
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black leading-none tabular-nums">{stats.total}</p>
-            <p className={`text-[8px] font-black uppercase tracking-wider mt-1 ${activeFilter === 'all' ? 'text-white/60' : 'text-slate-400'}`}>Total de Utentes</p>
-          </div>
-        </button>
-
-        {/* Perfis Incompletos */}
-        <button
-          onClick={() => setActiveFilter(activeFilter === 'incomplete' ? 'all' : 'incomplete')}
-          className={`p-5 rounded-[2rem] text-left transition-all border-2 flex flex-col justify-between min-h-[120px] ${
-            activeFilter === 'incomplete'
-              ? 'bg-amber-500 text-white border-amber-500 shadow-lg'
-              : 'bg-white text-slate-700 border-slate-100 hover:border-amber-500/20 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full">
-            <FileText size={18} className={activeFilter === 'incomplete' ? 'text-white' : 'text-slate-400'} />
-            {activeFilter === 'incomplete' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black leading-none tabular-nums">{stats.incomplete}</p>
-            <p className={`text-[8px] font-black uppercase tracking-wider mt-1 ${activeFilter === 'incomplete' ? 'text-white/80' : 'text-slate-400'}`}>Perfis Incompletos</p>
-          </div>
-        </button>
-
-        {/* Com Atestado */}
-        <button
-          onClick={() => setActiveFilter(activeFilter === 'atestado' ? 'all' : 'atestado')}
-          className={`p-5 rounded-[2rem] text-left transition-all border-2 flex flex-col justify-between min-h-[120px] ${
-            activeFilter === 'atestado'
-              ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg'
-              : 'bg-white text-slate-700 border-slate-100 hover:border-emerald-500/20 shadow-sm'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full">
-            <Shield size={18} className={activeFilter === 'atestado' ? 'text-white' : 'text-slate-400'} />
-            {activeFilter === 'atestado' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black leading-none tabular-nums">{stats.atestado}</p>
-            <p className={`text-[8px] font-black uppercase tracking-wider mt-1 ${activeFilter === 'atestado' ? 'text-white/80' : 'text-slate-400'}`}>Com Atestado</p>
-          </div>
-        </button>
-
-        {/* Escalões Etários */}
-        <div className="bg-white p-4 rounded-[2rem] border-2 border-slate-100 shadow-sm flex flex-col justify-between min-h-[120px]">
-          <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none border-b pb-1.5">
-            <Calendar size={10} className="text-slate-400" />
-            <span>Escalões</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5 mt-2">
-            {/* Jovem (0-35) */}
-            <button
-              onClick={() => setActiveFilter(activeFilter === 'jovem' ? 'all' : 'jovem')}
-              className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                activeFilter === 'jovem'
-                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-sm'
-                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-[#004D71]/35'
-              }`}
-            >
-              <span className="text-[10px] font-black leading-none tabular-nums">{stats.jovem}</span>
-              <span className="text-[5.5px] font-bold uppercase tracking-wider mt-0.5 opacity-80">Jov (0-35)</span>
-            </button>
-            
-            {/* Ativa (35-65) */}
-            <button
-              onClick={() => setActiveFilter(activeFilter === 'adulto' ? 'all' : 'adulto')}
-              className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                activeFilter === 'adulto'
-                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-sm'
-                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-[#004D71]/35'
-              }`}
-            >
-              <span className="text-[10px] font-black leading-none tabular-nums">{stats.adulto}</span>
-              <span className="text-[5.5px] font-bold uppercase tracking-wider mt-0.5 opacity-80">Ativa (35-65)</span>
-            </button>
-
-            {/* Idoso (65+) */}
-            <button
-              onClick={() => setActiveFilter(activeFilter === 'senior' ? 'all' : 'senior')}
-              className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                activeFilter === 'senior'
-                  ? 'bg-[#004D71] border-[#004D71] text-[#F7B500] shadow-sm'
-                  : 'bg-slate-50 border-slate-100 text-[#004D71] hover:border-[#004D71]/35'
-              }`}
-            >
-              <span className="text-[10px] font-black leading-none tabular-nums">{stats.senior}</span>
-              <span className="text-[5.5px] font-bold uppercase tracking-wider mt-0.5 opacity-80">Idoso (65+)</span>
-            </button>
-          </div>
-        </div>
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 px-1">
+        {([
+          { key: 'all',        value: stats.total,      label: 'Total',       icon: <UserIcon size={14}/> },
+          { key: 'incomplete', value: stats.incomplete,  label: 'Incompletos', icon: <FileText size={14}/> },
+          { key: 'atestado',   value: stats.atestado,   label: 'Atestado',    icon: <Shield size={14}/> },
+          { key: 'jovem',      value: stats.jovem,      label: 'Jov 0-35',    icon: <Calendar size={14}/> },
+          { key: 'adulto',     value: stats.adulto,     label: 'Ativ 35-65',  icon: <Calendar size={14}/> },
+          { key: 'senior',     value: stats.senior,     label: 'Id 65+',      icon: <Calendar size={14}/> },
+        ] as const).map(({ key, value, label, icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveFilter(key === 'all' ? 'all' : (activeFilter === key ? 'all' : key))}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl border-2 transition-all ${
+              activeFilter === key
+                ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-md'
+                : 'bg-white text-slate-500 border-slate-100 hover:border-[#004D71]/30 shadow-sm'
+            }`}
+          >
+            <span className={activeFilter === key ? 'text-[#F7B500]' : 'text-slate-300'}>{icon}</span>
+            <span className="text-lg font-black leading-none tabular-nums">{value}</span>
+            <span className="text-[7px] font-bold uppercase tracking-wider leading-none">{label}</span>
+          </button>
+        ))}
       </div>
 
       <div className="relative">

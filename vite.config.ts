@@ -51,7 +51,7 @@ export default defineConfig(({mode}) => {
       host: '0.0.0.0',
       allowedHosts: true,
       hmr: process.env.DISABLE_HMR !== 'true'
-        ? { host: '0.0.0.0' }
+        ? { host: '192.168.1.130', port: 3100 }
         : false,
     },
   };
