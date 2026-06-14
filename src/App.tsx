@@ -72,7 +72,7 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   chefia:    ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
   staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'mensagens', 'perfil'],
-  utente:    ['inicio', 'perfil'],
+  utente:    ['inicio', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug, currentRole }: {

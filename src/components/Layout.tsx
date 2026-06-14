@@ -371,7 +371,7 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor'], badge: unreadCount },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
-  { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',     mobileLabel: 'AGENDA', roles: ['staff', 'admin', 'chefia', 'professor'] },
+  { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',     mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
   { id: 'perfil',    icon: <User />,          label: 'Perfil',     mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
