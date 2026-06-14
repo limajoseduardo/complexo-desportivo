@@ -1028,9 +1028,10 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
   const normMod = (m: string) => (m?.startsWith('Natação Nível') ? 'Natação' : m || '');
   const countToday = (dest: string) => todayLogs.filter(l => normMod(l.modalidade || '') === dest).length;
 
+  const epochMin = Math.floor(Date.now() / 60000);
   const qrValue = selectedDest
-    ? JSON.stringify({ id: user.id, dest: selectedDest })
-    : JSON.stringify({ id: user.id });
+    ? `CPX:${user.id}:${selectedDest}:${epochMin}`
+    : `CPX:${user.id}:Livre:${epochMin}`;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
