@@ -3,7 +3,7 @@ import { Search, ChevronRight, ChevronDown, ArrowLeft, Plus, X, Save, User as Us
 import { UserProfile } from '../types';
 import { PicotoIcon, FormInput, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection } from 'firebase/firestore';
 import { MODALIDADES } from './Profile';
 
 import { handleCheckIn, handleCheckOut } from '../lib/access';
@@ -136,7 +136,12 @@ export function UtentesList({
         if (activeFilter === 'senior') return age >= 65;
         return true;
       })
-      .filter(u => normalizeSearchString(u.n || u.nome || '').includes(normalizeSearchString(search)))
+      .filter(u => {
+        const term = normalizeSearchString(search);
+        if (!term) return true;
+        const searchable = [u.n, u.nome, u.email, u.phone, u.telemovel, u.nif, u.cartao_numero, u.id].filter(Boolean).map(s => normalizeSearchString(String(s))).join(' ');
+        return searchable.includes(term);
+      })
       .filter(u => {
         if (filterMode === 'all') return true;
         if (filterMode === 'at_risk') {
@@ -167,10 +172,10 @@ export function UtentesList({
     }
 
     try {
-      // Use clean email as ID
-      const userId = formData.email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-      const docPath = `artifacts/${APP_ID}/public/data/users/${userId}`;
-      const userRef = doc(db, docPath);
+      // Usar um ID único gerado pelo Firestore para evitar que emails falsos/repetidos apaguem utentes anteriores
+      const docPath = `artifacts/${APP_ID}/public/data/users`;
+      const userRef = doc(collection(db, docPath));
+      const userId = userRef.id;
       
       const newUser: UserProfile = {
         ...formData,
