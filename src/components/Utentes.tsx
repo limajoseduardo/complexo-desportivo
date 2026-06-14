@@ -250,10 +250,10 @@ export function UtentesList({
           { key: 'all',        value: stats.total,       label: 'Total',       icon: <UserIcon size={16}/> },
           { key: 'incomplete', value: stats.incomplete,  label: 'Incompletos', icon: <FileText size={16}/> },
           { key: 'atestado',   value: stats.atestado,    label: 'Atestado',    icon: <Shield size={16}/> },
-          { key: 'c_jovem',    value: stats.c_jovem,     label: 'C. Jovem',    icon: <CreditCard size={16}/> },
-          { key: 'c_ativa',    value: stats.c_ativa,     label: 'C. Ativa',    icon: <CreditCard size={16}/> },
-          { key: 'c_idoso',    value: stats.c_idoso,     label: 'C. Idoso',    icon: <CreditCard size={16}/> },
-          { key: 'c_h2o',      value: stats.c_h2o,       label: 'Univ. H2O',   icon: <CreditCard size={16}/> },
+          { key: 'c_jovem',    value: stats.c_jovem,     label: 'Cartão Jovem Municipal',       icon: <CreditCard size={16}/> },
+          { key: 'c_ativa',    value: stats.c_ativa,     label: 'Cartão Municipal Idade-Ativa', icon: <CreditCard size={16}/> },
+          { key: 'c_idoso',    value: stats.c_idoso,     label: 'Cartão do Idoso',              icon: <CreditCard size={16}/> },
+          { key: 'c_h2o',      value: stats.c_h2o,       label: 'Cartão Universal H2O',         icon: <CreditCard size={16}/> },
         ] as const).map(({ key, value, label, icon }) => (
           <button
             key={key}
