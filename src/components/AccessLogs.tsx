@@ -1528,6 +1528,25 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                   const second = users[1] || null;
                   const third = users[2] || null;
 
+                  const renderPodiumName = (userName: string, place: 1 | 2 | 3) => {
+                    const parts = String(userName || '').trim().split(/\s+/);
+                    const firstName = parts[0] || '';
+                    const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+                    return (
+                      <div className="flex flex-col items-center justify-end min-w-0 w-full mb-0.5 h-6" title={userName}>
+                        <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center flex items-center justify-center gap-0.5 leading-tight">
+                          {place === 1 && "👑 "}
+                          {firstName}
+                        </span>
+                        {lastName && (
+                          <span className="text-[7.5px] font-bold text-[#004D71] truncate max-w-full text-center leading-tight">
+                            {lastName}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  };
+
                   return (
                     <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col justify-between">
                       <h4 className="text-[9px] font-black text-[#004D71] uppercase tracking-wider mb-3 text-center border-b pb-2 border-slate-100">
@@ -1540,9 +1559,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                         <div className="flex-1 flex flex-col items-center">
                           {second ? (
                             <>
-                              <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={second.userName}>
-                                {second.userName.split(' ')[0]}
-                              </span>
+                              {renderPodiumName(second.userName, 2)}
                               <span className="text-[7px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
                               <div className="w-full bg-slate-200 text-[#004D71] font-black text-[8px] rounded-t-lg h-8 flex items-center justify-center border-t border-slate-300">
                                 2º
@@ -1555,9 +1572,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
 
                         {/* 1st Place */}
                         <div className="flex-1 flex flex-col items-center">
-                          <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5 flex items-center gap-0.5" title={first.userName}>
-                            👑 {first.userName.split(' ')[0]}
-                          </span>
+                          {renderPodiumName(first.userName, 1)}
                           <span className="text-[8px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
                           <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[9px] rounded-t-xl h-12 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
                             1º
@@ -1568,9 +1583,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                         <div className="flex-1 flex flex-col items-center">
                           {third ? (
                             <>
-                              <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center mb-0.5" title={third.userName}>
-                                {third.userName.split(' ')[0]}
-                              </span>
+                              {renderPodiumName(third.userName, 3)}
                               <span className="text-[7px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
                               <div className="w-full bg-orange-100 text-orange-800 font-black text-[8px] rounded-t-lg h-5 flex items-center justify-center border-t border-orange-200">
                                 3º
