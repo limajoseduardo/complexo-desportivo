@@ -1058,24 +1058,24 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDest(m.dest); setShowQR(true); }}
-                      className="flex items-center gap-3 p-3.5 rounded-2xl border-2 bg-white/5 border-white/10 hover:bg-white/10 transition-all active:scale-95 text-left"
+                      className="flex items-center gap-3 p-4 rounded-[1.5rem] bg-white hover:bg-slate-50 border-2 border-transparent hover:border-[#F7B500] hover:shadow-xl transition-all active:scale-95 text-left group shadow-md"
                     >
-                      <div className="p-2 rounded-xl shrink-0 bg-white/10 text-white/80">
+                      <div className="p-2.5 rounded-xl shrink-0 bg-slate-50 text-[#004D71] group-hover:bg-[#F7B500] group-hover:text-[#004D71] transition-colors">
                         {m.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-black uppercase leading-tight line-clamp-2 text-white/90 mb-1.5">
+                        <p className="text-xs font-black uppercase tracking-tight leading-tight line-clamp-2 text-[#004D71] mb-2">
                           {m.label}
                         </p>
                         <div className="flex items-center gap-2">
-                          <span className="flex items-center gap-1 bg-white/10 rounded-md px-1.5 py-0.5">
-                            <span className="text-[8px] text-white/50 uppercase font-bold">Hoje</span>
-                            <span className="text-[#F7B500] font-black text-xs">{m.todayCount}</span>
+                          <span className="flex items-center gap-1.5 bg-[#004D71]/5 rounded-lg px-2 py-1">
+                            <span className="text-[8px] text-slate-400 uppercase font-bold">Hoje</span>
+                            <span className="text-[#004D71] font-black text-sm tabular-nums leading-none">{m.todayCount}</span>
                           </span>
-                          <span className="flex items-center gap-1 bg-white/10 rounded-md px-1.5 py-0.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${m.liveCount > 0 ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}/>
-                            <span className="text-white font-black text-xs">{m.liveCount}</span>
-                            <span className="text-[8px] text-white/50 uppercase font-bold">agora</span>
+                          <span className={`flex items-center gap-1.5 rounded-lg px-2 py-1 border ${m.liveCount > 0 ? 'bg-green-50 border-green-100' : 'bg-slate-50 border-slate-100'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.liveCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`}/>
+                            <span className={`font-black text-sm tabular-nums leading-none ${m.liveCount > 0 ? 'text-green-600' : 'text-slate-400'}`}>{m.liveCount}</span>
+                            <span className={`text-[8px] uppercase font-bold ${m.liveCount > 0 ? 'text-green-600/80' : 'text-slate-400'}`}>agora</span>
                           </span>
                         </div>
                       </div>
