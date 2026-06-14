@@ -54,7 +54,7 @@ export function UtentesList({
 }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'jovem' | 'adulto' | 'senior'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'c_jovem' | 'c_ativa' | 'c_idoso' | 'c_h2o'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -108,17 +108,18 @@ export function UtentesList({
     const incomplete = utenteProfiles.filter(isIncomplete).length;
     const atestado = utenteProfiles.filter(u => u.atestado_medico === true || !!u.restricoes_medicas).length;
     
-    let jovem = 0;
-    let adulto = 0;
-    let senior = 0;
+    let c_jovem = 0;
+    let c_ativa = 0;
+    let c_idoso = 0;
+    let c_h2o = 0;
     utenteProfiles.forEach(u => {
-      const age = getAge(u);
-      if (age < 35) jovem++;
-      else if (age < 65) adulto++;
-      else senior++;
+      if (u.cartao_tipo === 'Cartão Jovem Municipal') c_jovem++;
+      else if (u.cartao_tipo === 'Cartão Municipal Idade-Ativa') c_ativa++;
+      else if (u.cartao_tipo === 'Cartão do Idoso') c_idoso++;
+      else if (u.cartao_tipo === 'Cartão Universal H2O') c_h2o++;
     });
 
-    return { total, incomplete, atestado, jovem, adulto, senior };
+    return { total, incomplete, atestado, c_jovem, c_ativa, c_idoso, c_h2o };
   }, [utenteProfiles]);
 
   const filtered = useMemo(() => {
@@ -130,10 +131,10 @@ export function UtentesList({
         if (activeFilter === 'all') return true;
         if (activeFilter === 'incomplete') return isIncomplete(u);
         if (activeFilter === 'atestado') return u.atestado_medico === true || !!u.restricoes_medicas;
-        const age = getAge(u);
-        if (activeFilter === 'jovem') return age < 35;
-        if (activeFilter === 'adulto') return age >= 35 && age < 65;
-        if (activeFilter === 'senior') return age >= 65;
+        if (activeFilter === 'c_jovem') return u.cartao_tipo === 'Cartão Jovem Municipal';
+        if (activeFilter === 'c_ativa') return u.cartao_tipo === 'Cartão Municipal Idade-Ativa';
+        if (activeFilter === 'c_idoso') return u.cartao_tipo === 'Cartão do Idoso';
+        if (activeFilter === 'c_h2o') return u.cartao_tipo === 'Cartão Universal H2O';
         return true;
       })
       .filter(u => {
@@ -249,9 +250,10 @@ export function UtentesList({
           { key: 'all',        value: stats.total,      label: 'Total',       icon: <UserIcon size={14}/> },
           { key: 'incomplete', value: stats.incomplete,  label: 'Incompletos', icon: <FileText size={14}/> },
           { key: 'atestado',   value: stats.atestado,   label: 'Atestado',    icon: <Shield size={14}/> },
-          { key: 'jovem',      value: stats.jovem,      label: 'Jov 0-35',    icon: <Calendar size={14}/> },
-          { key: 'adulto',     value: stats.adulto,     label: 'Ativ 35-65',  icon: <Calendar size={14}/> },
-          { key: 'senior',     value: stats.senior,     label: 'Id 65+',      icon: <Calendar size={14}/> },
+          { key: 'c_jovem',    value: stats.c_jovem,    label: 'C. Jovem',    icon: <CreditCard size={14}/> },
+          { key: 'c_ativa',    value: stats.c_ativa,    label: 'C. Ativa',    icon: <CreditCard size={14}/> },
+          { key: 'c_idoso',    value: stats.c_idoso,    label: 'C. Idoso',    icon: <CreditCard size={14}/> },
+          { key: 'c_h2o',      value: stats.c_h2o,      label: 'C. H2O',      icon: <CreditCard size={14}/> },
         ] as const).map(({ key, value, label, icon }) => (
           <button
             key={key}
