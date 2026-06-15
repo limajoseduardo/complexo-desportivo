@@ -48,7 +48,7 @@ body {
 /* Fallbacks for older browsers / Android */
 .pb-safe { 
   padding-bottom: 0.75rem;
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)) !important; 
+  padding-bottom: env(safe-area-inset-bottom) !important; 
 }
 .pt-safe { 
   padding-top: 0.75rem;

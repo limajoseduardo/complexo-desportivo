@@ -196,7 +196,7 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
   const latestDescoberta = logs.find(l => l.tipo === 'descoberta');
 
   return (
-    <header className="bg-white px-5 flex justify-between items-center sticky top-0 z-40 py-2 border-b-4 border-slate-100">
+    <header className="bg-white px-5 pt-safe flex justify-between items-center sticky top-0 z-40 py-2 border-b-4 border-slate-100">
 
       {/* Esquerda: Foto + Info */}
       <div className="flex items-center gap-4 min-w-0 flex-1">
