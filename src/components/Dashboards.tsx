@@ -1134,8 +1134,8 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
           {/* QR Code centrado */}
           <div className="flex-1 flex flex-col items-center justify-center gap-6 px-8">
-            <div className="bg-white rounded-[2rem] p-6 shadow-2xl">
-              <QRCodeSVG value={qrValue} size={240} bgColor="#ffffff" fgColor="#004D71" level="M" />
+            <div className="bg-white rounded-[2rem] p-4 shadow-2xl w-full max-w-[350px] aspect-square flex items-center justify-center">
+              <QRCodeSVG value={qrValue} style={{ width: '100%', height: '100%' }} bgColor="#ffffff" fgColor="#004D71" level="M" />
             </div>
             <div className="text-center">
               <h3 className="text-xl font-black text-white uppercase">{user.n || user.nome}</h3>
