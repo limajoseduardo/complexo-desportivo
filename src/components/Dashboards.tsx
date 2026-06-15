@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
@@ -1115,46 +1116,32 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
       </div>
 
-      {/* ── QR Full Screen ── */}
-      {showQR && (
-        <div className="fixed inset-0 z-[10000] bg-gradient-to-br from-[#004D71] to-[#002f47] flex flex-col animate-in fade-in duration-200">
-          {/* Topo */}
-          <div className="flex items-center gap-4 px-6 pt-10 pb-4">
-            <button
-              onClick={() => { setShowQR(false); setSelectedDest(null); }}
-              className="p-3 bg-white/10 text-white rounded-2xl active:scale-90 transition-all shrink-0"
-            >
-              <ArrowLeft size={22}/>
-            </button>
-            <div className="min-w-0">
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Destino selecionado</p>
-              <p className="text-sm font-black text-[#F7B500] uppercase truncate">{selectedDest}</p>
-            </div>
+      {/* ── QR Full Screen Brilhante ── */}
+      {showQR && typeof document !== 'undefined' && ReactDOM.createPortal(
+        <div 
+          className="fixed inset-0 z-[999999] bg-white flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-200 cursor-pointer p-6"
+          onClick={() => { setShowQR(false); setSelectedDest(null); }}
+        >
+          {/* Instrução discreta no topo */}
+          <div className="absolute top-12 text-center w-full px-6 pointer-events-none">
+            <h3 className="text-2xl font-black text-[#004D71] uppercase tracking-tight">{user.n || user.nome}</h3>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-2">
+              Apresente na câmara • Toque no ecrã para voltar
+            </p>
           </div>
 
-          {/* QR Code centrado */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-6 px-8">
-            <div className="bg-white rounded-[2rem] p-4 shadow-2xl w-full max-w-[350px] aspect-square flex items-center justify-center">
-              <QRCodeSVG value={qrValue} style={{ width: '100%', height: '100%' }} bgColor="#ffffff" fgColor="#004D71" level="M" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-black text-white uppercase">{user.n || user.nome}</h3>
-              <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-1">
-                Apresente este código na entrada
-              </p>
-            </div>
+          {/* QR Code Gigante */}
+          <div className="w-full max-w-[500px] aspect-square flex items-center justify-center bg-white">
+            <QRCodeSVG value={qrValue} style={{ width: '100%', height: '100%' }} bgColor="#ffffff" fgColor="#000000" level="M" />
           </div>
-
-          {/* Botão de retroceder */}
-          <div className="px-6 pb-12">
-            <button
-              onClick={() => { setShowQR(false); setSelectedDest(null); }}
-              className="w-full bg-white/10 border border-white/15 text-white py-5 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all"
-            >
-              <ArrowLeft size={18}/> Voltar
-            </button>
+          
+          {/* Destino no fundo */}
+          <div className="absolute bottom-12 text-center w-full px-6 pointer-events-none">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Destino Validado</p>
+            <p className="text-2xl font-black text-[#004D71] uppercase tracking-tighter mt-1">{selectedDest}</p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
