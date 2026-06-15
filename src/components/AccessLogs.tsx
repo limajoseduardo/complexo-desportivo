@@ -784,57 +784,60 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   };
 
   const downloadPDF = () => {
-    const doc = new jsPDF();
+    try {
+      const doc = new jsPDF();
 
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(0, 77, 113); // #004D71
-    doc.text('Relatório de Acessos', 14, 22);
+      // Header
+      doc.setFontSize(20);
+      doc.setTextColor(0, 77, 113); // #004D71
+      doc.text('Relatório de Acessos', 14, 22);
 
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Período: ${startDate} a ${endDate}`, 14, 30);
-    doc.text(`Total de Entradas: ${filteredLogs.length}`, 14, 35);
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Período: ${startDate} a ${endDate}`, 14, 30);
+      doc.text(`Total de Entradas: ${filteredLogs.length}`, 14, 35);
 
-    const tableData = filteredLogs.map(l => [
-      l.date,
-      l.userName,
-      l.modalidade || '---',
-      l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
-      l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
-      l.durationMinutes ? `${l.durationMinutes} min` : '---',
-    ]);
+      const tableData = filteredLogs.map(l => [
+        l.date,
+        l.userName,
+        l.modalidade || '---',
+        l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
+        l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
+        l.durationMinutes ? `${l.durationMinutes} min` : '---',
+      ]);
 
-    autoTable(doc, {
-      startY: 45,
-      head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
-      body: tableData,
-      headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      margin: { top: 45 },
-      styles: { fontSize: 8, font: 'helvetica' }
-    });
+      autoTable(doc, {
+        startY: 45,
+        head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
+        body: tableData,
+        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { top: 45 },
+        styles: { fontSize: 8, font: 'helvetica' }
+      });
 
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
 
-    doc.setFontSize(14);
-    doc.setTextColor(0, 77, 113);
-    doc.text('Resumo por Modalidade', 14, finalY);
+      doc.setFontSize(14);
+      doc.setTextColor(0, 77, 113);
+      doc.text('Resumo por Modalidade', 14, finalY);
 
-    const summaryData = statsByModality.map(s => [s.label, s.count.toString()]);
-    summaryData.push(['TOTAL', filteredLogs.length.toString()]);
+      const summaryData = statsByModality.map(s => [s.label, s.count.toString()]);
+      summaryData.push(['TOTAL', filteredLogs.length.toString()]);
 
-    autoTable(doc, {
-      startY: finalY + 5,
-      head: [['Modalidade', 'Total de Entradas']],
-      body: summaryData,
-      headStyles: { fillColor: [247, 181, 0], textColor: [0, 77, 113] },
-      styles: { fontSize: 9, font: 'helvetica' }
-    });
+      autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Modalidade', 'Total de Entradas']],
+        body: summaryData,
+        headStyles: { fillColor: [247, 181, 0], textColor: [0, 77, 113] },
+        styles: { fontSize: 9, font: 'helvetica' }
+      });
 
-    // Rankings Top 3 Removidos a pedido do cliente
-
-    doc.save(`relatorio_acessos_${startDate}_a_${endDate}.pdf`);
+      doc.save(`relatorio_acessos_${startDate}_a_${endDate}.pdf`);
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
+    }
   };
 
   return (
