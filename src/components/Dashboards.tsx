@@ -1038,26 +1038,42 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
         {/* seletor de destino */}
         <div className="px-6 pt-4 pb-6">
-          {termsOk ? (
-            user.isInside ? (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
-                   <LogOut size={32} className="text-emerald-400 ml-1" />
-                </div>
-                <div>
-                  <p className="text-white font-black uppercase tracking-widest text-lg mb-1">A sua visita está a decorrer</p>
-                  <p className="text-white/60 text-xs mb-8">Dirija-se ao Quiosque e passe o código para registar a sua saída.</p>
-                </div>
-                <button
-                  onClick={() => { setSelectedDest('Saída'); setShowQR(true); }}
-                  className="w-full bg-emerald-500 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-3"
-                >
-                  <LogOut size={18} className="ml-1" /> Gerar Código de Saída
-                </button>
+          {!termsOk && (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
+                <Shield size={26} className="text-red-300"/>
               </div>
-            ) : (
-            <>
-              <div className="flex items-baseline justify-between mb-3">
+              <div>
+                <p className="text-sm font-black text-white uppercase tracking-wide mb-1">Termos não aceites</p>
+                <p className="text-[10px] text-white/50 leading-relaxed max-w-[260px]">
+                  Para gerar o QR de acesso é necessário aceitar os dois termos de responsabilidade.<br/>
+                  Aceda ao separador <span className="text-[#F7B500] font-black">Perfil → Termos</span>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {termsOk && user.isInside && (
+            <div className="flex flex-col items-center gap-4 py-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
+                 <LogOut size={32} className="text-emerald-400 ml-1" />
+              </div>
+              <div>
+                <p className="text-white font-black uppercase tracking-widest text-lg mb-1">A sua visita está a decorrer</p>
+                <p className="text-white/60 text-xs mb-8">Dirija-se ao Quiosque e passe o código para registar a sua saída.</p>
+              </div>
+              <button
+                onClick={() => { setSelectedDest('Saída'); setShowQR(true); }}
+                className="w-full bg-emerald-500 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-3"
+              >
+                <LogOut size={18} className="ml-1" /> Gerar Código de Saída
+              </button>
+            </div>
+          )}
+
+          {termsOk && !user.isInside && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between mb-2">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
                 <div className="flex items-center gap-3">
                   <p className="text-[9px] font-black text-white/50 uppercase tracking-wide">
@@ -1069,8 +1085,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                 </div>
               </div>
               <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {React.useMemo(() =>
-                  MODALITIES.map(m => {
+                {MODALITIES.map(m => {
                     const liveCount = todayLogs.filter(l => {
                       if (l.checkOut) return false;
                       const testProfile = {
@@ -1085,8 +1100,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                       liveCount,
                       todayCount: countToday(m.dest),
                     };
-                  }).sort((a, b) => b.todayCount - a.todayCount),
-                [todayLogs]).map(m => (
+                }).sort((a, b) => b.todayCount - a.todayCount).map(m => (
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDest(m.dest); setShowQR(true); }}
@@ -1102,31 +1116,17 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                         <div className="flex items-center gap-2">
                           <span className="flex items-center gap-1.5 bg-[#004D71]/5 rounded-lg px-2 py-1">
                             <span className="text-[8px] text-slate-400 uppercase font-bold">Hoje</span>
-                            <span className="text-[#004D71] font-black text-sm tabular-nums leading-none">{m.todayCount}</span>
+                            <span className="text-[#004D71] font-black text-sm tabular-nums leading-none">{Number(m.todayCount) || 0}</span>
                           </span>
                           <span className={`flex items-center gap-1.5 rounded-lg px-2 py-1 border ${m.liveCount > 0 ? 'bg-green-50 border-green-100' : 'bg-slate-50 border-slate-100'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.liveCount > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`}/>
-                            <span className={`font-black text-sm tabular-nums leading-none ${m.liveCount > 0 ? 'text-green-600' : 'text-slate-400'}`}>{m.liveCount}</span>
+                            <span className={`font-black text-sm tabular-nums leading-none ${m.liveCount > 0 ? 'text-green-600' : 'text-slate-400'}`}>{Number(m.liveCount) || 0}</span>
                             <span className={`text-[8px] uppercase font-bold ${m.liveCount > 0 ? 'text-green-600/80' : 'text-slate-400'}`}>agora</span>
                           </span>
                         </div>
                       </div>
                     </button>
-                  ))}
-              </div>
-            </>
-            )
-          ) : (
-            <div className="flex flex-col items-center gap-4 py-6 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
-                <Shield size={26} className="text-red-300"/>
-              </div>
-              <div>
-                <p className="text-sm font-black text-white uppercase tracking-wide mb-1">Termos não aceites</p>
-                <p className="text-[10px] text-white/50 leading-relaxed max-w-[260px]">
-                  Para gerar o QR de acesso é necessário aceitar os dois termos de responsabilidade.<br/>
-                  Aceda ao separador <span className="text-[#F7B500] font-black">Perfil → Termos</span>.
-                </p>
+                ))}
               </div>
             </div>
           )}
