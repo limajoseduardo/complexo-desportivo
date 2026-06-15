@@ -15,7 +15,6 @@
 html {
   background-color: var(--vr-blue);
   min-height: 100vh;
-  /* iOS 15+ bugfix */
   min-height: -webkit-fill-available;
 }
 
@@ -35,6 +34,13 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* CRITICAL PWA FIX: iOS Standalone mode breaks safe-areas if fill-available is used */
+@media (display-mode: standalone) {
+  html, body, .app-shell {
+    min-height: 100vh !important;
+  }
 }
 
 .content-area {
