@@ -64,8 +64,7 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
                <Scanner
                   onScan={handleScan}
                   formats={['qr_code']}
-                  allowMultiple={true}
-                  scanDelay={300}
+                  paused={!!scanResult}
                   components={{
                     audio: false,
                     tracker: false
