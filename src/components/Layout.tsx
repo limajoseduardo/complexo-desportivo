@@ -406,7 +406,7 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
       </nav>
 
       <div className="mb-6 space-y-2 border-t border-white/10 pt-6">
-        {(onSimularRfid || onKioskMode) && ['admin', 'chefia'].includes(user.role) && (
+        {(onSimularRfid || onKioskMode) && ['admin', 'chefia', 'staff'].includes(user.role) && (
           <>
             <p className="text-[9px] font-black uppercase tracking-widest text-white/40 px-3 mb-3">Receção</p>
             {onKioskMode && (
