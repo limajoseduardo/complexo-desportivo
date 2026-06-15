@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, Target, Building2, Download, FileText
+  Activity, Plus, Check, Star, Shield, Target, Building2, Download, FileText, LogOut
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1039,6 +1039,23 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
         {/* seletor de destino */}
         <div className="px-6 pt-4 pb-6">
           {termsOk ? (
+            user.isInside ? (
+              <div className="flex flex-col items-center gap-4 py-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
+                   <LogOut size={32} className="text-emerald-400 ml-1" />
+                </div>
+                <div>
+                  <p className="text-white font-black uppercase tracking-widest text-lg mb-1">A sua visita está a decorrer</p>
+                  <p className="text-white/60 text-xs mb-8">Dirija-se ao Quiosque e passe o código para registar a sua saída.</p>
+                </div>
+                <button
+                  onClick={() => { setSelectedDest('Saída'); setShowQR(true); }}
+                  className="w-full bg-emerald-500 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
+                  <LogOut size={18} className="ml-1" /> Gerar Código de Saída
+                </button>
+              </div>
+            ) : (
             <>
               <div className="flex items-baseline justify-between mb-3">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
@@ -1098,6 +1115,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
                   ))}
               </div>
             </>
+            )
           ) : (
             <div className="flex flex-col items-center gap-4 py-6 text-center">
               <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-400/20 flex items-center justify-center">
