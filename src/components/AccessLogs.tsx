@@ -101,8 +101,6 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
               userName: `PISCINA EXTERIOR (ENTRADA)`,
               userRole: 'utente',
               checkIn: Timestamp.now(),
-              checkOut: Timestamp.now(), // Auto-checkout to not pollute the 'DENTRO' list
-              durationMinutes: 0,
               date: today,
               zone: 'Piscina Exterior',
               modalidade: 'Piscina Exterior',
