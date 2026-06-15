@@ -12,7 +12,12 @@
   --vr-bg: #F8FAFC;
 }
 
-html, body {
+html {
+  background-color: var(--vr-blue);
+  height: 100%;
+}
+
+body {
   margin: 0;
   padding: 0;
   height: 100%;
