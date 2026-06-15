@@ -157,7 +157,7 @@ export default function App() {
     if (kioskScanResult) {
       const timer = setTimeout(() => {
         setKioskScanResult(null);
-      }, 2000); // Reduzido para sair rápido
+      }, 5000); // Aumentado para 5 segundos conforme pedido
       return () => clearTimeout(timer);
     }
   }, [kioskScanResult]);
