@@ -61,6 +61,14 @@ body {
   padding-right: env(safe-area-inset-right) !important; 
 }
 
+/* Em PWA (Standalone), o iOS já empurra o bottom: 0 para cima da barra (Home Indicator),
+   logo se usarmos o env(safe-area) ficamos com o dobro do tamanho (queixo enorme). */
+@media (display-mode: standalone) {
+  .pb-safe {
+    padding-bottom: 0.5rem !important;
+  }
+}
+
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
