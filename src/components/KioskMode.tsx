@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { AvatarImage } from './Common';
 import { ShieldAlert, ShieldCheck, Radio, AlertTriangle } from 'lucide-react';
+import { Scanner, IDetectedBarcode } from '@yudiel/react-qr-scanner';
 
 interface KioskModeProps {
   scanResult: { type: 'success' | 'error' | 'warning'; user?: UserProfile; message: string } | null;
@@ -10,8 +11,8 @@ interface KioskModeProps {
 }
 
 export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
-  const scannerRef = useRef<any>(null);
   const [hasCameraError, setHasCameraError] = useState(false);
+  const isPaused = useRef(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -21,56 +22,19 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onExit]);
 
-  // Manter a câmara viva sempre que o componente existir
-  useEffect(() => {
-    let isMounted = true;
-
-    const startScanner = async () => {
-      try {
-        const { Html5Qrcode } = await import('html5-qrcode');
-        if (!isMounted) return;
-
-        const scanner = new Html5Qrcode('kiosk-qr-reader');
-        scannerRef.current = scanner;
-
-        await scanner.start(
-          { facingMode: 'user' }, // Camara frontal
-          {
-            fps: 10, 
-            disableFlip: false // Garante que lê códigos QR espelhados (típico em câmaras frontais)
-          },
-          (decodedText: string) => {
-            // Se estivermos a mostrar um resultado de scan, ignorar novas leituras
-            if (scannerRef.current?.isPaused) return;
-            
-            // Pausar internamente para não ler 10x no mesmo segundo
-            scannerRef.current.isPaused = true;
-            onScan(decodedText);
-          },
-          () => {} 
-        );
-      } catch (err) {
-        console.error("Erro a iniciar câmara de Quiosque:", err);
-        if (isMounted) setHasCameraError(true);
-      }
-    };
-
-    startScanner();
-
-    return () => {
-      isMounted = false;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
-      }
-    };
-  }, [onScan]);
-
   // Retomar leitura quando o resultado desaparece
   useEffect(() => {
-    if (!scanResult && scannerRef.current) {
-      scannerRef.current.isPaused = false;
+    if (!scanResult) {
+      isPaused.current = false;
     }
   }, [scanResult]);
+
+  const handleScan = (detectedCodes: IDetectedBarcode[]) => {
+    if (isPaused.current || detectedCodes.length === 0) return;
+    
+    isPaused.current = true;
+    onScan(detectedCodes[0].rawValue);
+  };
 
   return (
     <div className="fixed inset-0 z-[999999] flex flex-col items-center justify-center cursor-none select-none bg-[#004D71]">
@@ -85,8 +49,18 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
           </div>
         ) : (
           <div className="w-[80vw] max-w-[500px] aspect-square mb-12 rounded-[3rem] overflow-hidden bg-black/40 shadow-2xl border-4 border-white/10 relative flex items-center justify-center">
-             <div id="kiosk-qr-reader" className="w-full h-full object-cover"></div>
-             <div className="absolute inset-0 border-4 border-[#F7B500] rounded-[3rem] pointer-events-none animate-pulse opacity-50"></div>
+             <div className="w-[120%] h-[120%] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+               <Scanner
+                  onScan={handleScan}
+                  formats={['qr_code']}
+                  components={{
+                    audio: false,
+                    tracker: false
+                  }}
+                  constraints={{ facingMode: 'user' }}
+               />
+             </div>
+             <div className="absolute inset-0 border-4 border-[#F7B500] rounded-[3rem] pointer-events-none animate-pulse opacity-50 z-10"></div>
           </div>
         )}
 
