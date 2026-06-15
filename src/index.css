@@ -14,20 +14,24 @@
 
 html {
   background-color: var(--vr-blue);
-  height: 100%;
+  min-height: 100vh;
+  /* iOS 15+ bugfix */
+  min-height: -webkit-fill-available;
 }
 
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   background-color: var(--vr-bg);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
 .app-shell {
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -42,22 +46,21 @@ body {
 }
 
 /* Fallbacks for older browsers / Android */
-.pb-safe { padding-bottom: 0.75rem; }
-.pt-safe { padding-top: 0.75rem; }
+.pb-safe { 
+  padding-bottom: 0.75rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)) !important; 
+}
+.pt-safe { 
+  padding-top: 0.75rem;
+  padding-top: calc(0.75rem + env(safe-area-inset-top)) !important; 
+}
+.px-safe { 
+  padding-left: env(safe-area-inset-left) !important; 
+  padding-right: env(safe-area-inset-right) !important; 
+}
 
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Safe Area Inset utilities for iOS devices with notch/dynamic island */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .pb-safe { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)) !important; }
-  .pt-safe { padding-top: calc(0.75rem + env(safe-area-inset-top)) !important; }
-
-  .px-safe { 
-    padding-left: env(safe-area-inset-left) !important; 
-    padding-right: env(safe-area-inset-right) !important; 
-  }
-}
 
 
 button, a, input, select {
