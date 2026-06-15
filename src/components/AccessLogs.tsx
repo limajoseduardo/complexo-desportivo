@@ -10,7 +10,7 @@ import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase
 import {
   collection, query, where, onSnapshot,
   Timestamp, limit, getDocs, setDoc, updateDoc,
-  doc, serverTimestamp, deleteDoc, orderBy, writeBatch
+  doc, serverTimestamp, deleteDoc, orderBy, writeBatch, deleteField
 } from 'firebase/firestore';
 import { AccessLog, UserProfile } from '../types';
 import { TurmasModule } from './TurmasModule';
@@ -61,7 +61,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editDate, setEditDate] = useState('');
-  const [filterStatus, setFilterStatus] = useState('inside');
+  const [filterStatus, setFilterStatus] = useState<'all'|'inside'|'left'>('all');
   const [generatedInvite, setGeneratedInvite] = useState<string | null>(null);
   const [showTurmas, setShowTurmas] = useState(false);
   const [confirmDeleteLog, setConfirmDeleteLog] = useState<AccessLog | null>(null);
@@ -71,6 +71,63 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const [modalMode, setModalMode] = useState<'single' | 'outdoor_pool'>('single');
   const [outdoorEntradas, setOutdoorEntradas] = useState(1);
   const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas'>('diario');
+
+  // CORREÇÃO E AUTO-CHECKOUT (19h)
+  useEffect(() => {
+    const runMaintenance = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+        const q = query(collection(db, path), where('date', '==', todayStr), where('modalidade', '==', 'Piscina Exterior'));
+        const snap = await getDocs(q);
+        
+        const batch = writeBatch(db);
+        let operations = 0;
+        const now = new Date();
+
+        snap.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const checkOut = data.checkOut;
+          
+          // 1. Corrigir os registos antigos (bug dos 60m)
+          if (checkOut && data.durationMinutes === 0 && data.checkIn && Math.abs(checkOut.seconds - data.checkIn.seconds) < 5) {
+            batch.update(docSnap.ref, { checkOut: deleteField(), durationMinutes: deleteField() });
+            operations++;
+          }
+          else if (checkOut && data.durationMinutes === 0) {
+            batch.update(docSnap.ref, { checkOut: deleteField(), durationMinutes: deleteField() });
+            operations++;
+          }
+
+          // 2. Regra das 19h: se for >= 19h e estiver No Recinto, dar saída às 19:00
+          if (!checkOut && now.getHours() >= 19) {
+            const closingTime = new Date();
+            closingTime.setHours(19, 0, 0, 0);
+            const checkInDate = data.checkIn instanceof Timestamp ? data.checkIn.toDate() : new Date(data.checkIn);
+            const durationMs = closingTime.getTime() - checkInDate.getTime();
+            const durationMinutes = Math.max(0, Math.floor(durationMs / 60000));
+
+            batch.update(docSnap.ref, { 
+              checkOut: Timestamp.fromDate(closingTime),
+              durationMinutes
+            });
+            operations++;
+          }
+        });
+
+        if (operations > 0) {
+          await batch.commit();
+          console.log(`Manutenção concluída: ${operations} registos da Piscina Exterior atualizados.`);
+        }
+      } catch (error) {
+        console.error("Erro na manutenção da Piscina Exterior:", error);
+      }
+    };
+
+    runMaintenance();
+    const interval = setInterval(runMaintenance, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleOutdoorPoolSubmit = () => {
     if (outdoorEntradas === 0) {
@@ -1284,20 +1341,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                     <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">hoje</p>
                   </div>
                   {/* Live now / Monthly */}
-                  {z.id === 'pool_out' ? (
-                    <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
-                      <p className="text-lg font-black tabular-nums leading-none text-white">{z.monthlyCount}</p>
-                      <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">mês</p>
-                    </div>
-                  ) : (
-                    <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
-                      <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
-                        {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
-                        {z.liveCount}
-                      </p>
-                      <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
-                    </div>
-                  )}
+                  <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
+                    <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
+                      {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
+                      {z.liveCount}
+                    </p>
+                    <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
+                  </div>
                 </div>
               </div>
             ))}
