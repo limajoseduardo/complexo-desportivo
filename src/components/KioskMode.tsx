@@ -34,7 +34,11 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
         scannerRef.current = scanner;
 
         await scanner.start(
-          { facingMode: 'user' }, // Camara frontal
+          { 
+            facingMode: 'user',
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 }
+          },
           {
             fps: 30, // Mais rápido
             // Sem qrbox para analisar o ecrã inteiro e ser mais sensível a distâncias variadas
@@ -96,10 +100,10 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
 
       {/* Resultados por cima da câmara */}
       {scanResult && (
-        <div className={`absolute inset-0 ${scanResult.type === 'success' && scanResult.user ? ((scanResult.message.match(/Restantes: (\d+)/) && parseInt(scanResult.message.match(/Restantes: (\d+)/)![1]) <= 3) ? 'bg-yellow-400 text-[#004D71]' : 'bg-emerald-500 text-white') : 'bg-red-600 text-white'} flex flex-col items-center justify-center animate-in zoom-in duration-300`}>
+        <div className={`absolute inset-0 ${scanResult.type === 'success' && scanResult.user ? 'bg-emerald-500 text-white' : 'bg-red-600 text-white'} flex flex-col items-center justify-center animate-in zoom-in duration-300`}>
           {scanResult.type === 'success' && scanResult.user ? (
             <>
-              {(scanResult.message.match(/Restantes: (\d+)/) && parseInt(scanResult.message.match(/Restantes: (\d+)/)![1]) <= 3) ? <AlertTriangle size={140} className="mb-10 drop-shadow-2xl"/> : <ShieldCheck size={140} className="mb-10 drop-shadow-2xl"/>}
+              <ShieldCheck size={140} className="mb-10 drop-shadow-2xl"/>
               {scanResult.user.img && (
                 <div className={`w-48 h-48 rounded-[3rem] overflow-hidden border-[10px] border-white shadow-2xl mb-10`}>
                   <AvatarImage src={scanResult.user.img} alt="Foto" className="w-full h-full object-cover"/>

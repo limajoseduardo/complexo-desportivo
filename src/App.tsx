@@ -257,8 +257,7 @@ export default function App() {
           playBeep('success');
         } else {
           await handleCheckIn(foundUser, foundUser.modalidade || 'Ginásio');
-          const remaining = Math.max(0, (foundUser.entradas_disponiveis || 0) - 1);
-          setKioskScanResult({ type: 'success', user: foundUser, message: `Entradas Restantes: ${remaining}` });
+          setKioskScanResult({ type: 'success', user: foundUser, message: 'Entrada Registada' });
           playBeep('success');
         }
       } catch (e: any) {
