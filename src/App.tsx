@@ -138,7 +138,7 @@ export default function App() {
   const [showRfidSimulator, setShowRfidSimulator] = useState(false);
   const [simRfidUid, setSimRfidUid] = useState('');
   const [showKioskMode, setShowKioskMode] = useState(false);
-  const [kioskScanResult, setKioskScanResult] = useState<{ type: 'success' | 'error' | 'warning'; user?: UserProfile; message: string } | null>(null);
+  const [kioskScanResult, setKioskScanResult] = useState<{ type: 'success' | 'error' | 'warning' | 'checkout'; user?: UserProfile; message: string; actionDetails?: { action: 'ENTRADA' | 'SAÍDA', time: string, modalidade?: string, duration?: number } } | null>(null);
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastScrollY = React.useRef(0);
@@ -151,6 +151,16 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [rfidToast]);
+
+  // Handle Kiosk Mode Timers
+  useEffect(() => {
+    if (kioskScanResult) {
+      const timer = setTimeout(() => {
+        setKioskScanResult(null);
+      }, 2000); // Reduzido para sair rápido
+      return () => clearTimeout(timer);
+    }
+  }, [kioskScanResult]);
 
   // Sync latest global announcement
   useEffect(() => {
@@ -255,17 +265,32 @@ export default function App() {
     if (foundUser) {
       try {
         if (foundUser.isInside) {
-          await handleCheckOut(foundUser);
-          setKioskScanResult({ type: 'success', user: foundUser, message: 'Saída Validada' });
+          const outResult = await handleCheckOut(foundUser);
+          setKioskScanResult({ 
+            type: 'checkout', 
+            user: foundUser, 
+            message: 'Saída Validada',
+            actionDetails: { action: 'SAÍDA', time: new Date().toLocaleTimeString('pt-PT'), duration: outResult.durationMinutes }
+          });
           playBeep('success');
         } else {
           const targetZone = explicitZone || foundUser.modalidade || 'Ginásio';
           const result = await handleCheckIn(foundUser, targetZone);
           if (result && result.requiresPayment) {
-            setKioskScanResult({ type: 'warning', user: foundUser, message: 'Pagamento Necessário na Receção' });
+            setKioskScanResult({ 
+              type: 'warning', 
+              user: foundUser, 
+              message: 'Pagamento Necessário na Receção',
+              actionDetails: { action: 'ENTRADA', time: new Date().toLocaleTimeString('pt-PT'), modalidade: targetZone }
+            });
             playBeep('error'); // Usamos o som de erro para chamar à atenção, mas sem bloquear a entrada real no sistema
           } else {
-            setKioskScanResult({ type: 'success', user: foundUser, message: `Acesso Autorizado • Restam ${result?.remaining} entradas` });
+            setKioskScanResult({ 
+              type: 'success', 
+              user: foundUser, 
+              message: `Acesso Autorizado • Restam ${result?.remaining} entradas`,
+              actionDetails: { action: 'ENTRADA', time: new Date().toLocaleTimeString('pt-PT'), modalidade: targetZone }
+            });
             playBeep('success');
           }
         }

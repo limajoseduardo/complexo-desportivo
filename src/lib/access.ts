@@ -7,7 +7,9 @@ import {
 import { UserProfile } from '../types';
 
 export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio', bypassLimit = false) => {
-  // Nesta fase inicial, não há controlo de limite de entradas.
+  const currentEntries = user.entradas_disponiveis || 0;
+  const requiresPayment = currentEntries <= 0;
+  const remaining = Math.max(0, currentEntries - 1);
   // Apenas registo de check-in para estatísticas e seguros.
 
   const usersPath = `artifacts/${APP_ID}/public/data/users`;
@@ -31,15 +33,19 @@ export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio'
   await updateDoc(userRef, {
     isInside: true,
     location: zone,
+    ...(currentEntries > 0 ? { entradas_disponiveis: currentEntries - 1 } : {}),
     lastCheckInDate: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
+
+  return { requiresPayment, remaining };
 };
 
 export const handleCheckOut = async (user: UserProfile) => {
   const usersPath = `artifacts/${APP_ID}/public/data/users`;
   const logsPath = `artifacts/${APP_ID}/public/data/logs_acesso`;
   const userRef = doc(db, usersPath, user.id);
+  let finalDuration = 0;
   
   try {
     // 1. Find Open Log (try most recent log for this user)
@@ -93,11 +99,11 @@ export const handleCheckOut = async (user: UserProfile) => {
         }
 
         const now = new Date();
-        const duration = Math.max(1, Math.round((now.getTime() - checkInDate.getTime()) / (1000 * 60)));
+        finalDuration = Math.max(1, Math.round((now.getTime() - checkInDate.getTime()) / (1000 * 60)));
 
         await updateDoc(doc(db, logsPath, logDoc.id), {
           checkOut: serverTimestamp(),
-          durationMinutes: duration
+          durationMinutes: finalDuration
         });
       }
     }
@@ -113,6 +119,7 @@ export const handleCheckOut = async (user: UserProfile) => {
       location: null,
       updatedAt: new Date().toISOString()
     });
+    return { durationMinutes: finalDuration };
   } catch (userError) {
     console.error("Error updating user status during checkout:", userError);
     throw userError;

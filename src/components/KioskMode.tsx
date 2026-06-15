@@ -5,7 +5,7 @@ import { ShieldAlert, ShieldCheck, Radio, AlertTriangle } from 'lucide-react';
 import { Scanner, IDetectedBarcode } from '@yudiel/react-qr-scanner';
 
 interface KioskModeProps {
-  scanResult: { type: 'success' | 'error' | 'warning'; user?: UserProfile; message: string } | null;
+  scanResult: { type: 'success' | 'error' | 'warning' | 'checkout'; user?: UserProfile; message: string; actionDetails?: { action: 'ENTRADA' | 'SAÍDA', time: string, modalidade?: string, duration?: number } } | null;
   onExit: () => void;
   onScan: (decodedText: string) => void;
 }
@@ -70,18 +70,39 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
 
       {/* Resultados por cima da câmara */}
       {scanResult && (
-        <div className={`absolute inset-0 ${scanResult.type === 'success' && scanResult.user ? 'bg-emerald-500 text-white' : scanResult.type === 'warning' && scanResult.user ? 'bg-yellow-400 text-[#004D71]' : 'bg-red-600 text-white'} flex flex-col items-center justify-center animate-in zoom-in duration-300`}>
-          {(scanResult.type === 'success' || scanResult.type === 'warning') && scanResult.user ? (
+        <div className={`absolute inset-0 ${scanResult.type === 'success' && scanResult.user ? 'bg-emerald-500 text-white' : scanResult.type === 'warning' && scanResult.user ? 'bg-yellow-400 text-[#004D71]' : scanResult.type === 'checkout' && scanResult.user ? 'bg-red-600 text-white' : 'bg-red-600 text-white'} flex flex-col items-center justify-center animate-in zoom-in duration-300`}>
+          {(scanResult.type === 'success' || scanResult.type === 'warning' || scanResult.type === 'checkout') && scanResult.user ? (
             <>
-              {scanResult.type === 'warning' ? <AlertTriangle size={140} className="mb-10 drop-shadow-2xl"/> : <ShieldCheck size={140} className="mb-10 drop-shadow-2xl"/>}
+              {scanResult.type === 'warning' ? <AlertTriangle size={140} className="mb-8 drop-shadow-2xl"/> : <ShieldCheck size={140} className="mb-8 drop-shadow-2xl"/>}
+              
+              {scanResult.actionDetails && (
+                <div className="flex gap-4 mb-4">
+                  <span className="px-6 py-2 rounded-full bg-white/20 font-black text-xl tracking-widest">{scanResult.actionDetails.action}</span>
+                  <span className="px-6 py-2 rounded-full bg-white/20 font-black text-xl tracking-widest">{scanResult.actionDetails.time}</span>
+                </div>
+              )}
+
               {scanResult.user.img && (
-                <div className={`w-48 h-48 rounded-[3rem] overflow-hidden border-[10px] ${scanResult.type === 'warning' ? 'border-[#004D71]' : 'border-white'} shadow-2xl mb-10`}>
+                <div className={`w-48 h-48 rounded-[3rem] overflow-hidden border-[10px] ${scanResult.type === 'warning' ? 'border-[#004D71]' : 'border-white'} shadow-2xl mb-8`}>
                   <AvatarImage src={scanResult.user.img} alt="Foto" className="w-full h-full object-cover"/>
                 </div>
               )}
-              <h1 className="text-7xl font-black uppercase tracking-tight mb-6 drop-shadow-lg text-center px-4 leading-tight">{scanResult.user.n || scanResult.user.nome}</h1>
-              <p className={`text-4xl font-black px-10 py-5 rounded-[2rem] uppercase tracking-widest shadow-inner ${scanResult.type === 'warning' ? 'bg-white/40' : 'bg-black/20'}`}>{scanResult.user.modalidade || 'Acesso Autorizado'}</p>
-              <p className={`text-3xl font-black mt-8 px-12 py-6 rounded-full uppercase tracking-widest shadow-2xl ${scanResult.type === 'warning' ? 'bg-[#004D71] text-yellow-400' : 'bg-white text-emerald-600'}`}>{scanResult.message}</p>
+              
+              <h1 className="text-7xl font-black uppercase tracking-tight mb-4 drop-shadow-lg text-center px-4 leading-tight">{scanResult.user.n || scanResult.user.nome}</h1>
+              
+              {scanResult.actionDetails?.modalidade && (
+                <p className={`text-4xl font-black px-10 py-5 rounded-[2rem] uppercase tracking-widest shadow-inner ${scanResult.type === 'warning' ? 'bg-white/40' : 'bg-black/20'}`}>
+                  {scanResult.actionDetails.modalidade}
+                </p>
+              )}
+
+              {scanResult.type === 'checkout' && scanResult.actionDetails?.duration !== undefined && (
+                <p className="text-3xl font-black px-10 py-5 rounded-[2rem] uppercase tracking-widest shadow-inner bg-black/20 mt-4">
+                  Tempo no recinto: {scanResult.actionDetails.duration} min
+                </p>
+              )}
+
+              <p className={`text-3xl font-black mt-8 px-12 py-6 rounded-full uppercase tracking-widest shadow-2xl ${scanResult.type === 'warning' ? 'bg-[#004D71] text-yellow-400' : 'bg-white text-emerald-600'} ${scanResult.type === 'checkout' ? 'text-red-600' : ''}`}>{scanResult.message}</p>
             </>
           ) : (
             <>
