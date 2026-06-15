@@ -687,13 +687,15 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   }), [allDateLogs, searchTerm, filterStatus]);
 
   const statsByModality = React.useMemo(() => {
-    const rows = modalities.map(m => ({
-      label: m,
-      count: allDateLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
-    })).filter(s => s.count > 0);
-    const otherCount = allDateLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
-    if (otherCount > 0) rows.push({ label: 'Outro / Geral', count: otherCount });
-    return rows;
+    const counts: Record<string, number> = {};
+    allDateLogs.forEach(l => {
+      const mod = l.modalidade?.trim() || 'Outro / Geral';
+      counts[mod] = (counts[mod] || 0) + 1;
+    });
+    
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count);
   }, [allDateLogs]);
 
   const hourlyData = React.useMemo(() => {
@@ -793,28 +795,32 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Período: ${startDate} a ${endDate}`, 14, 30);
-      doc.text(`Total de Entradas: ${allDateLogs.length}`, 14, 35);
+      const isSingleDay = startDate === endDate;
 
-      const tableData = allDateLogs.map(l => [
-        l.date,
-        l.userName,
-        l.modalidade || '---',
-        l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
-        l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
-        l.durationMinutes ? `${l.durationMinutes} min` : '---',
-      ]);
+      let finalY = 45;
 
-      autoTable(doc, {
-        startY: 45,
-        head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
-        body: tableData,
-        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
-        alternateRowStyles: { fillColor: [245, 247, 250] },
-        margin: { top: 45 },
-        styles: { fontSize: 8, font: 'helvetica' }
-      });
+      if (isSingleDay) {
+        const tableData = allDateLogs.map(l => [
+          l.date,
+          l.userName,
+          l.modalidade || '---',
+          l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
+          l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
+          l.durationMinutes ? `${l.durationMinutes} min` : '---',
+        ]);
 
-      const finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 15 : 60;
+        autoTable(doc, {
+          startY: 45,
+          head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
+          body: tableData,
+          headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
+          alternateRowStyles: { fillColor: [245, 247, 250] },
+          margin: { top: 45 },
+          styles: { fontSize: 8, font: 'helvetica' }
+        });
+
+        finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 15 : 60;
+      }
 
       doc.setFontSize(14);
       doc.setTextColor(0, 77, 113);
