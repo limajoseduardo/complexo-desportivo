@@ -12,28 +12,19 @@
   --vr-bg: #F8FAFC;
 }
 
-html {
-  background-color: var(--vr-blue);
-}
-
-body {
+html, body {
   margin: 0;
   padding: 0;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
   height: 100%;
+  width: 100%;
   background-color: var(--vr-bg);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
 .app-shell {
-  width: 100%;
   height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
