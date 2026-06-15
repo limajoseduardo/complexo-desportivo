@@ -689,12 +689,12 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const statsByModality = React.useMemo(() => {
     const rows = modalities.map(m => ({
       label: m,
-      count: monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
+      count: filteredLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
     })).filter(s => s.count > 0);
-    const otherCount = monthlyLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
+    const otherCount = filteredLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
     if (otherCount > 0) rows.push({ label: 'Outro / Geral', count: otherCount });
     return rows;
-  }, [monthlyLogs]);
+  }, [filteredLogs]);
 
   const hourlyData = React.useMemo(() => {
     const hours = new Array(24).fill(0);
@@ -771,13 +771,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
     });
     csv += `"TOTAL GERAL",${filteredLogs.length}\n`;
 
-    // Append Rankings
-    csv += "\nRanking de Presenças (Top 3 por Modalidade)\nModalidade,Classificação,Utente,Presenças\n";
-    Object.entries(leaderboardByModality).forEach(([modality, users]) => {
-      (users as any).forEach((u: any, i: number) => {
-        csv += `"${modality}",${i + 1}º Lugar,"${u.userName}",${u.count}\n`;
-      });
-    });
+    // Top 3 Ranking Removido a pedido do cliente
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -838,50 +832,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
       styles: { fontSize: 9, font: 'helvetica' }
     });
 
-    // Add rankings if exists
-    const rankTableData: string[][] = [];
-    Object.entries(leaderboardByModality).forEach(([modality, users]) => {
-      (users as any).forEach((u: any, index: number) => {
-        rankTableData.push([
-          modality,
-          `${index + 1}º Lugar`,
-          u.userName,
-          `${u.count} presenças`
-        ]);
-      });
-    });
-
-    if (rankTableData.length > 0) {
-      const rankY = (doc as any).lastAutoTable.finalY + 15;
-
-      // Page break check if near the bottom
-      if (rankY > 240) {
-        doc.addPage();
-        doc.setFontSize(14);
-        doc.setTextColor(0, 77, 113);
-        doc.text('Maiores Utilizadores (Top 3 por Modalidade)', 14, 22);
-
-        autoTable(doc, {
-          startY: 28,
-          head: [['Modalidade', 'Posição', 'Utente', 'Presenças']],
-          body: rankTableData,
-          headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
-          styles: { fontSize: 8, font: 'helvetica' }
-        });
-      } else {
-        doc.setFontSize(14);
-        doc.setTextColor(0, 77, 113);
-        doc.text('Maiores Utilizadores (Top 3 por Modalidade)', 14, rankY);
-
-        autoTable(doc, {
-          startY: rankY + 5,
-          head: [['Modalidade', 'Posição', 'Utente', 'Presenças']],
-          body: rankTableData,
-          headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
-          styles: { fontSize: 8, font: 'helvetica' }
-        });
-      }
-    }
+    // Rankings Top 3 Removidos a pedido do cliente
 
     doc.save(`relatorio_acessos_${startDate}_a_${endDate}.pdf`);
   };
