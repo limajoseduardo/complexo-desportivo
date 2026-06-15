@@ -677,8 +677,12 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const filteredLogs = React.useMemo(() => allDateLogs.filter(l => {
     const matchSearch = (l.userName || '').toLowerCase().includes(searchTerm.toLowerCase());
     let matchStatus = true;
-    if (filterStatus === 'inside') matchStatus = !l.checkOut;
-    if (filterStatus === 'left') matchStatus = !!l.checkOut;
+    if (filterStatus === 'inside') {
+      matchStatus = !l.checkOut && l.modalidade !== 'Piscina Exterior';
+    }
+    if (filterStatus === 'left') {
+      matchStatus = !!l.checkOut && l.modalidade !== 'Piscina Exterior';
+    }
     return matchSearch && matchStatus;
   }), [allDateLogs, searchTerm, filterStatus]);
 
