@@ -12,7 +12,12 @@
   --vr-bg: #F8FAFC;
 }
 
-html, body {
+html {
+  background-color: var(--vr-blue);
+  height: 100%;
+}
+
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -52,8 +57,7 @@ html, body {
   padding-right: env(safe-area-inset-right) !important; 
 }
 
-/* Em PWA (Standalone), o iOS já empurra o bottom: 0 para cima da barra (Home Indicator),
-   logo se usarmos o env(safe-area) ficamos com o dobro do tamanho (queixo enorme). */
+/* Em PWA, o bottom do iOS já sobe acima do Home Indicator. Evitar queixo duplo. */
 @media (display-mode: standalone) {
   .pb-safe {
     padding-bottom: 0.5rem !important;

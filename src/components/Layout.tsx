@@ -435,9 +435,9 @@ export const MobileNav = ({ role, activeTab, setActiveTab, unreadCount = 0, isVi
   const tabs = MENU_ITEMS(unreadCount).filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios' && tab.id !== 'mapas');
 
   return (
-    <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-1.5 pb-safe flex justify-around items-center z-50 rounded-t-[2rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+    <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-3 pb-safe flex justify-around items-center z-50 rounded-t-[2.5rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
       {tabs.map(tab => (
-        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex flex-col items-center w-full py-1.5 relative">
+        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex flex-col items-center w-full py-2 relative">
           {tab.badge ? (
             <div className="absolute top-1 right-1/4 z-10">
               <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
