@@ -14,7 +14,8 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { isUserInZone } from '../lib/logic';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { SwimmingStudentPortal } from './SwimmingModule';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { GlobalErrorBoundary } from './ErrorBoundary';
 
 export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], utentes: UserProfile[] }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
@@ -650,6 +651,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
                   <div>
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">Entradas por semana</p>
                     <div className="h-28">
+                      <GlobalErrorBoundary>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={modalData.weeklyData} barSize={28} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                           <XAxis dataKey="week" tick={{ fontSize: 9, fontWeight: 900, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
@@ -665,6 +667,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
+                      </GlobalErrorBoundary>
                     </div>
                   </div>
                 )}

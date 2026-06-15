@@ -36,6 +36,7 @@ import { QrCode, Shield, Radio, X, Check, MonitorSmartphone } from 'lucide-react
 import { LoginScreen, Header, DesktopSidebar, MobileNav, ModePicker } from './components/Layout';
 import { UserProfile } from './types';
 import { PicotoIcon } from './components/Common';
+import { GlobalErrorBoundary } from './components/ErrorBoundary';
 import { auth, db, handleFirestoreError, OperationType, APP_ID } from './lib/firebase';
 import { REAL_STAFF } from './lib/seed';
 import { onAuthStateChanged, signInAnonymously, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
@@ -808,6 +809,7 @@ export default function App() {
           )}
           
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
+            <GlobalErrorBoundary>
             <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center text-[#004D71] font-black uppercase text-sm animate-pulse tracking-widest mt-20">A carregar...</div>}>
             {viewingProfile ? (
               <ProfileViewModule 
@@ -852,7 +854,7 @@ export default function App() {
                 )}
                 {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
                 {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
-                {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />} {/* Moved maps up */}
+                {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />}
                 {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                 {activeTab === 'qr' && user.role === 'utente' && (
                   <UtenteQRCard
@@ -885,6 +887,7 @@ export default function App() {
               </>
             )}
             </React.Suspense>
+            </GlobalErrorBoundary>
           </main>
 
           <MobileNav 

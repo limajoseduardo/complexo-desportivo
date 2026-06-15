@@ -19,31 +19,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar } from 'recharts';
-
-class ErrorBoundary extends React.Component<any, any> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-8 bg-red-50 text-red-600 rounded-xl m-4 border border-red-200">
-          <h1 className="text-xl font-black mb-2">Um erro ocorreu no React!</h1>
-          <pre className="text-xs overflow-auto bg-white p-4 rounded-lg shadow-inner">{this.state.error?.message}</pre>
-          <pre className="text-xs overflow-auto mt-2 text-slate-500">{this.state.error?.stack}</pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import { GlobalErrorBoundary as ErrorBoundary } from './ErrorBoundary';
 
 function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[] } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -1628,6 +1604,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
             </div>
             {todayAffluenceByLocation.length > 0 ? (
               <div className="h-52">
+                <ErrorBoundary>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={todayAffluenceByLocation} margin={{ top: 6, right: 6, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1637,6 +1614,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                     <Bar dataKey="entradas" fill="#004D71" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+                </ErrorBoundary>
               </div>
             ) : (
               <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">

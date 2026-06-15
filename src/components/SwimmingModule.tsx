@@ -6,10 +6,8 @@ import {
   Award, Send, UserCheck, Star, Sparkles, BookOpen, X, FileText, Download
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { 
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
-  CartesianGrid, Tooltip, BarChart, Bar, Legend 
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { GlobalErrorBoundary } from './ErrorBoundary';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
 import { 
@@ -1648,27 +1646,32 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
                             <TrendingUp size={12}/> Progressão de Distância (Metros por Aula)
                           </h4>
                           <div className="h-60 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart
-                                data={statsStudentLogs.map(l => ({
-                                  data: l.data.split('-').slice(1).reverse().join('/'),
-                                  metros: l.distancias[statsStudentId] || 0
-                                }))}
-                                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                              >
-                                <defs>
-                                  <linearGradient id="colorMetros" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#004D71" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="#004D71" stopOpacity={0}/>
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="data" stroke="#94a3b8" fontSize={9} fontWeight="bold" />
-                                <YAxis stroke="#94a3b8" fontSize={9} fontWeight="bold" />
-                                <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '10px', fontWeight: 'bold' }} />
-                                <Area type="monotone" dataKey="metros" stroke="#004D71" strokeWidth={3} fillOpacity={1} fill="url(#colorMetros)" />
-                              </AreaChart>
-                            </ResponsiveContainer>
+                            <GlobalErrorBoundary>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                  data={statsStudentLogs.map(l => ({
+                                    data: l.data.split('-').slice(1).reverse().join('/'),
+                                    metros: l.distancias[statsStudentId] || 0
+                                  }))}
+                                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                >
+                                  <defs>
+                                    <linearGradient id="colorMetros" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#004D71" stopOpacity={0.3}/>
+                                      <stop offset="95%" stopColor="#004D71" stopOpacity={0}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                  <XAxis dataKey="data" tick={{fontSize: 9, fontWeight: 700}} axisLine={false} tickLine={false} />
+                                  <YAxis tick={{fontSize: 9, fontWeight: 700}} axisLine={false} tickLine={false} />
+                                  <Tooltip 
+                                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    itemStyle={{ color: '#004D71', fontWeight: 900 }}
+                                  />
+                                  <Area type="monotone" dataKey="metros" stroke="#004D71" strokeWidth={3} fillOpacity={1} fill="url(#colorMetros)" />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </GlobalErrorBoundary>
                           </div>
                         </div>
                       ) : (
