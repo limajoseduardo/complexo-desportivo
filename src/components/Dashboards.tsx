@@ -1132,7 +1132,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
 
           {/* QR Code Gigante */}
           <div className="w-full max-w-[500px] aspect-square flex items-center justify-center bg-white">
-            <QRCodeSVG value={qrValue} style={{ width: '100%', height: '100%' }} bgColor="#ffffff" fgColor="#000000" level="M" />
+            <QRCodeSVG value={qrValue} style={{ width: '100%', height: '100%' }} bgColor="#ffffff" fgColor="#000000" level="H" />
           </div>
           
           {/* Destino no fundo */}

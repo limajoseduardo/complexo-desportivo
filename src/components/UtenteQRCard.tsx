@@ -176,7 +176,8 @@ export function UtenteQRCard({ user, onEditProfile }: {
               size={220}
               bgColor="#ffffff"
               fgColor="#004D71"
-              level="M"
+              level="H"
+              includeMargin={false}
             />
           </div>
           <div className="text-center">
