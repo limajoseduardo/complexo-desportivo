@@ -27,18 +27,18 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
 
     const startScanner = async () => {
       try {
-        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
+        const { Html5Qrcode } = await import('html5-qrcode');
         if (!isMounted) return;
 
-        const scanner = new Html5Qrcode('kiosk-qr-reader', { formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ], verbose: false });
+        const scanner = new Html5Qrcode('kiosk-qr-reader');
         scannerRef.current = scanner;
 
         await scanner.start(
           { facingMode: 'user' }, // Camara frontal
           {
-            fps: 10, // 10 fps é o ideal para não encravar o processador do pc
-            qrbox: { width: 350, height: 350 }, // Uma caixa de leitura invisível grande mas delimitada
-            aspectRatio: 1.0
+            fps: 10, 
+            qrbox: 250, // Caixa padrão e segura, nunca falha
+            disableFlip: false // Garante que lê códigos QR espelhados (típico em câmaras frontais)
           },
           (decodedText: string) => {
             // Se estivermos a mostrar um resultado de scan, ignorar novas leituras
