@@ -816,7 +816,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
         styles: { fontSize: 8, font: 'helvetica' }
       });
 
-      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      const finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 15 : 60;
 
       doc.setFontSize(14);
       doc.setTextColor(0, 77, 113);
