@@ -689,12 +689,12 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const statsByModality = React.useMemo(() => {
     const rows = modalities.map(m => ({
       label: m,
-      count: filteredLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
+      count: allDateLogs.filter(l => normalizeModality(l.modalidade || '') === m).length
     })).filter(s => s.count > 0);
-    const otherCount = filteredLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
+    const otherCount = allDateLogs.filter(l => !modalities.includes(normalizeModality(l.modalidade || ''))).length;
     if (otherCount > 0) rows.push({ label: 'Outro / Geral', count: otherCount });
     return rows;
-  }, [filteredLogs]);
+  }, [allDateLogs]);
 
   const hourlyData = React.useMemo(() => {
     const hours = new Array(24).fill(0);
@@ -758,18 +758,16 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   }, [monthlyLogs]);
 
   const downloadCSV = () => {
-    let csv = "Data,Nome,Modalidade,Entrada,Saida,Duração (min)\n";
-    filteredLogs.forEach(l => {
-      const checkIn = l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString() : l.checkIn;
-      const checkOut = l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString() : l.checkOut) : '---';
-      csv += `${l.date},"${l.userName}","${l.modalidade || ''}",${checkIn},${checkOut},${l.durationMinutes || 0}\n`;
+    let csv = "Data,Utente,Modalidade,Entrada,Saída,Duração\n";
+    allDateLogs.forEach(l => {
+      csv += `"${l.date}","${l.userName}","${l.modalidade}","${l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn}","${l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro'}","${l.durationMinutes || ''}"\n`;
     });
 
-    csv += "\nResumo por Modalidade\nModalidade,Total de Entradas\n";
+    csv += "\nResumo por Modalidade\nModalidade,Total\n";
     statsByModality.forEach(s => {
       csv += `"${s.label}",${s.count}\n`;
     });
-    csv += `"TOTAL GERAL",${filteredLogs.length}\n`;
+    csv += `"TOTAL GERAL",${allDateLogs.length}\n`;
 
     // Top 3 Ranking Removido a pedido do cliente
 
@@ -795,9 +793,9 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Período: ${startDate} a ${endDate}`, 14, 30);
-      doc.text(`Total de Entradas: ${filteredLogs.length}`, 14, 35);
+      doc.text(`Total de Entradas: ${allDateLogs.length}`, 14, 35);
 
-      const tableData = filteredLogs.map(l => [
+      const tableData = allDateLogs.map(l => [
         l.date,
         l.userName,
         l.modalidade || '---',
@@ -823,7 +821,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
       doc.text('Resumo por Modalidade', 14, finalY);
 
       const summaryData = statsByModality.map(s => [s.label, s.count.toString()]);
-      summaryData.push(['TOTAL', filteredLogs.length.toString()]);
+      summaryData.push(['TOTAL', allDateLogs.length.toString()]);
 
       autoTable(doc, {
         startY: finalY + 5,
