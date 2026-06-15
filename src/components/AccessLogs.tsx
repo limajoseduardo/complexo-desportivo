@@ -69,7 +69,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const readOnly = currentUser?.role === 'chefia';
 
   const [modalMode, setModalMode] = useState<'single' | 'outdoor_pool'>('single');
-  const [outdoorEntradas, setOutdoorEntradas] = useState(1);
+  const [adultEntradas, setAdultEntradas] = useState(0);
+  const [childEntradas, setChildEntradas] = useState(0);
   const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas'>('diario');
 
   // CORREÇÃO E AUTO-CHECKOUT (19h)
@@ -130,8 +131,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   }, []);
 
   const handleOutdoorPoolSubmit = () => {
-    if (outdoorEntradas === 0) {
-      alert("Por favor, selecione um número diferente de zero.");
+    if (adultEntradas === 0 && childEntradas === 0) {
+      alert("Por favor, adicione pelo menos uma entrada.");
       return;
     }
 
@@ -146,16 +147,15 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
 
         const batch = writeBatch(db);
 
-        if (outdoorEntradas > 0) {
-          // ADICIONAR
-          for (let i = 0; i < outdoorEntradas; i++) {
-            const timestampMs = Date.now() + i;
+        // Função auxiliar para adicionar
+        const addEntries = (count: number, label: string) => {
+          for (let i = 0; i < count; i++) {
+            const timestampMs = Date.now() + Math.random() * 1000 + i;
             const logId = `ext_${timestampMs}`;
             const logDocRef = doc(db, path, logId);
-
             batch.set(logDocRef, {
               userId: `ext_entrada`,
-              userName: `PISCINA EXTERIOR (ENTRADA)`,
+              userName: `PISCINA EXTERIOR (${label})`,
               userRole: 'utente',
               checkIn: Timestamp.now(),
               date: today,
@@ -164,29 +164,35 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
               timestamp: serverTimestamp()
             });
           }
-        } else {
-          // REMOVER
-          const numberToRemove = Math.abs(outdoorEntradas);
+        };
+
+        // Função auxiliar para remover
+        const removeEntries = (countToRemove: number, label: string) => {
           const recentLogs = allDateLogs
-            .filter(l => l.userId === 'ext_entrada' && l.date === today)
+            .filter(l => l.userId === 'ext_entrada' && l.date === today && l.userName.includes(label))
             .sort((a, b) => {
               const timeA = a.checkIn instanceof Timestamp ? a.checkIn.toMillis() : 0;
               const timeB = b.checkIn instanceof Timestamp ? b.checkIn.toMillis() : 0;
               return timeB - timeA;
-            })
-            .slice(0, numberToRemove);
+            });
+            
+          const logsToRemove = recentLogs.slice(0, countToRemove);
 
-          if (recentLogs.length === 0) {
-            alert("Não existem registos de Piscina Exterior recentes hoje para remover.");
-            setIsSubmitting(false);
-            return;
+          if (logsToRemove.length < countToRemove) {
+            alert(`Atenção: Apenas foram encontrados ${logsToRemove.length} registos recentes de ${label} para remover hoje.`);
           }
 
-          recentLogs.forEach(log => {
+          logsToRemove.forEach(log => {
             const logDocRef = doc(db, path, log.id);
             batch.delete(logDocRef);
           });
-        }
+        };
+
+        if (adultEntradas > 0) addEntries(adultEntradas, 'ADULTO');
+        if (adultEntradas < 0) removeEntries(Math.abs(adultEntradas), 'ADULTO');
+
+        if (childEntradas > 0) addEntries(childEntradas, 'CRIANÇA');
+        if (childEntradas < 0) removeEntries(Math.abs(childEntradas), 'CRIANÇA');
 
         // 3. Executar o batch de forma "Optimista" sem usar 'await'.
         batch.commit().catch(error => {
@@ -194,7 +200,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
         });
 
         // 4. Limpar a UI imediatamente
-        setOutdoorEntradas(1);
+        setAdultEntradas(0);
+        setChildEntradas(0);
       } catch (error) {
         console.error("Error building batch:", error);
       } finally {
@@ -400,7 +407,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
     setNewUserName('');
     setNewUserPhone('');
     setModalMode('single');
-    setOutdoorEntradas(1);
+    setAdultEntradas(0);
+    setChildEntradas(0);
   };
 
   const handleRegisterAndCheckIn = async () => {
@@ -1270,38 +1278,68 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4 bg-white px-2 py-1 rounded-xl shadow-sm border border-slate-100">
-            <button
-              type="button"
-              onClick={() => setOutdoorEntradas(prev => prev - 1)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
-            >
-              -
-            </button>
-            <span className={`text-2xl font-black w-10 text-center ${outdoorEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{outdoorEntradas}</span>
-            <button
-              type="button"
-              onClick={() => setOutdoorEntradas(prev => prev + 1)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-lg text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
-            >
-              +
-            </button>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex items-center gap-4 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100">
+            {/* Adultos */}
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] font-black uppercase text-slate-400 mb-1">Adultos</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAdultEntradas(prev => prev - 1)}
+                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
+                >
+                  -
+                </button>
+                <span className={`text-xl font-black w-6 text-center ${adultEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{adultEntradas}</span>
+                <button
+                  type="button"
+                  onClick={() => setAdultEntradas(prev => prev + 1)}
+                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            
+            <div className="w-[1px] h-10 bg-slate-100 mx-1"></div>
+
+            {/* Crianças */}
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] font-black uppercase text-slate-400 mb-1">Crianças</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChildEntradas(prev => prev - 1)}
+                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
+                >
+                  -
+                </button>
+                <span className={`text-xl font-black w-6 text-center ${childEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{childEntradas}</span>
+                <button
+                  type="button"
+                  onClick={() => setChildEntradas(prev => prev + 1)}
+                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
+                >
+                  +
+                </button>
+              </div>
+            </div>
           </div>
 
           <button
-            disabled={isSubmitting || outdoorEntradas === 0}
+            disabled={isSubmitting || (adultEntradas === 0 && childEntradas === 0)}
             onClick={handleOutdoorPoolSubmit}
-            className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${outdoorEntradas < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+            className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${adultEntradas < 0 || childEntradas < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
           >
             {isSubmitting ? (
               <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-            ) : outdoorEntradas < 0 ? (
+            ) : (adultEntradas < 0 || childEntradas < 0) ? (
               <Trash2 size={14} />
             ) : (
               <LogIn size={14} />
             )}
-            {outdoorEntradas < 0 ? `Remover ${Math.abs(outdoorEntradas)} Entrada(s)` : `Registar ${outdoorEntradas} Entrada(s)`}
+            {(adultEntradas < 0 || childEntradas < 0) ? `Remover Registos` : `Registar Entradas`}
           </button>
         </div>
       </div>
