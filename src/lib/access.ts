@@ -7,10 +7,8 @@ import {
 import { UserProfile } from '../types';
 
 export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio', bypassLimit = false) => {
-  const currentEntries = user.entradas_disponiveis || 0;
-  if (!bypassLimit && currentEntries <= 0) {
-    throw new Error("Sem entradas disponíveis. Por favor, carregue o seu cartão na receção.");
-  }
+  // Nesta fase inicial, não há controlo de limite de entradas.
+  // Apenas registo de check-in para estatísticas e seguros.
 
   const usersPath = `artifacts/${APP_ID}/public/data/users`;
   const logsPath = `artifacts/${APP_ID}/public/data/logs_acesso`;
@@ -33,7 +31,6 @@ export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio'
   await updateDoc(userRef, {
     isInside: true,
     location: zone,
-    ...(currentEntries > 0 ? { entradas_disponiveis: currentEntries - 1 } : {}),
     lastCheckInDate: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
