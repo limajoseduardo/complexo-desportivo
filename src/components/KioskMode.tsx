@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { AvatarImage } from './Common';
 import { ShieldAlert, ShieldCheck, Radio, AlertTriangle } from 'lucide-react';
@@ -6,9 +6,13 @@ import { ShieldAlert, ShieldCheck, Radio, AlertTriangle } from 'lucide-react';
 interface KioskModeProps {
   scanResult: { type: 'success' | 'error'; user?: UserProfile; message: string } | null;
   onExit: () => void;
+  onScan: (decodedText: string) => void;
 }
 
-export function KioskMode({ scanResult, onExit }: KioskModeProps) {
+export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
+  const scannerRef = useRef<any>(null);
+  const [hasCameraError, setHasCameraError] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onExit();
@@ -17,15 +21,73 @@ export function KioskMode({ scanResult, onExit }: KioskModeProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onExit]);
 
+  useEffect(() => {
+    let scanner: any = null;
+    let isMounted = true;
+
+    // Se estivermos a mostrar um resultado de scan, não iniciamos a câmara
+    if (scanResult) return;
+
+    const startScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (!isMounted) return;
+
+        scanner = new Html5Qrcode('kiosk-qr-reader');
+        scannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: 'user' }, // Camara frontal comum para quiosques
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+          },
+          (decodedText: string) => {
+            // Em caso de leitura de sucesso, bloqueamos a leitura repetida até o resultado ser limpo
+            if (scannerRef.current) {
+              scannerRef.current.stop().catch(console.error);
+              scannerRef.current = null;
+            }
+            onScan(decodedText);
+          },
+          () => {} // Ignorar erros normais de frame vazio
+        );
+      } catch (err) {
+        console.error("Erro a iniciar câmara de Quiosque:", err);
+        if (isMounted) setHasCameraError(true);
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      isMounted = false;
+      if (scanner) {
+        scanner.stop().catch(console.error);
+      }
+    };
+  }, [scanResult, onScan]);
+
   if (!scanResult) {
     return (
       <div className="fixed inset-0 bg-[#004D71] z-[999999] flex flex-col items-center justify-center text-white cursor-none select-none">
-        <button onClick={onExit} className="absolute top-8 right-8 text-white/20 hover:text-white/50 text-xs font-black uppercase tracking-widest outline-none transition-colors">Sair do Modo Quiosque</button>
-        <div className="w-64 h-64 bg-[#F7B500]/10 rounded-full flex items-center justify-center mb-12 animate-pulse shadow-[0_0_100px_rgba(247,181,0,0.1)]">
-          <Radio size={100} className="text-[#F7B500]"/>
-        </div>
+        <button onClick={onExit} className="absolute top-8 right-8 text-white/20 hover:text-white/50 text-xs font-black uppercase tracking-widest outline-none transition-colors z-50">Sair do Modo Quiosque</button>
+        
+        {hasCameraError ? (
+          <div className="w-64 h-64 bg-red-500/10 rounded-full flex flex-col items-center justify-center mb-12 shadow-[0_0_100px_rgba(239,68,68,0.1)]">
+            <AlertTriangle size={60} className="text-red-500 mb-4"/>
+            <span className="text-xs font-bold text-center px-4">Sem permissão de câmara. Usa Leitor RFID.</span>
+          </div>
+        ) : (
+          <div className="w-[300px] h-[300px] mb-12 rounded-[3rem] overflow-hidden bg-black/20 shadow-2xl border-4 border-white/10 relative">
+             <div id="kiosk-qr-reader" className="w-full h-full object-cover"></div>
+             <div className="absolute inset-0 border-4 border-[#F7B500] rounded-[3rem] pointer-events-none animate-pulse opacity-50"></div>
+          </div>
+        )}
+
         <h1 className="text-6xl font-black uppercase tracking-tight mb-6">Auto Check-in</h1>
-        <p className="text-2xl font-bold opacity-70 uppercase tracking-widest">Aproxime o seu Cartão ou Pulseira</p>
+        <p className="text-2xl font-bold opacity-70 uppercase tracking-widest">Aproxime o seu QR Code, Cartão ou Pulseira</p>
       </div>
     );
   }

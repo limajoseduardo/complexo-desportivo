@@ -71,6 +71,22 @@ body {
   }
 }
 
+/* Kiosk Mode QR Reader Video Fixes */
+#kiosk-qr-reader video {
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 2rem !important;
+}
+
+#kiosk-qr-reader {
+  border: none !important;
+}
+
+#kiosk-qr-reader__scan_region {
+  background: transparent !important;
+}
+
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 

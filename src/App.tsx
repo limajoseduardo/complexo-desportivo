@@ -232,6 +232,52 @@ export default function App() {
     }, 4000);
   };
 
+  const handleKioskScan = async (decodedText: string) => {
+    let userId = '';
+    
+    // Parse the QR format
+    if (decodedText.startsWith('CPX:')) {
+      const parts = decodedText.split(':');
+      userId = parts[1] || '';
+    } else if (decodedText.includes(':')) {
+      const parts = decodedText.split(':');
+      userId = parts[1] || '';
+    } else {
+      // Direct ID or UID
+      userId = decodedText;
+    }
+
+    const foundUser = utentes.find(u => u.id === userId || (u.rfidUid || '').trim() === userId.trim());
+    
+    if (foundUser) {
+      try {
+        if (foundUser.isInside) {
+          await handleCheckOut(foundUser);
+          setKioskScanResult({ type: 'success', user: foundUser, message: 'Saída Validada' });
+          playBeep('success');
+        } else {
+          await handleCheckIn(foundUser, foundUser.modalidade || 'Ginásio');
+          const remaining = Math.max(0, (foundUser.entradas_disponiveis || 0) - 1);
+          setKioskScanResult({ type: 'success', user: foundUser, message: `Entradas Restantes: ${remaining}` });
+          playBeep('success');
+        }
+      } catch (e: any) {
+        console.error(e);
+        const errMsg = e.message || `Erro ao processar acesso para ${foundUser.nome || foundUser.n}`;
+        setKioskScanResult({ type: 'error', user: foundUser, message: errMsg });
+        playBeep('error');
+      }
+    } else {
+      setKioskScanResult({ type: 'error', message: `QR Code não encontrado no sistema` });
+      playBeep('error');
+    }
+    
+    // Auto-dismiss Kiosk screen after 4 seconds to re-enable camera
+    setTimeout(() => {
+      setKioskScanResult(null);
+    }, 4000);
+  };
+
   // Setup RFID key listener hook
   useRfidScanner(processRfidScan);
 
@@ -759,6 +805,7 @@ export default function App() {
           <KioskMode 
             scanResult={kioskScanResult} 
             onExit={() => setShowKioskMode(false)} 
+            onScan={handleKioskScan}
           />
         </React.Suspense>
       )}
