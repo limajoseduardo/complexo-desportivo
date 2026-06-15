@@ -34,11 +34,7 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
         scannerRef.current = scanner;
 
         await scanner.start(
-          { 
-            facingMode: 'user',
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 }
-          },
+          { facingMode: 'user' }, // Camara frontal
           {
             fps: 30, // Mais rápido
             // Sem qrbox para analisar o ecrã inteiro e ser mais sensível a distâncias variadas
