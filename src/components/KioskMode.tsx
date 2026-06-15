@@ -91,7 +91,7 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
         )}
 
         <h1 className="text-6xl font-black uppercase tracking-tight mb-6 text-white">Auto Check-in</h1>
-        <p className="text-2xl font-bold opacity-70 uppercase tracking-widest text-white">Aproxime o seu QR Code, Cartão ou Pulseira</p>
+        <p className="text-2xl font-bold opacity-70 uppercase tracking-widest text-white">Aproxime o seu QR Code</p>
       </div>
 
       {/* Resultados por cima da câmara */}
