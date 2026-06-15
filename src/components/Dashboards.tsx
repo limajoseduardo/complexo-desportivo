@@ -974,7 +974,7 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [insideUsers, setInsideUsers] = useState<UserProfile[]>([]);
-  const [todayLogs, setTodayLogs] = useState<{ modalidade?: string }[]>([]);
+  const [todayLogs, setTodayLogs] = useState<{ modalidade?: string; checkOut?: string; zone?: string }[]>([]);
 
   const termsOk = !!(user.termo_imagens && user.termo_responsabilidade);
 
@@ -997,11 +997,11 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
       where('date', '==', today)
     );
     return onSnapshot(q, snap => {
-      setTodayLogs(snap.docs.map(d => d.data() as { modalidade?: string }));
+      setTodayLogs(snap.docs.map(d => d.data() as { modalidade?: string; checkOut?: string; zone?: string }));
     }, () => {});
   }, []);
 
-  const totalInside = insideUsers.length;
+  const totalInside = todayLogs.filter(l => !l.checkOut).length;
   const todayTotal  = todayLogs.length;
 
   const normMod = (m: string) => (m?.startsWith('Natação Nível') ? 'Natação' : m || '');
@@ -1052,12 +1052,23 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
               </div>
               <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {React.useMemo(() =>
-                  MODALITIES.map(m => ({
-                    ...m,
-                    liveCount:  insideUsers.filter(u => isUserInZone(u, m.id)).length,
-                    todayCount: countToday(m.dest),
-                  })).sort((a, b) => b.todayCount - a.todayCount),
-                [insideUsers, todayLogs]).map(m => (
+                  MODALITIES.map(m => {
+                    const liveCount = todayLogs.filter(l => {
+                      if (l.checkOut) return false;
+                      const testProfile = {
+                        isInside: true,
+                        location: l.modalidade || l.zone
+                      } as UserProfile;
+                      return isUserInZone(testProfile, m.id);
+                    }).length;
+                    
+                    return {
+                      ...m,
+                      liveCount,
+                      todayCount: countToday(m.dest),
+                    };
+                  }).sort((a, b) => b.todayCount - a.todayCount),
+                [todayLogs]).map(m => (
                     <button
                       key={m.id}
                       onClick={() => { setSelectedDest(m.dest); setShowQR(true); }}
