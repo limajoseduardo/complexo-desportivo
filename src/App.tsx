@@ -138,7 +138,7 @@ export default function App() {
   const [showRfidSimulator, setShowRfidSimulator] = useState(false);
   const [simRfidUid, setSimRfidUid] = useState('');
   const [showKioskMode, setShowKioskMode] = useState(false);
-  const [kioskScanResult, setKioskScanResult] = useState<{ type: 'success' | 'error'; user?: UserProfile; message: string } | null>(null);
+  const [kioskScanResult, setKioskScanResult] = useState<{ type: 'success' | 'error' | 'warning'; user?: UserProfile; message: string } | null>(null);
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastScrollY = React.useRef(0);
@@ -234,14 +234,17 @@ export default function App() {
 
   const handleKioskScan = async (decodedText: string) => {
     let userId = '';
+    let explicitZone = '';
     
     // Parse the QR format
     if (decodedText.startsWith('CPX:')) {
       const parts = decodedText.split(':');
       userId = parts[1] || '';
+      explicitZone = parts[2] || '';
     } else if (decodedText.includes(':')) {
       const parts = decodedText.split(':');
       userId = parts[1] || '';
+      explicitZone = parts[2] || '';
     } else {
       // Direct ID or UID
       userId = decodedText;
@@ -256,9 +259,15 @@ export default function App() {
           setKioskScanResult({ type: 'success', user: foundUser, message: 'Saída Validada' });
           playBeep('success');
         } else {
-          await handleCheckIn(foundUser, foundUser.modalidade || 'Ginásio');
-          setKioskScanResult({ type: 'success', user: foundUser, message: 'Entrada Registada' });
-          playBeep('success');
+          const targetZone = explicitZone || foundUser.modalidade || 'Ginásio';
+          const result = await handleCheckIn(foundUser, targetZone);
+          if (result && result.requiresPayment) {
+            setKioskScanResult({ type: 'warning', user: foundUser, message: 'Pagamento Necessário na Receção' });
+            playBeep('error'); // Usamos o som de erro para chamar à atenção, mas sem bloquear a entrada real no sistema
+          } else {
+            setKioskScanResult({ type: 'success', user: foundUser, message: `Acesso Autorizado • Restam ${result?.remaining} entradas` });
+            playBeep('success');
+          }
         }
       } catch (e: any) {
         console.error(e);
