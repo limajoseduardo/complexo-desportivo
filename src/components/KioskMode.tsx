@@ -13,6 +13,7 @@ interface KioskModeProps {
 export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
   const [hasCameraError, setHasCameraError] = useState(false);
   const isPaused = useRef(false);
+  const lastScanned = useRef<{ text: string; time: number } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -32,8 +33,18 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
   const handleScan = (detectedCodes: IDetectedBarcode[]) => {
     if (isPaused.current || detectedCodes.length === 0) return;
     
+    const code = detectedCodes[0].rawValue;
+    const now = Date.now();
+
+    // Se o utente estiver a segurar o MESMO código (ex: entrada) durante muito tempo, 
+    // ignoramos leituras repetidas do mesmo código durante 10 segundos para evitar dupla-entrada/saída.
+    if (lastScanned.current && lastScanned.current.text === code && (now - lastScanned.current.time < 10000)) {
+      return;
+    }
+
+    lastScanned.current = { text: code, time: now };
     isPaused.current = true;
-    onScan(detectedCodes[0].rawValue);
+    onScan(code);
   };
 
   return (
@@ -53,6 +64,8 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
                <Scanner
                   onScan={handleScan}
                   formats={['qr_code']}
+                  allowMultiple={true}
+                  scanDelay={300}
                   components={{
                     audio: false,
                     tracker: false
