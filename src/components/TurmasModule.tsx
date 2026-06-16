@@ -63,7 +63,8 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
       .map(d => ({ id: d.id, ...d.data() } as Turma))
       .filter(t => t.ativa !== false)
       .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio)));
-  }, () => {}), []);
+    setLoadingTurmas(false);
+  }, () => { setLoadingTurmas(false); }), []);
 
   const dow          = todayDow();
   const todayTurmas  = turmas.filter(t => t.diasSemana?.includes(dow));
