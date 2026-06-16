@@ -510,14 +510,14 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   useEffect(() => {
     if (!showAddInput || allUtentes.length > 0) return;
     setLoadingUtentes(true);
-    getDocs(query(
-      collection(db, `artifacts/${APP_ID}/public/data/users`),
-      where('role', '==', 'utente')
-    )).then(snap => {
-      setAllUtentes(snap.docs.map(d => {
+    getDocs(collection(db, `artifacts/${APP_ID}/public/data/users`)).then(snap => {
+      const usersList = snap.docs.map(d => {
         const data = d.data();
+        if (data.role === 'admin' || data.role === 'professor' || data.role === 'staff' || data.role === 'chefia') return null;
         return { id: d.id, nome: data.n || data.nome || d.id };
-      }).sort((a, b) => a.nome.localeCompare(b.nome)));
+      }).filter(Boolean) as { id: string; nome: string }[];
+      
+      setAllUtentes(usersList.sort((a, b) => a.nome.localeCompare(b.nome)));
     }).catch(() => {}).finally(() => setLoadingUtentes(false));
   }, [showAddInput, allUtentes.length]);
 
@@ -754,30 +754,30 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
               const wasMarked = !!logIds[aluno.id];
               const isNew     = !turma.alunos.find(a => a.id === aluno.id);
               return (
-                <div key={aluno.id} className={`flex items-center gap-2 rounded-2xl border-2 transition-all ${
+                <div key={aluno.id} className={`flex items-center gap-2 rounded-xl border transition-all ${
                   isMarked ? 'bg-green-50 border-green-300' : 'bg-white border-slate-100'
                 }`}>
                   <button onClick={() => toggle(aluno.id)}
-                    className="flex items-center gap-3 flex-1 p-3.5 text-left active:scale-[0.98] min-w-0">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                    className="flex items-center gap-3 flex-1 p-2.5 text-left active:scale-[0.98] min-w-0">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                       isMarked ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300'
                     }`}>
-                      {isMarked ? <Check size={18}/> : <div className="w-4 h-4 rounded-md border-2 border-slate-300"/>}
+                      {isMarked ? <Check size={14}/> : <div className="w-3 h-3 rounded-sm border-2 border-slate-300"/>}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-black text-sm uppercase leading-tight truncate ${isMarked ? 'text-green-800' : 'text-slate-700'}`}>
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <p className={`font-black text-xs uppercase leading-tight truncate ${isMarked ? 'text-green-800' : 'text-slate-700'}`}>
                         {aluno.nome}
-                        {isNew && <span className="ml-1.5 text-[8px] font-black text-[#F7B500] bg-[#004D71] px-1.5 py-0.5 rounded-md align-middle">Novo</span>}
+                        {isNew && <span className="ml-1.5 text-[7px] font-black text-[#F7B500] bg-[#004D71] px-1.5 py-0.5 rounded-sm align-middle">Novo</span>}
                       </p>
-                      <p className="text-[8px] font-black uppercase mt-0.5">
-                        {wasMarked && isMarked  && <span className="text-slate-400">Já marcada hoje</span>}
-                        {wasMarked && !isMarked && <span className="text-amber-500">Será removida</span>}
-                        {!wasMarked && isMarked && <span className="text-green-500">Nova presença</span>}
+                      <p className="text-[7px] font-black uppercase whitespace-nowrap">
+                        {wasMarked && isMarked  && <span className="text-slate-400">Já marcado</span>}
+                        {wasMarked && !isMarked && <span className="text-amber-500">A remover</span>}
+                        {!wasMarked && isMarked && <span className="text-green-500">Novo</span>}
                       </p>
                     </div>
                   </button>
                   <button onClick={() => setConfirmRemove(aluno)}
-                    className="p-2.5 mr-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-xl transition-all active:scale-90 shrink-0">
+                    className="p-2 mr-1 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-all active:scale-90 shrink-0">
                     <X size={14}/>
                   </button>
                 </div>
