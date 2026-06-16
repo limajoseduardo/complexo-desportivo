@@ -577,15 +577,17 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
       
       await updateDoc(doc(db, path, log.id), {
-        checkOut: deleteField(),
-        durationMinutes: deleteField()
+        checkOut: null,
+        durationMinutes: null
       });
 
       try {
         const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
         await updateDoc(userRef, { isInside: true, location: log.modalidade || 'C. Desportivo' });
       } catch (_) { }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("ERRO DESFAZER SAIDA:", error);
+      alert("Erro ao desfazer saída: " + error.message);
       handleFirestoreError(error, OperationType.UPDATE, 'logs_acesso');
     }
   };
