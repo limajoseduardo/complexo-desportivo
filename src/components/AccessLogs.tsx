@@ -1412,26 +1412,22 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
           {/* Quadrados em tempo real */}
           <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
             {dailyStats.map(z => (
-              <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm flex flex-col gap-2 border border-white/10`}>
-                {/* Label row */}
-                <div className="flex items-center gap-1.5">
-                  <span className={`${z.color} bg-white/10 p-1 rounded-md shrink-0`}>{z.icon}</span>
-                  <p className="text-[8px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2">{z.label}</p>
-                </div>
-                {/* Stats row */}
-                <div className="flex items-center gap-1.5">
-                  {/* Today total */}
-                  <div className="flex-1 bg-black/20 rounded-lg px-2 py-1 text-center">
-                    <p className={`text-lg font-black tabular-nums leading-none ${z.color}`}>{z.count}</p>
-                    <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">hoje</p>
-                  </div>
-                  {/* Live now / Monthly */}
-                  <div className={`flex-1 rounded-lg px-2 py-1 text-center ${z.liveCount > 0 ? 'bg-green-500/30 border border-green-400/40' : 'bg-black/20'}`}>
-                    <p className="text-lg font-black tabular-nums leading-none text-white flex items-center justify-center gap-1">
-                      {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />}
-                      {z.liveCount}
+              <div key={z.id} className={`${z.bg} rounded-xl p-2 text-white shadow-sm flex items-center gap-2 border border-white/10 transition-transform hover:scale-[1.02]`}>
+                <span className={`${z.color} bg-white/10 p-2 rounded-lg shrink-0`}>
+                  {z.icon}
+                </span>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight truncate" title={z.label}>
+                    {z.label}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-[8px] font-bold text-white/70">
+                      T: <span className="text-[11px] font-black text-white">{z.count}</span>
                     </p>
-                    <p className="text-[7px] font-black text-white/50 uppercase mt-0.5">agora</p>
+                    <p className={`text-[8px] font-bold flex items-center gap-1 px-1.5 py-0.5 rounded ${z.liveCount > 0 ? 'bg-green-500/40 text-white shadow-sm' : 'text-white/70 bg-black/20'}`}>
+                      {z.liveCount > 0 && <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse inline-block shadow-[0_0_5px_rgba(74,222,128,0.5)]" />}
+                      Ag: <span className="text-[11px] font-black text-white">{z.liveCount}</span>
+                    </p>
                   </div>
                 </div>
               </div>
