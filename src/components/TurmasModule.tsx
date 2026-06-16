@@ -12,8 +12,6 @@ import {
   deleteDoc, getDocs, query, where, serverTimestamp, writeBatch
 } from 'firebase/firestore';
 import { AvatarImage } from './Common';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const TURMAS_PATH = `artifacts/${APP_ID}/public/data/turmas`;
@@ -550,6 +548,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   const [saving, setSaving]       = useState(false);
   const [search, setSearch]       = useState('');
   const [done, setDone]           = useState(false);
+  const [showPrint, setShowPrint] = useState(false);
   const [localAlunos, setLocalAlunos] = useState<TurmaAluno[]>(turma.alunos || []);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
@@ -754,50 +753,11 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   };
 
   const printReport = () => {
-    const presentes = localAlunos.filter(a => marked.has(a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
-    const now = new Date().toLocaleString('pt-PT');
-
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(0, 77, 113); // #004D71
-    doc.text(turma.nome, 14, 22);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.text('COMPROVATIVO DE DIÁRIO DE AULA', 14, 30);
-
-    // Meta Info
-    doc.setFontSize(10);
-    doc.setTextColor(50, 50, 50);
-    doc.text(`Data de Fecho: ${now}`, 14, 45);
-    doc.text(`Professor: ${professorName}`, 14, 52);
-    doc.text(`Total Presentes: ${presentes.length} Alunos`, 14, 59);
-    doc.text(`Submetido Por: ${markerUserName}`, 14, 66);
-
-    // Table
-    const tableData = presentes.map((a, i) => [
-      (i + 1).toString(),
-      a.nome,
-      'Presente'
-    ]);
-
-    (doc as any).autoTable({
-      startY: 75,
-      head: [['#', 'Nome do Aluno', 'Estado']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [0, 77, 113] },
-      styles: { fontSize: 10, cellPadding: 5 },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        2: { cellWidth: 30, textColor: [34, 197, 94], fontStyle: 'bold' }
-      }
-    });
-
-    // Save
-    doc.save(`Aula_${turma.nome.replace(/\s+/g, '_')}_${now.replace(/[/:\s,]/g, '')}.pdf`);
+    setShowPrint(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setShowPrint(false), 1000);
+    }, 500);
   };
 
   const alunos = localAlunos.filter(a => !search || a.nome.toLowerCase().includes(search.toLowerCase()));
@@ -817,7 +777,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
         <div className="flex flex-col gap-3">
           <button onClick={printReport}
             className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-slate-200">
-            <FileText size={16}/> Exportar PDF
+            <FileText size={16}/> Imprimir / PDF
           </button>
           <button onClick={onBack}
             className="w-full py-4 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all">
@@ -825,6 +785,64 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
           </button>
         </div>
       </div>
+      
+      {/* Print Overlay */}
+      {showPrint && (
+        <div className="fixed inset-0 z-[999999] bg-white print:block hidden-when-not-printing overflow-auto" style={{ padding: '40px' }}>
+          <style dangerouslySetInnerHTML={{__html: `
+            @media print {
+              body * { visibility: hidden; }
+              #print-area, #print-area * { visibility: visible; }
+              #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            }
+          `}} />
+          
+          <div id="print-area">
+            <h1 style={{ color: '#004D71', textTransform: 'uppercase', marginBottom: '5px', fontSize: '24px', fontWeight: 900 }}>{turma.nome}</h1>
+            <h2 style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '2px', marginTop: 0, fontWeight: 900 }}>Comprovativo de Diário de Aula</h2>
+            
+            <div style={{ marginTop: '30px', marginBottom: '40px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ padding: '15px', border: '1px solid #cbd5e1' }}>
+                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px', fontWeight: 900 }}>Data de Fecho</strong>
+                <span style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>{new Date().toLocaleString('pt-PT')}</span>
+              </div>
+              <div style={{ padding: '15px', border: '1px solid #cbd5e1' }}>
+                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px', fontWeight: 900 }}>Professor</strong>
+                <span style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>{professorName}</span>
+              </div>
+              <div style={{ padding: '15px', border: '1px solid #cbd5e1' }}>
+                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px', fontWeight: 900 }}>Total Presentes</strong>
+                <span style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>{marked.size} Alunos</span>
+              </div>
+              <div style={{ padding: '15px', border: '1px solid #cbd5e1' }}>
+                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: '#64748b', marginBottom: '4px', fontWeight: 900 }}>Submetido Por</strong>
+                <span style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a' }}>{markerUserName}</span>
+              </div>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '10px', textTransform: 'uppercase', fontWeight: 900 }}>#</th>
+                  <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '10px', textTransform: 'uppercase', fontWeight: 900 }}>Nome do Aluno</th>
+                  <th style={{ textAlign: 'left', padding: '12px', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '10px', textTransform: 'uppercase', fontWeight: 900 }}>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {localAlunos.filter(a => marked.has(a.id)).sort((a, b) => a.nome.localeCompare(b.nome)).map((a, i) => (
+                  <tr key={a.id}>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>{i + 1}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>{a.nome}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase' }}>
+                      <span style={{ color: '#22c55e', border: '1px solid #bbf7d0', padding: '4px 8px', fontSize: '10px', fontWeight: 900 }}>Presente</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 
