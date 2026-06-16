@@ -752,9 +752,6 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   };
 
   const printReport = () => {
-    const win = window.open('', '_blank');
-    if (!win) return;
-
     const presentes = localAlunos.filter(a => marked.has(a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
     const now = new Date().toLocaleString('pt-PT');
 
@@ -811,16 +808,31 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
           <div class="footer">
             <p>Gerado automaticamente pelo Sistema de Gestão do Complexo Desportivo</p>
           </div>
-          
-          <script>
-            window.onload = () => { setTimeout(() => window.print(), 300); }
-          </script>
         </body>
       </html>
     `;
 
-    win.document.write(html);
-    win.document.close();
+    // Create a hidden iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    // Write the document
+    if (iframe.contentDocument) {
+      iframe.contentDocument.write(html);
+      iframe.contentDocument.close();
+    }
+
+    // Print
+    if (iframe.contentWindow) {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }
+
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 5000);
   };
 
   const alunos = localAlunos.filter(a => !search || a.nome.toLowerCase().includes(search.toLowerCase()));
