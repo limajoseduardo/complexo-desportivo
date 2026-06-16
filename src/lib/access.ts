@@ -8,8 +8,12 @@ import { UserProfile } from '../types';
 
 export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio', bypassLimit = false) => {
   const currentEntries = user.entradas_disponiveis || 0;
-  const requiresPayment = currentEntries <= 0;
-  const remaining = Math.max(0, currentEntries - 1);
+  
+  // Universidades Sénior (e atestados ou staffs se se aplicar) têm isenção de pagamento / entradas livres
+  const isExempt = (user.cartao_tipo || '').includes('Universidade Sénior');
+  
+  const requiresPayment = !isExempt && currentEntries <= 0 && !bypassLimit;
+  const remaining = isExempt ? 'Ilimitado' : Math.max(0, currentEntries - 1);
   // Apenas registo de check-in para estatísticas e seguros.
 
   const usersPath = `artifacts/${APP_ID}/public/data/users`;
@@ -33,7 +37,7 @@ export const handleCheckIn = async (user: UserProfile, zone: string = 'Ginásio'
   await updateDoc(userRef, {
     isInside: true,
     location: zone,
-    ...(currentEntries > 0 ? { entradas_disponiveis: currentEntries - 1 } : {}),
+    ...(!isExempt && currentEntries > 0 ? { entradas_disponiveis: currentEntries - 1 } : {}),
     lastCheckInDate: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });

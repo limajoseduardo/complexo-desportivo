@@ -697,9 +697,14 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
                 <span className="text-slate-400 font-bold uppercase tracking-wide">Hora</span>
                 <span className="font-black text-[#004D71]">{new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              {confirm.action === 'entrada' && (confirm.utente.entradas_disponiveis ?? 0) <= 0 && (
+              {confirm.action === 'entrada' && (confirm.utente.entradas_disponiveis ?? 0) <= 0 && !(confirm.utente.cartao_tipo || '').includes('Universidade Sénior') && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700 font-bold">
                   ⚠️ Sem entradas carregadas — a entrada é validada pelo staff mas não desconta saldo.
+                </div>
+              )}
+              {confirm.action === 'entrada' && (confirm.utente.cartao_tipo || '').includes('Universidade Sénior') && (
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-700 font-bold flex items-center justify-center gap-2">
+                  <Activity size={14}/> Universidade Sénior (Entrada Livre)
                 </div>
               )}
             </div>
