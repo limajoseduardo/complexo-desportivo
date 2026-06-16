@@ -578,6 +578,8 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   const [recentLogs, setRecentLogs] = useState<Record<string, number>>({});
   const [assiduidade, setAssiduidade] = useState<Record<string, number>>({});
   const [totalClasses, setTotalClasses] = useState(0);
+  const [classDates, setClassDates] = useState<string[]>([]);
+  const [presenceMap, setPresenceMap] = useState<Record<string, Set<string>>>({});
 
   const dateStr = todayStr();
 
@@ -611,6 +613,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
       const recent: Record<string, number> = {};
       const counts: Record<string, number> = {};
       const dates = new Set<string>();
+      const pMap: Record<string, Set<string>> = {};
 
       snap.forEach(d => {
         const data = d.data();
@@ -618,6 +621,9 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
         const dateMs = new Date(data.date).getTime();
         const id = data.turmaAlunoId || data.userId;
         if (id) {
+          if (!pMap[id]) pMap[id] = new Set();
+          pMap[id].add(data.date);
+
           counts[id] = (counts[id] || 0) + 1;
           if (!recent[id] || dateMs > recent[id]) {
             recent[id] = dateMs;
@@ -627,6 +633,8 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
       setRecentLogs(recent);
       setAssiduidade(counts);
       setTotalClasses(dates.size);
+      setClassDates(Array.from(dates).sort((a,b) => b.localeCompare(a)));
+      setPresenceMap(pMap);
     }).catch(console.error);
   }, [turma.id]);
 
@@ -987,6 +995,18 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
               const pct = totalClasses > 0 ? Math.round((freq / totalClasses) * 100) : 100;
               const pctColor = pct >= 85 ? 'text-green-600 bg-green-50 border-green-200' : pct >= 60 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-red-600 bg-red-50 border-red-200';
               
+              // Consecutive absences calculation
+              let consecutiveAbsences = 0;
+              if (classDates.length > 0 && !isNew) {
+                for (const d of classDates) {
+                  if (!presenceMap[aluno.id]?.has(d) && !presenceMap[aluno.userId || '']?.has(d)) {
+                    consecutiveAbsences++;
+                  } else {
+                    break;
+                  }
+                }
+              }
+
               return (
                 <div key={aluno.id} className={`flex items-center rounded border-b border-slate-50 transition-all ${
                   isMarked ? 'bg-green-50/50' : 'bg-transparent'
@@ -1016,6 +1036,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
                       </div>
                       <p className="text-[6px] font-black uppercase whitespace-nowrap opacity-60 mt-1 flex items-center gap-1">
                         {fullAluno?.idade && <span className="text-slate-400 normal-case">{fullAluno.idade} Anos</span>}
+                        {consecutiveAbsences >= 3 && <span className="text-red-600 bg-red-50 px-1 py-0.5 rounded-[2px] ml-1 border border-red-200 flex items-center gap-0.5"><AlertTriangle size={8}/> {consecutiveAbsences} Faltas Seguidas</span>}
                         {wasMarked && isMarked  && <span className="text-slate-400 ml-auto">Marcado</span>}
                         {wasMarked && !isMarked && <span className="text-amber-500 ml-auto">Remover</span>}
                         {!wasMarked && isMarked && <span className="text-green-500 ml-auto">Novo</span>}
