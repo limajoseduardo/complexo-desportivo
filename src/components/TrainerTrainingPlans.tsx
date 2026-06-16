@@ -888,7 +888,7 @@ export function EnciclopediaTab() {
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Base científica do treino eficaz</p>
           </div>
           {PRINCIPIOS.map(p => (
-            <AccordionSection key={p.title} icon={p.icon} color={p.color} title={p.title} body={p.body}/>
+            <AccordionSection  icon={p.icon} color={p.color} title={p.title} body={p.body}/>
           ))}
         </div>
       )}
