@@ -165,12 +165,21 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
 
         const batch = writeBatch(db);
 
-        // Função auxiliar para adicionar
         const addEntries = (count: number, label: string) => {
+          const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+          
           for (let i = 0; i < count; i++) {
             const timestampMs = Date.now() + Math.random() * 1000 + i;
             const logId = `ext_${timestampMs}`;
             const logDocRef = doc(db, path, logId);
+            
+            let vPago = 0;
+            if (label === 'ADULTO') {
+              vPago = isWeekend ? 2.79 : 2.10;
+            } else {
+              vPago = isWeekend ? 1.39 : 1.09;
+            }
+
             batch.set(logDocRef, {
               userId: `ext_entrada`,
               userName: `PISCINA EXTERIOR (${label})`,
@@ -179,7 +188,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
               date: today,
               zone: 'Piscina Exterior',
               modalidade: 'Piscina Exterior',
-              timestamp: serverTimestamp()
+              timestamp: serverTimestamp(),
+              valorPago: vPago
             });
           }
         };

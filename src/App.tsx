@@ -52,16 +52,16 @@ export { APP_ID };
 
 const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
   const e = (email || '').toLowerCase().trim();
-  
+
   // ADMIN & DIREÇÃO TÉCNICA
   if (e === 'informatica@cm-viladerei.pt') return 'admin';
-  
+
   // STAFF E RECEÇÃO
   if (e === 'josemaria.silva@cm-viladerei.pt' || e === 'patricia.novo@cm-viladerei.pt' || e === 'tiago.lopes@cm-viladerei.pt') return 'staff';
-  
+
   // PROFESSORES
   if (e === 'nelson.rolo@cm-viladerei.pt' || e === 'claudia.rechena@cm-viladerei.pt' || e === 'eduardo.oliveira@cm-viladerei.pt') return 'professor';
-  
+
   const normalized = (role || 'utente').toString().toLowerCase();
   return ['admin', 'staff', 'chefia', 'professor', 'utente'].includes(normalized)
     ? normalized as UserProfile['role']
@@ -69,11 +69,11 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin:     ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
-  chefia:    ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
-  staff:     ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
+  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
+  chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
+  staff: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'mensagens', 'perfil'],
-  utente:    ['inicio', 'agenda', 'perfil'],
+  utente: ['inicio', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug, currentRole }: {
@@ -102,7 +102,7 @@ export default function App() {
         parsed.role = normalizeRole(parsed.role, parsed.email);
         return parsed;
       }
-    } catch (e) {}
+    } catch (e) { }
     return null;
   });
   const [activeTabState, setActiveTabState] = useState(() => {
@@ -116,7 +116,7 @@ export default function App() {
         if (savedTab && allowed.includes(savedTab)) return savedTab;
         return allowed[0] || 'inicio';
       }
-    } catch (e) {}
+    } catch (e) { }
     return 'inicio';
   });
   const activeTab = user
@@ -171,7 +171,7 @@ export default function App() {
       if (!snap.empty) {
         const data = snap.docs[0].data();
         const id = snap.docs[0].id;
-        
+
         const readId = localStorage.getItem('read_announcement_id');
         if (readId === id) {
           setAvisoDismissed(true);
@@ -235,7 +235,7 @@ export default function App() {
       setKioskScanResult({ type: 'error', message: `Cartão não encontrado no sistema` });
       playBeep('error');
     }
-    
+
     // Auto-dismiss Kiosk screen after 4 seconds
     setTimeout(() => {
       setKioskScanResult(null);
@@ -245,7 +245,7 @@ export default function App() {
   const handleKioskScan = async (decodedText: string) => {
     let userId = '';
     let explicitZone = '';
-    
+
     // Parse the QR format
     if (decodedText.startsWith('CPX:')) {
       const parts = decodedText.split(':');
@@ -261,14 +261,14 @@ export default function App() {
     }
 
     const foundUser = utentes.find(u => u.id === userId || (u.rfidUid || '').trim() === userId.trim());
-    
+
     if (foundUser) {
       try {
         if (foundUser.isInside) {
           const outResult = await handleCheckOut(foundUser);
-          setKioskScanResult({ 
-            type: 'checkout', 
-            user: foundUser, 
+          setKioskScanResult({
+            type: 'checkout',
+            user: foundUser,
             message: 'Saída Validada',
             actionDetails: { action: 'SAÍDA', time: new Date().toLocaleTimeString('pt-PT'), duration: outResult.durationMinutes }
           });
@@ -277,17 +277,17 @@ export default function App() {
           const targetZone = explicitZone || foundUser.modalidade || 'Ginásio';
           const result = await handleCheckIn(foundUser, targetZone);
           if (result && result.requiresPayment) {
-            setKioskScanResult({ 
-              type: 'warning', 
-              user: foundUser, 
+            setKioskScanResult({
+              type: 'warning',
+              user: foundUser,
               message: 'Pagamento Necessário na Receção',
               actionDetails: { action: 'ENTRADA', time: new Date().toLocaleTimeString('pt-PT'), modalidade: targetZone }
             });
             playBeep('error'); // Usamos o som de erro para chamar à atenção, mas sem bloquear a entrada real no sistema
           } else {
-            setKioskScanResult({ 
-              type: 'success', 
-              user: foundUser, 
+            setKioskScanResult({
+              type: 'success',
+              user: foundUser,
               message: `Acesso Autorizado • Restam ${result?.remaining} entradas`,
               actionDetails: { action: 'ENTRADA', time: new Date().toLocaleTimeString('pt-PT'), modalidade: targetZone }
             });
@@ -304,7 +304,7 @@ export default function App() {
       setKioskScanResult({ type: 'error', message: `QR Code não encontrado no sistema` });
       playBeep('error');
     }
-    
+
     // Auto-dismiss Kiosk screen after 4 seconds to re-enable camera
     setTimeout(() => {
       setKioskScanResult(null);
@@ -415,13 +415,13 @@ export default function App() {
 
   useEffect(() => {
     if (!user) {
-       setUtentesInside([]);
-       setUtentesRecent([]);
-       return;
+      setUtentesInside([]);
+      setUtentesRecent([]);
+      return;
     }
 
     const usersPath = `artifacts/${APP_ID}/public/data/users`;
-    
+
     // 1. Carregar quem está no recinto (AGORA PARA TODOS, para os números de afluência funcionarem)
     let unsubInside: () => void;
     const qInside = query(collection(db, usersPath), where('isInside', '==', true));
@@ -434,7 +434,7 @@ export default function App() {
     // 2. Carregar o resto dos utentes conforme o cargo
     let unsubRecent: () => void;
     const isStaff = ['admin', 'chefia', 'staff', 'professor'].includes(user.role);
-    
+
     if (isStaff) {
       const qRecent = query(collection(db, usersPath));
       unsubRecent = onSnapshot(qRecent, (snap) => {
@@ -447,9 +447,9 @@ export default function App() {
       });
     }
 
-    return () => { 
-      unsubInside?.(); 
-      unsubRecent?.(); 
+    return () => {
+      unsubInside?.();
+      unsubRecent?.();
     };
   }, [user?.id, user?.role]);
 
@@ -483,7 +483,7 @@ export default function App() {
   // Combined utentes list
   const utentes = React.useMemo(() => {
     const combined = [...utentesInside];
-    
+
     // Also include those from recent who are inside but maybe missed by the query
     utentesRecent.forEach(r => {
       if (r.isInside && !combined.find(c => c.id === r.id)) {
@@ -502,14 +502,14 @@ export default function App() {
   // Sync Logs
   useEffect(() => {
     if (!user) return;
-    
+
     const pathC = `artifacts/${APP_ID}/public/data/mapas_coberta`;
     const pathD = `artifacts/${APP_ID}/public/data/mapas_descoberta`;
 
     const mergeLogs = (newLogs: any[], type: string) => {
       setLogs(prev => {
         const filtered = prev.filter(p => p.tipo !== type);
-        return [...filtered, ...newLogs].sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        return [...filtered, ...newLogs].sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
       });
     };
 
@@ -545,7 +545,7 @@ export default function App() {
 
       let userId = fbUser?.uid || `local_${Date.now()}`;
       let existingProfile = null;
-      
+
       if (fbUser) {
         try {
           const usersPath = `artifacts/${APP_ID}/public/data/users`;
@@ -556,7 +556,7 @@ export default function App() {
             existingProfile = emailSnap.docs[0].data() as any;
           }
         } catch (err) {
-           console.warn("Could not fetch existing profile from Firestore:", err);
+          console.warn("Could not fetch existing profile from Firestore:", err);
         }
       }
 
@@ -564,36 +564,36 @@ export default function App() {
       if (existingProfile) {
         const isTeamEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt' || emailLower === 'nelson.rolo@cm-viladerei.pt' || emailLower === 'claudia.rechena@cm-viladerei.pt' || emailLower === 'eduardo.oliveira@cm-viladerei.pt';
         const hasDefaultOrNoPass = !existingProfile.password || existingProfile.password === '123456';
-        
+
         if (isTeamEmail && hasDefaultOrNoPass) {
           existingProfile.password = pass;
         } else {
           const expectedPass = emailLower === 'informatica@cm-viladerei.pt' ? 'JvTs*061416' : (existingProfile.password || '123456');
           if (pass !== expectedPass) {
-             setAuthError('Palavra-passe incorreta.');
-             setLoading(false);
-             return;
+            setAuthError('Palavra-passe incorreta.');
+            setLoading(false);
+            return;
           }
         }
       } else {
         // Agora exigimos que a pessoa exista para fazer login, a menos que seja admin ou equipa
         const isTeamEmail = emailLower === 'josemaria.silva@cm-viladerei.pt' || emailLower === 'patricia.novo@cm-viladerei.pt' || emailLower === 'tiago.lopes@cm-viladerei.pt' || emailLower === 'nelson.rolo@cm-viladerei.pt' || emailLower === 'claudia.rechena@cm-viladerei.pt' || emailLower === 'eduardo.oliveira@cm-viladerei.pt';
         if (emailLower === 'informatica@cm-viladerei.pt') {
-           if (pass !== 'JvTs*061416') {
-              setAuthError('Palavra-passe incorreta para conta de administração.');
-              setLoading(false);
-              return;
-           }
+          if (pass !== 'JvTs*061416') {
+            setAuthError('Palavra-passe incorreta para conta de administração.');
+            setLoading(false);
+            return;
+          }
         } else if (isTeamEmail) {
-           if (pass !== '123456') {
-              setAuthError('As novas contas de equipa usam a password 123456 para primeiro acesso.');
-              setLoading(false);
-              return;
-           }
+          if (pass !== '123456') {
+            setAuthError('As novas contas de equipa usam a password 123456 para primeiro acesso.');
+            setLoading(false);
+            return;
+          }
         } else {
-           setAuthError('Acesso não autorizado. Não foi encontrada nenhuma conta com este email. Use o Registo com Convite.');
-           setLoading(false);
-           return;
+          setAuthError('Acesso não autorizado. Não foi encontrada nenhuma conta com este email. Use o Registo com Convite.');
+          setLoading(false);
+          return;
         }
       }
 
@@ -601,16 +601,16 @@ export default function App() {
       const effectiveRole = normalizeRole(roleCandidate?.toString(), emailLower);
 
       const finalProfile: UserProfile = {
-         ...existingProfile,
-         id: userId!,
-         email: emailLower,
-         role: effectiveRole,
-         password: existingProfile?.password || pass,
-         n: existingProfile?.n || existingProfile?.nome || emailInput.split('@')[0].toUpperCase(),
-         nome: existingProfile?.nome || existingProfile?.n || emailInput.split('@')[0].toUpperCase(),
-         cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
-         img: existingProfile?.img || '',
-         lastLogin: new Date().toISOString()
+        ...existingProfile,
+        id: userId!,
+        email: emailLower,
+        role: effectiveRole,
+        password: existingProfile?.password || pass,
+        n: existingProfile?.n || existingProfile?.nome || emailInput.split('@')[0].toUpperCase(),
+        nome: existingProfile?.nome || existingProfile?.n || emailInput.split('@')[0].toUpperCase(),
+        cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
+        img: existingProfile?.img || '',
+        lastLogin: new Date().toISOString()
       };
 
       // Atomic sync to Firestore
@@ -654,7 +654,7 @@ export default function App() {
 
       const inviteCodeClean = inviteCode.toUpperCase().trim();
       const inviteSnap = await getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/invites`), where('id', '==', inviteCodeClean), limit(1)));
-      
+
       if (inviteSnap.empty || inviteSnap.docs[0].data().status !== 'active') {
         setAuthError('Código de convite inválido ou já utilizado.');
         setLoading(false);
@@ -686,16 +686,16 @@ export default function App() {
       const effectiveRole = normalizeRole('utente', emailLower);
 
       const finalProfile: UserProfile = {
-         id: userId,
-         email: emailLower,
-         role: effectiveRole,
-         password: pass,
-         n: emailInput.split('@')[0].toUpperCase(),
-         nome: emailInput.split('@')[0].toUpperCase(),
-         cargo: effectiveRole.toUpperCase(),
-         img: '',
-         lastLogin: new Date().toISOString(),
-         createdAt: new Date().toISOString()
+        id: userId,
+        email: emailLower,
+        role: effectiveRole,
+        password: pass,
+        n: emailInput.split('@')[0].toUpperCase(),
+        nome: emailInput.split('@')[0].toUpperCase(),
+        cargo: effectiveRole.toUpperCase(),
+        img: '',
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
 
       const userDocRef = doc(db, `artifacts/${APP_ID}/public/data/users`, userId);
@@ -727,7 +727,7 @@ export default function App() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const fbUser = result.user;
-      
+
       if (!fbUser || !fbUser.email) {
         throw new Error('Não foi possível obter o e-mail da conta Google.');
       }
@@ -760,15 +760,15 @@ export default function App() {
       const effectiveRole = normalizeRole(existingProfile?.role || 'utente', emailLower);
 
       const finalProfile: UserProfile = {
-         ...existingProfile,
-         id: userId,
-         email: emailLower,
-         role: effectiveRole,
-         n: existingProfile?.n || existingProfile?.nome || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
-         nome: existingProfile?.nome || existingProfile?.n || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
-         cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
-         img: fbUser.photoURL || existingProfile?.img || '',
-         lastLogin: new Date().toISOString()
+        ...existingProfile,
+        id: userId,
+        email: emailLower,
+        role: effectiveRole,
+        n: existingProfile?.n || existingProfile?.nome || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
+        nome: existingProfile?.nome || existingProfile?.n || fbUser.displayName || emailLower.split('@')[0].toUpperCase(),
+        cargo: (effectiveRole === 'chefia' ? 'Direção Municipal' : effectiveRole.toUpperCase()),
+        img: fbUser.photoURL || existingProfile?.img || '',
+        lastLogin: new Date().toISOString()
       };
 
       const userDocRef = doc(db, `artifacts/${APP_ID}/public/data/users`, userId);
@@ -782,7 +782,7 @@ export default function App() {
       setAuthError(`Erro no login com Google: ${err.message || 'Tente novamente'}`);
       try {
         await auth.signOut();
-      } catch (e) {}
+      } catch (e) { }
     } finally {
       setLoading(false);
     }
@@ -803,19 +803,19 @@ export default function App() {
   }, []);
 
   if (loading) {
-     return (
-       <div className="min-h-screen bg-[#004D71] flex items-center justify-center p-6 text-white">
-         <div className="text-center space-y-4">
-            <PicotoIcon size={60} className="mx-auto animate-pulse text-[#F7B500]" />
-            <h2 className="text-xl font-black uppercase tracking-tighter">Vila de Rei</h2>
-            <div className="flex gap-1 justify-center">
-               <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
-               <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0.2s]"></div>
-               <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0.4s]"></div>
-            </div>
-         </div>
-       </div>
-     );
+    return (
+      <div className="min-h-screen bg-[#004D71] flex items-center justify-center p-6 text-white">
+        <div className="text-center space-y-4">
+          <PicotoIcon size={60} className="mx-auto animate-pulse text-[#F7B500]" />
+          <h2 className="text-xl font-black uppercase tracking-tighter">Vila de Rei</h2>
+          <div className="flex gap-1 justify-center">
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0.2s]"></div>
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0.4s]"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const isPublicDashboard = showPublicDashboard || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('view') === 'tv' || window.location.pathname.includes('/tv')));
@@ -835,41 +835,41 @@ export default function App() {
     <div className="app-shell font-sans">
       {showKioskMode && (
         <React.Suspense fallback={null}>
-          <KioskMode 
-            scanResult={kioskScanResult} 
-            onExit={() => setShowKioskMode(false)} 
+          <KioskMode
+            scanResult={kioskScanResult}
+            onExit={() => setShowKioskMode(false)}
             onScan={handleKioskScan}
           />
         </React.Suspense>
       )}
       {showScanner && (
         <React.Suspense fallback={null}>
-          <ScannerScreen 
-            utentes={utentes} 
-            onBack={() => setShowScanner(false)} 
-            onResult={(u) => { setShowScanner(false); setViewingProfile(u); }} 
+          <ScannerScreen
+            utentes={utentes}
+            onBack={() => setShowScanner(false)}
+            onResult={(u) => { setShowScanner(false); setViewingProfile(u); }}
           />
         </React.Suspense>
       )}
-      
+
       <div className="flex h-full w-full bg-slate-50 overflow-hidden relative">
-        <DesktopSidebar 
-          activeTab={activeTab} 
-          setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); }} 
-          onLogout={handleLogout} 
-          user={user} 
+        <DesktopSidebar
+          activeTab={activeTab}
+          setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); }}
+          onLogout={handleLogout}
+          user={user}
           unreadCount={totalUnread}
           onSimularRfid={() => setShowRfidSimulator(true)}
           onKioskMode={() => setShowKioskMode(true)}
         />
-        
+
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header user={user} unreadCount={totalUnread} logs={logs} />
-          
+
           <React.Suspense fallback={null}>
             <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
           </React.Suspense>
-          
+
           {latestAviso && !avisoDismissed && (
             <div className="bg-[#F7B500] text-[#004D71] px-6 py-4 flex items-center justify-between border-b-2 border-[#004D71]/10 shadow-sm shrink-0 animate-in slide-in-from-top duration-300">
               <div className="flex items-center gap-3">
@@ -879,101 +879,101 @@ export default function App() {
                   <p className="text-xs font-medium opacity-90 mt-0.5">{latestAviso.mensagem} — <span className="font-bold">{latestAviso.nomeProfessor}</span></p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={dismissAviso}
                 className="p-2 hover:bg-[#004D71]/10 rounded-xl transition-colors text-[#004D71]"
               >
-                <X size={16}/>
+                <X size={16} />
               </button>
             </div>
           )}
-          
+
           <main className="content-area hide-scrollbar p-4 lg:p-10" onScroll={handleMainScroll}>
             <GlobalErrorBoundary>
-            <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center text-[#004D71] font-black uppercase text-sm animate-pulse tracking-widest mt-20">A carregar...</div>}>
-            {viewingProfile ? (
-              <ProfileViewModule 
-                user={viewingProfile} 
-                onLogout={() => setViewingProfile(null)} 
-                isExternalView={true} 
-                currentRole={user.role}
-              />
-            ) : (
-              <>
-                {user.role === 'utente' && activeTab === 'inicio' && <UtenteDashboard user={user} utentes={utentes} />}
-                {activeTab === 'inicio' && user.role === 'staff' && (
-                  <StaffDashboard 
-                    user={user} 
-                    utentes={utentes} 
-                    onUserClick={setViewingProfile} 
-                    onLogout={handleLogout}
-                  />
-                )}
-                {activeTab === 'inicio' && user.role === 'professor' && (
-                  <ProfessorDashboard
-                    user={user}
-                    utentes={utentes}
-                    onUserClick={setViewingProfile}
-                    logs={logs}
-                  />
-                )}
-                {activeTab === 'inicio' && !['utente', 'staff', 'professor'].includes(user.role) && (
-                  <ModalitiesDashboard
-                    onUserClick={setViewingProfile}
-                    logs={logs}
-                    utentes={utentes}
-                  />
-                )}
-                {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'professor'].includes(user.role)} />}
-                {activeTab === 'alunos' && (
-                  ['professor', 'admin'].includes(user.role) ? (
-                    <SwimmingTeacherPortal user={user} utentes={utentes} />
-                  ) : (
-                    <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={false} />
-                  )
-                )}
-                {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
-                {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
-                {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />}
-                {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
-                {activeTab === 'qr' && user.role === 'utente' && (
-                  <UtenteQRCard
-                    user={user}
-                    onEditProfile={() => setActiveTab('perfil')}
-                  />
-                )}
-
-                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} onUserClick={setViewingProfile} />}
-                {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
-                {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
-                {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
-                {activeTab === 'perfil' && (
-                  <ProfileViewModuleCustom 
-                    user={user} 
-                    onLogout={handleLogout} 
-                    setUser={(updatedUser) => {
-                      const normalized = {
-                        ...updatedUser,
-                        role: normalizeRole(updatedUser.role, updatedUser.email)
-                      };
-                      setUser(normalized);
-                      localStorage.setItem('cpx_v33_session', JSON.stringify(normalized));
-                    }}
-                    onReportBug={() => setShowBugReport(true)}
+              <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center text-[#004D71] font-black uppercase text-sm animate-pulse tracking-widest mt-20">A carregar...</div>}>
+                {viewingProfile ? (
+                  <ProfileViewModule
+                    user={viewingProfile}
+                    onLogout={() => setViewingProfile(null)}
+                    isExternalView={true}
                     currentRole={user.role}
-                    setActiveTab={setActiveTab}
                   />
+                ) : (
+                  <>
+                    {user.role === 'utente' && activeTab === 'inicio' && <UtenteDashboard user={user} utentes={utentes} />}
+                    {activeTab === 'inicio' && user.role === 'staff' && (
+                      <StaffDashboard
+                        user={user}
+                        utentes={utentes}
+                        onUserClick={setViewingProfile}
+                        onLogout={handleLogout}
+                      />
+                    )}
+                    {activeTab === 'inicio' && user.role === 'professor' && (
+                      <ProfessorDashboard
+                        user={user}
+                        utentes={utentes}
+                        onUserClick={setViewingProfile}
+                        logs={logs}
+                      />
+                    )}
+                    {activeTab === 'inicio' && !['utente', 'staff', 'professor'].includes(user.role) && (
+                      <ModalitiesDashboard
+                        onUserClick={setViewingProfile}
+                        logs={logs}
+                        utentes={utentes}
+                      />
+                    )}
+                    {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'professor'].includes(user.role)} />}
+                    {activeTab === 'alunos' && (
+                      ['professor', 'admin'].includes(user.role) ? (
+                        <SwimmingTeacherPortal user={user} utentes={utentes} />
+                      ) : (
+                        <UtentesList onUserClick={setViewingProfile} utentes={utentes} title="Os Meus Alunos" canAdd={false} />
+                      )
+                    )}
+                    {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
+                    {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
+                    {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />}
+                    {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
+                    {activeTab === 'qr' && user.role === 'utente' && (
+                      <UtenteQRCard
+                        user={user}
+                        onEditProfile={() => setActiveTab('perfil')}
+                      />
+                    )}
+
+                    {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} onUserClick={setViewingProfile} />}
+                    {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
+                    {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
+                    {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
+                    {activeTab === 'perfil' && (
+                      <ProfileViewModuleCustom
+                        user={user}
+                        onLogout={handleLogout}
+                        setUser={(updatedUser) => {
+                          const normalized = {
+                            ...updatedUser,
+                            role: normalizeRole(updatedUser.role, updatedUser.email)
+                          };
+                          setUser(normalized);
+                          localStorage.setItem('cpx_v33_session', JSON.stringify(normalized));
+                        }}
+                        onReportBug={() => setShowBugReport(true)}
+                        currentRole={user.role}
+                        setActiveTab={setActiveTab}
+                      />
+                    )}
+                  </>
                 )}
-              </>
-            )}
-            </React.Suspense>
+              </React.Suspense>
             </GlobalErrorBoundary>
           </main>
 
-          <MobileNav 
-            role={user.role} 
-            activeTab={activeTab} 
-            setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); setIsNavVisible(true); }} 
+          <MobileNav
+            role={user.role}
+            activeTab={activeTab}
+            setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); setIsNavVisible(true); }}
             unreadCount={totalUnread}
             isVisible={isNavVisible}
           />
@@ -991,16 +991,16 @@ export default function App() {
           {showRfidSimulator && (
             <div className="fixed inset-0 z-[100000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
               <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative">
-                <button 
-                  onClick={() => { setShowRfidSimulator(false); setSimRfidUid(''); }} 
+                <button
+                  onClick={() => { setShowRfidSimulator(false); setSimRfidUid(''); }}
                   className="absolute -top-4 -right-4 p-4 bg-white text-slate-400 rounded-2xl shadow-xl active:scale-90"
                 >
-                  <X size={20}/>
+                  <X size={20} />
                 </button>
-                
+
                 <div className="text-center mb-8">
                   <div className="w-20 h-20 bg-[#004D71]/5 text-[#004D71] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Radio size={40} className="animate-pulse"/>
+                    <Radio size={40} className="animate-pulse" />
                   </div>
                   <h3 className="text-xl font-black text-[#004D71] uppercase leading-none">Simulador RFID</h3>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Introduza um UID de cartão ou escolha um utente</p>
@@ -1009,7 +1009,7 @@ export default function App() {
                 <div className="space-y-4 mb-8">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">UID do Cartão</label>
-                    <input 
+                    <input
                       type="text"
                       placeholder="Ex: 12345678"
                       value={simRfidUid}
@@ -1023,7 +1023,7 @@ export default function App() {
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Utentes com RFID</label>
                     <div className="max-h-32 overflow-y-auto space-y-1.5 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
                       {utentes.filter(u => u.rfidUid).map(u => (
-                        <button 
+                        <button
                           key={u.id}
                           onClick={() => setSimRfidUid(u.rfidUid || '')}
                           className="w-full text-left px-3 py-2 bg-white rounded-xl border border-slate-100 hover:border-[#F7B500] text-[10px] font-black uppercase text-[#004D71] flex justify-between items-center"
@@ -1039,7 +1039,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={() => {
                     if (simRfidUid.trim()) {
                       processRfidScan(simRfidUid.trim());
@@ -1060,7 +1060,7 @@ export default function App() {
           {rfidToast && (
             <div className={`fixed bottom-24 right-6 z-[200000] p-4 rounded-2xl shadow-2xl border-2 flex items-center gap-3 animate-in slide-in-from-bottom duration-300 ${rfidToast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-red-500 border-red-400 text-white'}`}>
               <div className="p-2 bg-white/20 rounded-xl">
-                {rfidToast.type === 'success' ? <Check size={18}/> : <X size={18}/>}
+                {rfidToast.type === 'success' ? <Check size={18} /> : <X size={18} />}
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-80">{rfidToast.type === 'success' ? 'Leitor RFID' : 'Erro RFID'}</p>
