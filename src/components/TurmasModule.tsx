@@ -855,7 +855,6 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
               const hasRecent = !!recentLogs[aluno.id] || !!recentLogs[aluno.userId || ''];
               const isComp = !!(aluno as any).isCompensacao;
               const isNew = !turma.alunos?.find(a => a.id === aluno.id);
-              const isAbsent = !hasRecent && !isNew && !isComp;
               
               // Attendance % calculation (with fallback for demo purposes if 0 classes)
               const freq = assiduidade[aluno.id] || assiduidade[aluno.userId || ''] || 0;
@@ -899,7 +898,6 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
                       <p className="text-[6px] font-black uppercase whitespace-nowrap opacity-60 mt-1 flex items-center gap-1">
                         {fullAluno?.idade && <span className="text-slate-400 normal-case">{fullAluno.idade} Anos</span>}
                         {isComp && <span className="text-[#004D71] bg-[#F7B500] px-1 py-0.5 rounded-[2px]">A COMPENSAR</span>}
-                        {isAbsent && <span className="text-orange-500 inline-flex items-center" title="Sem presenças nos últimos 14 dias"><AlertTriangle size={8} className="fill-orange-100 mr-0.5"/> Ausente</span>}
                         {wasMarked && isMarked  && <span className="text-slate-400 ml-auto">Marcado</span>}
                         {wasMarked && !isMarked && <span className="text-amber-500 ml-auto">Remover</span>}
                         {!wasMarked && isMarked && <span className="text-green-500 ml-auto">Novo</span>}
