@@ -102,6 +102,8 @@ export interface AccessLog {
   zone: string;
   date: string;
   timestamp?: any;
+  valorPago?: number;    // Valor cobrado confirmado pelo staff
+  isento?: boolean;      // Isento de pagamento (atestado, univ. sénior, etc.)
 }
 
 export interface Exercicio {
