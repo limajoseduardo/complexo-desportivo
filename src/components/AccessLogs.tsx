@@ -18,7 +18,7 @@ import { isUserInZone, normalizeSearchString } from '../lib/logic';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { BarChart, Bar } from 'recharts';
+import { BarChart, Bar, Cell } from 'recharts';
 import { GlobalErrorBoundary as ErrorBoundary } from './ErrorBoundary';
 
 function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[]; onUserClick?: (u: UserProfile) => void } = {}) {
@@ -752,6 +752,47 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       .map(([local, entradas]) => ({ local, entradas }))
       .sort((a, b) => b.entradas - a.entradas);
   }, [monthlyLogs]);
+
+  const demographicsStats = React.useMemo(() => {
+    const ageGroups = { '< 18': 0, '18-35': 0, '36-55': 0, '> 55': 0 };
+    const cardStats: Record<string, number> = {};
+    let atestadoCount = 0;
+    
+    const processedUsers = new Set<string>();
+    
+    allDateLogs.forEach(log => {
+      if (!log.userId || log.userId === 'ext_entrada') return;
+      if (processedUsers.has(log.userId)) return;
+      processedUsers.add(log.userId);
+      
+      const profile = utentes.find(u => u.id === log.userId);
+      if (!profile) return;
+      
+      if (profile.data_nasc) {
+        const age = new Date().getFullYear() - new Date(profile.data_nasc).getFullYear();
+        if (age < 18) ageGroups['< 18']++;
+        else if (age <= 35) ageGroups['18-35']++;
+        else if (age <= 55) ageGroups['36-55']++;
+        else ageGroups['> 55']++;
+      }
+      
+      if (profile.cartao_tipo) {
+        const c = profile.cartao_tipo.trim();
+        if (c) cardStats[c] = (cardStats[c] || 0) + 1;
+      }
+      
+      if (profile.atestado_medico) {
+        atestadoCount++;
+      }
+    });
+
+    return {
+      ageGroups: Object.entries(ageGroups).map(([label, count]) => ({ label, count })),
+      cards: Object.entries(cardStats).map(([label, count]) => ({ label, count })).sort((a,b)=>b.count-a.count),
+      atestado: atestadoCount,
+      totalUsers: processedUsers.size
+    };
+  }, [allDateLogs, utentes]);
 
   const leaderboardByModality = React.useMemo(() => {
     const ranking: Record<string, Array<{ userId: string; userName: string; count: number }>> = {};
@@ -1803,6 +1844,77 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                   <p className="text-[8px] font-black uppercase tracking-wider text-slate-400 text-center leading-tight">{s.label}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                    <Users className="text-[#F7B500]" size={14} /> Demografia de Assiduidade
+                  </h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                    Faixas etárias dos utentes únicos ({demographicsStats.totalUsers}) neste período
+                  </p>
+                </div>
+              </div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={demographicsStats.ageGroups} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} width={50} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="count" fill="#004D71" radius={[0, 4, 4, 0]} barSize={24}>
+                      {demographicsStats.ageGroups.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#38bdf8', '#818cf8', '#c084fc', '#f472b6'][index % 4]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                      <CreditCard className="text-[#F7B500]" size={14} /> Tipos de Cartões & Atestados
+                    </h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                      Distribuição dos utentes com presenças
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {demographicsStats.cards.map(c => (
+                    <div key={c.label} className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] font-black uppercase text-slate-600">{c.label}</span>
+                      <span className="text-xs font-black text-[#004D71] bg-white px-2 py-1 rounded-lg shadow-sm border border-slate-200">{c.count}</span>
+                    </div>
+                  ))}
+                  {demographicsStats.cards.length === 0 && (
+                    <div className="text-center p-4 text-slate-400 text-[10px] font-black uppercase">
+                      Nenhum cartão registado nestas presenças
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <Activity className="text-emerald-500" size={16} />
+                    <span className="text-[10px] font-black uppercase text-emerald-700 tracking-widest">Atestado Médico Entregue</span>
+                  </div>
+                  <span className="text-sm font-black text-emerald-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-emerald-200">
+                    {demographicsStats.atestado} utentes
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
