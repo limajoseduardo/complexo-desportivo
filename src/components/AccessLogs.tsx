@@ -1714,16 +1714,35 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                                   const card = (profile?.cartao_tipo || '');
                                   const isExempt = card.includes('Atestado') || card.includes('Universidade Sénior') || log.userId === 'ext_entrada';
                                   
+                                  // Modalidades pagas por mensalidade — nunca cobradas por entrada
+                                  const isMensalidade = 
+                                    mod.includes('hidro') || 
+                                    mod.includes('natação nível') ||
+                                    mod.includes('natacao nivel') ||
+                                    mod.includes('escola de natação') ||
+                                    mod.includes('bebés') ||
+                                    mod.includes('bebes') ||
+                                    mod.includes('ama') ||
+                                    mod.includes('aula');
+                                  
+                                  if (isMensalidade) {
+                                    return (
+                                      <span className="text-[8px] font-black px-2 py-0.5 rounded-lg bg-blue-50 text-blue-500 border border-blue-100 uppercase tracking-widest whitespace-nowrap">
+                                        Mensalidade
+                                      </span>
+                                    );
+                                  }
+
                                   // Predefine price options based on modality
                                   let opts: {label: string, val: number}[] = [];
-                                  if (mod.includes('ginásio') || mod.includes('muscula')) {
+                                  if (mod.includes('ginásio') || mod.includes('muscula') || mod.includes('cardio')) {
                                     opts = [
                                       { label: '1,39€ (Normal)', val: 1.39 },
                                       { label: '1,69€ (FDS)', val: 1.69 },
                                       { label: '1,11€ (-20%)', val: 1.11 },
                                       { label: '0,00€ (Isento)', val: 0 },
                                     ];
-                                  } else if (mod.includes('piscina') || mod.includes('nata')) {
+                                  } else if (mod.includes('piscina') || mod.includes('natação livre') || mod.includes('natacao livre')) {
                                     opts = [
                                       { label: '2,10€ Adulto', val: 2.10 },
                                       { label: '2,79€ Adulto FDS', val: 2.79 },
@@ -1738,7 +1757,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                                     ];
                                   }
 
-                                  if (log.valorPago !== undefined) {
+                                  if (log.valorPago !== undefined && log.valorPago !== null) {
                                     return (
                                       <div className="flex flex-col items-center gap-0.5">
                                         <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${log.valorPago === 0 ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
@@ -1773,6 +1792,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                                 })()}
                               </td>
                             )}
+
                             {!readOnly && (
                               <td className="px-3 py-1.5 text-center">
                                 <div className="flex items-center justify-center gap-0.5">
