@@ -534,30 +534,38 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
     setSearchResults(filtered);
   }, [newStudentName, allUtentes, localAlunos]);
 
-  const selectFromSearch = (u: { id: string; nome: string }) => {
+  const selectFromSearch = async (u: { id: string; nome: string }) => {
     const id = makeId(u.nome) + '_' + Date.now();
-    setLocalAlunos(prev => [...prev, { id, nome: u.nome, userId: u.id }]);
+    const newAluno = { id, nome: u.nome, userId: u.id };
+    const newAlunos = [...localAlunos, newAluno];
+    setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.add(id); return n; });
     setNewStudentName('');
     setSearchResults([]);
     setShowAddInput(false);
+    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
   };
 
-  const addLocalAluno = () => {
+  const addLocalAluno = async () => {
     const nome = newStudentName.trim().toUpperCase();
     if (!nome) return;
     const id = makeId(nome) + '_' + Date.now();
-    setLocalAlunos(prev => [...prev, { id, nome }]);
+    const newAluno = { id, nome };
+    const newAlunos = [...localAlunos, newAluno];
+    setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.add(id); return n; });
     setNewStudentName('');
     setSearchResults([]);
     setShowAddInput(false);
+    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
   };
 
-  const removeLocalAluno = (aluno: TurmaAluno) => {
-    setLocalAlunos(prev => prev.filter(a => a.id !== aluno.id));
+  const removeLocalAluno = async (aluno: TurmaAluno) => {
+    const newAlunos = localAlunos.filter(a => a.id !== aluno.id);
+    setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.delete(aluno.id); return n; });
     setConfirmRemove(null);
+    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
   };
 
   if (!professorName) {
@@ -754,33 +762,31 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
             {alunos.map(aluno => {
               const isMarked  = marked.has(aluno.id);
               const wasMarked = !!logIds[aluno.id];
-              const isNew     = !turma.alunos.find(a => a.id === aluno.id);
               return (
-                <div key={aluno.id} className={`flex items-center gap-1 rounded-lg border transition-all ${
-                  isMarked ? 'bg-green-50 border-green-300' : 'bg-white border-slate-100'
+                <div key={aluno.id} className={`flex items-center rounded border-b border-slate-50 transition-all ${
+                  isMarked ? 'bg-green-50/50' : 'bg-transparent'
                 }`}>
                   <button onClick={() => toggle(aluno.id)}
-                    className="flex items-center gap-2 flex-1 py-1 px-2 text-left active:scale-[0.98] min-w-0">
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all ${
-                      isMarked ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300'
+                    className="flex items-center gap-1.5 flex-1 py-1 px-1 text-left active:scale-[0.98] min-w-0">
+                    <div className={`w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-all ${
+                      isMarked ? 'bg-green-500 text-white' : 'bg-slate-100 border border-slate-200 text-slate-300'
                     }`}>
-                      {isMarked ? <Check size={12}/> : <div className="w-2 h-2 rounded-[2px] border border-slate-300"/>}
+                      {isMarked && <Check size={10}/>}
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                      <p className={`font-black text-[10px] uppercase leading-none truncate ${isMarked ? 'text-green-800' : 'text-slate-700'}`}>
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-1">
+                      <p className={`font-black text-[9px] uppercase leading-none truncate ${isMarked ? 'text-green-800' : 'text-slate-600'}`}>
                         {aluno.nome}
-                        {isNew && <span className="ml-1 text-[6px] font-black text-[#F7B500] bg-[#004D71] px-1 py-0.5 rounded-sm align-middle">Novo</span>}
                       </p>
-                      <p className="text-[6px] font-black uppercase whitespace-nowrap opacity-60">
-                        {wasMarked && isMarked  && <span className="text-slate-400">Já marcado</span>}
-                        {wasMarked && !isMarked && <span className="text-amber-500">A remover</span>}
+                      <p className="text-[5px] font-black uppercase whitespace-nowrap opacity-60 mt-0.5">
+                        {wasMarked && isMarked  && <span className="text-slate-400">Marcado</span>}
+                        {wasMarked && !isMarked && <span className="text-amber-500">Remover</span>}
                         {!wasMarked && isMarked && <span className="text-green-500">Novo</span>}
                       </p>
                     </div>
                   </button>
                   <button onClick={() => setConfirmRemove(aluno)}
-                    className="p-1 mr-1 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-md transition-all active:scale-90 shrink-0">
-                    <X size={12}/>
+                    className="p-1 mx-0.5 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-[4px] transition-all active:scale-90 shrink-0">
+                    <X size={10}/>
                   </button>
                 </div>
               );
@@ -821,7 +827,7 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
             </div>
             <h3 className="font-black text-[#004D71] text-sm uppercase mb-1">Remover da Turma?</h3>
             <p className="text-sm font-bold text-slate-600 mb-1">{confirmRemove.nome}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase mb-6">Esta alteração será guardada ao confirmar as presenças</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase mb-6">Este aluno será imediatamente removido da lista de inscritos na turma.</p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmRemove(null)}
                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">
