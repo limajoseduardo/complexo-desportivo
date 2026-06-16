@@ -21,6 +21,24 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { BarChart, Bar, Cell } from 'recharts';
 import { GlobalErrorBoundary as ErrorBoundary } from './ErrorBoundary';
 
+export const getBasePrice = (age: number | null, modality: string, isWeekend: boolean) => {
+  let basePrice = 0;
+  const mod = (modality || '').toLowerCase();
+
+  if (mod.includes('piscina') || mod.includes('natação')) {
+    if (age !== null) {
+      if (age >= 15) basePrice = isWeekend ? 2.79 : 2.10;
+      else if (age >= 7) basePrice = isWeekend ? 1.39 : 1.09;
+      else basePrice = 0; // Até 6 anos
+    } else {
+      basePrice = isWeekend ? 2.79 : 2.10; // Default adult
+    }
+  } else if (mod.includes('ginásio') || mod.includes('musculação')) {
+    basePrice = isWeekend ? 1.69 : 1.39;
+  }
+  return basePrice;
+};
+
 function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[]; onUserClick?: (u: UserProfile) => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1248,26 +1266,22 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                           let basePrice = 0;
                           const mod = (selectedModality || '').toLowerCase();
                           let ageStr = '';
+                          let ageNum: number | null = null;
+                          const todayIsWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
                           
-                          if (mod.includes('piscina') || mod.includes('natação')) {
-                            if (selectedUser.data_nasc) {
-                              const age = new Date().getFullYear() - new Date(selectedUser.data_nasc).getFullYear();
-                              ageStr = ` (${age} anos)`;
-                              if (age >= 15) basePrice = 2.10;
-                              else if (age >= 7) basePrice = 1.09;
-                            } else {
-                              basePrice = 2.10;
-                            }
-                          } else if (mod.includes('ginásio') || mod.includes('musculação')) {
-                            basePrice = 1.39;
+                          if (selectedUser.data_nasc) {
+                            ageNum = new Date().getFullYear() - new Date(selectedUser.data_nasc).getFullYear();
+                            ageStr = ` (${ageNum} anos)`;
                           }
+                          
+                          basePrice = getBasePrice(ageNum, mod, todayIsWeekend);
 
                           let discount = 0;
                           let descStr = 'Preço Base';
                           const card = selectedUser.cartao_tipo || '';
                           if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) { discount = 0.20; descStr = 'Desc. 20% (Cartão Etário)'; }
-                          else if (card.includes('Família Numerosa') || card.includes('Universidade Sénior')) { discount = 0.50; descStr = 'Desc. 50% (Especial/Universidade)'; }
-                          else if (card.includes('Atestado Médico')) { discount = 1.0; descStr = 'Isento (Atestado)'; }
+                          else if (card.includes('Família Numerosa')) { discount = 0.50; descStr = 'Desc. 50% (Família Numerosa)'; }
+                          else if (card.includes('Atestado Médico') || card.includes('Universidade Sénior')) { discount = 1.0; descStr = 'Isento (Atestado/Univ. Sénior)'; }
 
                           const finalPrice = basePrice * (1 - discount);
 
@@ -1285,17 +1299,14 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                           }
                           let basePrice = 0;
                           const mod = (selectedModality || '').toLowerCase();
-                          if (mod.includes('piscina') || mod.includes('natação')) {
-                            if (selectedUser.data_nasc) {
-                              const age = new Date().getFullYear() - new Date(selectedUser.data_nasc).getFullYear();
-                              if (age >= 15) basePrice = 2.10;
-                              else if (age >= 7) basePrice = 1.09;
-                            } else {
-                              basePrice = 2.10;
-                            }
-                          } else if (mod.includes('ginásio') || mod.includes('musculação')) {
-                            basePrice = 1.39;
+                          let ageNum: number | null = null;
+                          const todayIsWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+                          
+                          if (selectedUser.data_nasc) {
+                            ageNum = new Date().getFullYear() - new Date(selectedUser.data_nasc).getFullYear();
                           }
+                          
+                          basePrice = getBasePrice(ageNum, mod, todayIsWeekend);
                           let discount = 0;
                           const card = selectedUser.cartao_tipo || '';
                           if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) discount = 0.20;
@@ -1972,23 +1983,19 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                         const u = utentes.find(ut => ut.id === log.userId);
                         if (!u || u.tipoAcesso === 'Pacote' || u.tipoAcesso === 'Isento') return;
                         
-                        let basePrice = 0;
-                        const mod = (log.modalidade || '').toLowerCase();
+                        const modStr = log.modalidade || 'Outra';
+                        let ageNum: number | null = null;
                         
-                        if (mod.includes('piscina') || mod.includes('natação')) {
-                          if (u.data_nasc) {
-                            const birthYear = new Date(u.data_nasc).getFullYear();
-                            const currentYear = new Date().getFullYear();
-                            const age = currentYear - birthYear;
-                            if (age >= 15) basePrice = 2.10;
-                            else if (age >= 7) basePrice = 1.09;
-                            else basePrice = 0;
-                          } else {
-                            basePrice = 2.10; // default adult
-                          }
-                        } else if (mod.includes('ginásio') || mod.includes('musculação')) {
-                          basePrice = 1.39;
+                        let logDate = new Date();
+                        if (log.checkIn instanceof Timestamp) logDate = log.checkIn.toDate();
+                        else if (log.checkIn) logDate = new Date(log.checkIn);
+                        const isWeekend = logDate.getDay() === 0 || logDate.getDay() === 6;
+                        
+                        if (u.data_nasc) {
+                          ageNum = new Date().getFullYear() - new Date(u.data_nasc).getFullYear();
                         }
+                        
+                        const basePrice = getBasePrice(ageNum, modStr, isWeekend);
 
                         let discount = 0;
                         const card = u.cartao_tipo || '';
@@ -2027,19 +2034,18 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                           
                           let basePrice = 0;
                           const modStr = log.modalidade || 'Outra';
-                          const mod = modStr.toLowerCase();
+                          let ageNum: number | null = null;
                           
-                          if (mod.includes('piscina') || mod.includes('natação')) {
-                            if (u.data_nasc) {
-                              const age = new Date().getFullYear() - new Date(u.data_nasc).getFullYear();
-                              if (age >= 15) basePrice = 2.10;
-                              else if (age >= 7) basePrice = 1.09;
-                            } else {
-                              basePrice = 2.10;
-                            }
-                          } else if (mod.includes('ginásio') || mod.includes('musculação')) {
-                            basePrice = 1.39;
+                          let logDate = new Date();
+                          if (log.checkIn instanceof Timestamp) logDate = log.checkIn.toDate();
+                          else if (log.checkIn) logDate = new Date(log.checkIn);
+                          const isWeekend = logDate.getDay() === 0 || logDate.getDay() === 6;
+                          
+                          if (u.data_nasc) {
+                            ageNum = new Date().getFullYear() - new Date(u.data_nasc).getFullYear();
                           }
+                          
+                          basePrice = getBasePrice(ageNum, modStr, isWeekend);
 
                           let discount = 0;
                           const card = u.cartao_tipo || '';
