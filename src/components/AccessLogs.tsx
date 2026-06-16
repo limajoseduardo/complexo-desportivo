@@ -1511,7 +1511,22 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                                   alt={log.userName}
                                   className="w-7 h-7 rounded-lg border border-slate-100 shadow-sm shrink-0 object-cover"
                                 />
-                                <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">{log.userName}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">
+                                    {log.userName}
+                                    {profile?.data_nasc && (
+                                      <span className="ml-1.5 text-[8.5px] font-bold text-slate-400 lowercase whitespace-nowrap">
+                                        ({new Date().getFullYear() - new Date(profile.data_nasc).getFullYear()} anos)
+                                      </span>
+                                    )}
+                                  </span>
+                                  {profile?.cartao_tipo && (
+                                    <span className="text-[7.5px] font-black text-emerald-600 uppercase tracking-widest mt-0.5 whitespace-nowrap">
+                                      <CreditCard size={8} className="inline mr-1" />
+                                      {profile.cartao_tipo}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-1.5">
