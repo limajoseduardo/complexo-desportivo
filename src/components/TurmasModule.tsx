@@ -77,7 +77,7 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
   };
 
   if (view === 'attend' && selected)
-    return <AttendanceSheet turma={selected} markerUserId={markerUserId} markerUserName={markerUserName}
+    return <AttendanceSheet turma={selected} turmas={turmas} markerUserId={markerUserId} markerUserName={markerUserName}
       onBack={() => { setView('list'); setSelected(null); }} />;
 
   if (view === 'manage' && selected)
@@ -415,23 +415,62 @@ function CreateTurma({ onBack }: { onBack: () => void }) {
 }
 
 // ─── Professor Picker (step before attendance) ────────────────────────────────
-function ProfessorPicker({ turma, onSelect, onBack }:
-  { turma: Turma; onSelect: (name: string, id: string) => void; onBack: () => void }) {
+function ProfessorPicker({ turma, turmas, onSelect, onBack }:
+  { turma: Turma; turmas: Turma[]; onSelect: (name: string, id: string) => void; onBack: () => void }) {
 
   const [professors, setProfessors] = useState<{ id: string; nome: string }[]>([]);
+  const [profStats, setProfStats] = useState<Record<string, number>>({});
   const [custom, setCustom] = useState('');
 
   useEffect(() => {
-    getDocs(query(
-      collection(db, `artifacts/${APP_ID}/public/data/users`),
-      where('role', '==', 'professor')
-    )).then(snap => {
-      setProfessors(snap.docs.map(d => {
-        const data = d.data();
-        return { id: d.id, nome: data.n || data.nome || d.id };
-      }).sort((a, b) => a.nome.localeCompare(b.nome)));
-    }).catch(() => {});
-  }, []);
+    // 1. Load users with role 'professor'
+    getDocs(query(collection(db, `artifacts/${APP_ID}/public/data/users`), where('role', '==', 'professor')))
+      .then(snap => {
+        setProfessors(snap.docs.map(d => {
+          const data = d.data();
+          return { id: d.id, nome: data.n || data.nome || d.id };
+        }).sort((a, b) => a.nome.localeCompare(b.nome)));
+      }).catch(() => {});
+
+    // 2. Calculate attendance stats (last 30 days)
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 30);
+    const limitDateStr = limitDate.toISOString().split('T')[0];
+
+    getDocs(query(collection(db, LOGS_PATH), where('date', '>=', limitDateStr)))
+      .then(snap => {
+        const sessions = new Map<string, { turmaId: string; profName: string }>(); // key: turmaId_date
+        snap.forEach(d => {
+          const data = d.data();
+          if (!data.turmaId || !data.date) return;
+          const key = `${data.turmaId}_${data.date}`;
+          if (!sessions.has(key)) {
+            sessions.set(key, { turmaId: data.turmaId, profName: data.professorNome || '' });
+          }
+        });
+
+        const expected: Record<string, number> = {};
+        const actual: Record<string, number> = {};
+
+        sessions.forEach(sess => {
+          const t = turmas.find(x => x.id === sess.turmaId);
+          if (t && t.professor) {
+            expected[t.professor] = (expected[t.professor] || 0) + 1;
+            if (sess.profName === t.professor) {
+              actual[t.professor] = (actual[t.professor] || 0) + 1;
+            }
+          }
+        });
+
+        const stats: Record<string, number> = {};
+        for (const p of Object.keys(expected)) {
+          if (expected[p] > 0) {
+            stats[p] = Math.round((actual[p] / expected[p]) * 100);
+          }
+        }
+        setProfStats(stats);
+      }).catch(console.error);
+  }, [turmas]);
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm flex justify-end animate-in fade-in">
@@ -453,16 +492,27 @@ function ProfessorPicker({ turma, onSelect, onBack }:
           {professors.length > 0 && (
             <>
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Professores Registados</p>
-              {professors.map(p => (
-                <button key={p.id} onClick={() => onSelect(p.nome, p.id)}
-                  className="w-full flex items-center gap-4 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl hover:border-[#004D71]/30 hover:bg-[#004D71]/5 active:scale-[0.98] transition-all text-left">
-                  <div className="w-10 h-10 rounded-xl bg-[#004D71]/10 flex items-center justify-center shrink-0">
-                    <User size={18} className="text-[#004D71]"/>
-                  </div>
-                  <p className="font-black text-[#004D71] text-sm uppercase">{p.nome}</p>
-                  <ChevronDown size={14} className="ml-auto text-slate-300 -rotate-90 shrink-0"/>
-                </button>
-              ))}
+              {professors.map(p => {
+                const stat = profStats[p.nome];
+                const pct = stat !== undefined ? stat : 100; // default 100 if no data
+                const pctColor = pct >= 85 ? 'text-green-600 bg-green-50 border-green-200' : pct >= 60 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-red-600 bg-red-50 border-red-200';
+                
+                return (
+                  <button key={p.id} onClick={() => onSelect(p.nome, p.id)}
+                    className="w-full flex items-center gap-4 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl hover:border-[#004D71]/30 hover:bg-[#004D71]/5 active:scale-[0.98] transition-all text-left">
+                    <div className="w-10 h-10 rounded-xl bg-[#004D71]/10 flex items-center justify-center shrink-0">
+                      <User size={18} className="text-[#004D71]"/>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[#004D71] text-sm uppercase truncate">{p.nome}</p>
+                      <span className={`inline-block mt-1 text-[8px] px-1.5 py-0.5 rounded-[3px] font-black tracking-widest uppercase border ${pctColor}`}>
+                        {pct}% Assiduidade
+                      </span>
+                    </div>
+                    <ChevronDown size={14} className="text-slate-300 -rotate-90 shrink-0"/>
+                  </button>
+                );
+              })}
             </>
           )}
 
@@ -488,8 +538,8 @@ function ProfessorPicker({ turma, onSelect, onBack }:
 }
 
 // ─── Attendance Sheet ─────────────────────────────────────────────────────────
-function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
-  { turma: Turma; markerUserId: string; markerUserName: string; onBack: () => void }) {
+function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }:
+  { turma: Turma; turmas: Turma[]; markerUserId: string; markerUserName: string; onBack: () => void }) {
 
   const [professorName, setProfessorName] = useState<string | null>(null);
   const [professorId,   setProfessorId]   = useState<string>('');
@@ -651,7 +701,7 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   };
 
   if (!professorName) {
-    return <ProfessorPicker turma={turma} onBack={onBack}
+    return <ProfessorPicker turma={turma} turmas={turmas} onBack={onBack}
       onSelect={(name, id) => { setProfessorName(name); setProfessorId(id); }} />;
   }
 
