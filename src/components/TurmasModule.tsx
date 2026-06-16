@@ -11,6 +11,7 @@ import {
   collection, onSnapshot, doc, updateDoc, addDoc,
   deleteDoc, getDocs, query, where, serverTimestamp, writeBatch
 } from 'firebase/firestore';
+import { AvatarImage } from './Common';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const TURMAS_PATH = `artifacts/${APP_ID}/public/data/turmas`;
@@ -479,8 +480,8 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   const [showAddInput, setShowAddInput] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<TurmaAluno | null>(null);
-  const [allUtentes, setAllUtentes] = useState<{ id: string; nome: string }[]>([]);
-  const [searchResults, setSearchResults] = useState<{ id: string; nome: string }[]>([]);
+  const [allUtentes, setAllUtentes] = useState<{ id: string; nome: string; img?: string; idade?: string }[]>([]);
+  const [searchResults, setSearchResults] = useState<{ id: string; nome: string; img?: string; idade?: string }[]>([]);
   const [loadingUtentes, setLoadingUtentes] = useState(false);
 
   const dateStr = todayStr();
@@ -506,17 +507,16 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
     setMarked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
 
-  // Load utentes from DB in real-time when add panel opens
+  // Load utentes from DB in real-time
   useEffect(() => {
-    if (!showAddInput) return;
     setLoadingUtentes(true);
     const unsub = onSnapshot(collection(db, `artifacts/${APP_ID}/public/data/users`), snap => {
       const usersList = snap.docs.map(d => {
         const data = d.data();
         // Ignore admins/professors/staff
         if (data.role === 'admin' || data.role === 'professor' || data.role === 'staff' || data.role === 'chefia') return null;
-        return { id: d.id, nome: data.n || data.nome || d.id };
-      }).filter(Boolean) as { id: string; nome: string }[];
+        return { id: d.id, nome: data.n || data.nome || d.id, img: data.img, idade: data.idade };
+      }).filter(Boolean) as { id: string; nome: string; img?: string; idade?: string }[];
       
       // Deduplicate by normalized name
       const uniqueMap = new Map();
@@ -529,7 +529,7 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
       setLoadingUtentes(false);
     }, () => setLoadingUtentes(false));
     return () => unsub();
-  }, [showAddInput]);
+  }, []);
 
   // Filter search results as user types
   useEffect(() => {
@@ -776,6 +776,7 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
         <div className="flex-1 overflow-y-auto px-5 pb-3 hide-scrollbar">
           <div className="space-y-2">
             {alunos.map(aluno => {
+              const fullAluno = allUtentes.find(u => u.id === aluno.userId || u.nome === aluno.nome);
               const isMarked  = marked.has(aluno.id);
               const wasMarked = !!logIds[aluno.id];
               return (
@@ -789,9 +790,17 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
                     }`}>
                       {isMarked && <Check size={10}/>}
                     </div>
+                    {fullAluno?.img ? (
+                      <AvatarImage src={fullAluno.img} alt={aluno.nome} className="w-5 h-5 rounded-[4px] shrink-0 border border-slate-200" />
+                    ) : (
+                      <div className="w-5 h-5 rounded-[4px] bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                        <User size={10} className="text-slate-300" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0 flex items-center justify-between gap-1">
                       <p className={`font-black text-[9px] uppercase leading-none truncate ${isMarked ? 'text-green-800' : 'text-slate-600'}`}>
                         {aluno.nome}
+                        {fullAluno?.idade && <span className="ml-1 text-[7px] text-slate-400 normal-case font-bold tracking-widest">{fullAluno.idade} Anos</span>}
                       </p>
                       <p className="text-[5px] font-black uppercase whitespace-nowrap opacity-60 mt-0.5">
                         {wasMarked && isMarked  && <span className="text-slate-400">Marcado</span>}
