@@ -1412,22 +1412,30 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
           {/* Quadrados em tempo real */}
           <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
             {dailyStats.map(z => (
-              <div key={z.id} className={`${z.bg} rounded-xl p-2 text-white shadow-sm flex items-center gap-2 border border-white/10 transition-transform hover:scale-[1.02]`}>
-                <span className={`${z.color} bg-white/10 p-2 rounded-lg shrink-0`}>
-                  {z.icon}
-                </span>
-                <div className="flex flex-col flex-1 min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight truncate" title={z.label}>
+              <div key={z.id} className={`${z.bg} rounded-xl p-2 text-white shadow-sm flex items-center justify-between gap-2 border border-white/10 transition-transform hover:scale-[1.02]`}>
+                {/* Left side: Icon + Label */}
+                <div className="flex flex-col items-start gap-1 min-w-0">
+                  <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0 mb-0.5`}>
+                    {z.icon}
+                  </span>
+                  <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2" title={z.label}>
                     {z.label}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-[8px] font-bold text-white/70">
-                      T: <span className="text-[11px] font-black text-white">{z.count}</span>
-                    </p>
-                    <p className={`text-[8px] font-bold flex items-center gap-1 px-1.5 py-0.5 rounded ${z.liveCount > 0 ? 'bg-green-500/40 text-white shadow-sm' : 'text-white/70 bg-black/20'}`}>
-                      {z.liveCount > 0 && <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse inline-block shadow-[0_0_5px_rgba(74,222,128,0.5)]" />}
-                      Ag: <span className="text-[11px] font-black text-white">{z.liveCount}</span>
-                    </p>
+                </div>
+                
+                {/* Right side: Stacked Numbers */}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <div className="flex items-center justify-between w-14 px-1.5 py-0.5 rounded bg-black/20" title="Total Hoje">
+                    <span className="text-[6px] font-black text-white/50 uppercase">HOJE</span>
+                    <span className="text-sm font-black text-white tabular-nums">{z.count}</span>
+                  </div>
+                  <div className={`flex items-center justify-between w-14 px-1.5 py-0.5 rounded ${z.liveCount > 0 ? 'bg-green-500/40 shadow-sm border border-green-400/30' : 'bg-black/20'}`} title="Agora no Recinto">
+                    {z.liveCount > 0 ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0 shadow-[0_0_5px_rgba(74,222,128,0.5)]" />
+                    ) : (
+                      <span className="text-[6px] font-black text-white/50 uppercase">AGR</span>
+                    )}
+                    <span className="text-sm font-black text-white tabular-nums">{z.liveCount}</span>
                   </div>
                 </div>
               </div>
