@@ -570,6 +570,26 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     }
   };
 
+  const handleUndoCheckOut = async (log: AccessLog) => {
+    if (!window.confirm(`Desfazer a saída de ${log.userName} e voltar a colocar no recinto?`)) return;
+
+    try {
+      const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+      
+      await updateDoc(doc(db, path, log.id), {
+        checkOut: deleteField(),
+        durationMinutes: deleteField()
+      });
+
+      try {
+        const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, log.userId);
+        await updateDoc(userRef, { isInside: true, location: log.modalidade || 'C. Desportivo' });
+      } catch (_) { }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'logs_acesso');
+    }
+  };
+
   const handleCheckOutAll = async () => {
     const insideLogs = filteredLogs.filter(l => !l.checkOut);
     if (insideLogs.length === 0) {
@@ -1568,9 +1588,20 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                             </td>
                             <td className="px-3 py-1.5 text-center">
                               {log.checkOut ? (
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px]">
-                                  <LogOut size={11} />
-                                  {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px]">
+                                    <LogOut size={11} />
+                                    {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                                  </div>
+                                  {!readOnly && log.date === todayStr && (
+                                    <button
+                                      onClick={() => handleUndoCheckOut(log)}
+                                      className="text-[8px] font-black uppercase text-slate-400 hover:text-[#004D71] transition-colors"
+                                      title="Desfazer saída por engano"
+                                    >
+                                      Desfazer Saída
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1">
