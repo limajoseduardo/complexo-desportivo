@@ -571,14 +571,12 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   };
 
   const handleUndoCheckOut = async (log: AccessLog) => {
-    if (!window.confirm(`Desfazer a saída de ${log.userName} e voltar a colocar no recinto?`)) return;
-
     try {
       const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
       
       await updateDoc(doc(db, path, log.id), {
-        checkOut: null,
-        durationMinutes: null
+        checkOut: deleteField(),
+        durationMinutes: deleteField()
       });
 
       try {
