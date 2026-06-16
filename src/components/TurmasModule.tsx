@@ -12,6 +12,8 @@ import {
   deleteDoc, getDocs, query, where, serverTimestamp, writeBatch
 } from 'firebase/firestore';
 import { AvatarImage } from './Common';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const TURMAS_PATH = `artifacts/${APP_ID}/public/data/turmas`;
@@ -755,84 +757,47 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
     const presentes = localAlunos.filter(a => marked.has(a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
     const now = new Date().toLocaleString('pt-PT');
 
-    const html = `
-      <html>
-        <head>
-          <title>Relatório de Aula - ${turma.nome}</title>
-          <style>
-            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; }
-            h1 { color: #004D71; text-transform: uppercase; margin-bottom: 5px; font-size: 24px; font-weight: 900; }
-            h2 { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; font-weight: 900; }
-            .meta { margin-top: 30px; margin-bottom: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-            .meta div { background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
-            .meta strong { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 4px; font-weight: 900; }
-            .meta span { font-weight: 900; font-size: 14px; color: #0f172a; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th { text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 900; }
-            td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 800; font-size: 12px; text-transform: uppercase; }
-            .status { color: #22c55e; background: #f0fdf4; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 900; border: 1px solid #bbf7d0; display: inline-block; }
-            .footer { margin-top: 60px; text-align: center; font-size: 10px; color: #94a3b8; font-weight: bold; }
-            @media print { body { padding: 0; } .meta div { border: 1px solid #cbd5e1; } }
-          </style>
-        </head>
-        <body>
-          <h1>${turma.nome}</h1>
-          <h2>Comprovativo de Diário de Aula</h2>
-          
-          <div class="meta">
-            <div><strong>Data de Fecho</strong><span>${now}</span></div>
-            <div><strong>Professor</strong><span>${professorName}</span></div>
-            <div><strong>Total Presentes</strong><span>${presentes.length} Alunos</span></div>
-            <div><strong>Submetido Por</strong><span>${markerUserName}</span></div>
-          </div>
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(0, 77, 113); // #004D71
+    doc.text(turma.nome, 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text('COMPROVATIVO DE DIÁRIO DE AULA', 14, 30);
 
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 40px;">#</th>
-                <th>Nome do Aluno</th>
-                <th style="width: 100px;">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${presentes.map((a, i) => `
-                <tr>
-                  <td>${i + 1}</td>
-                  <td>${a.nome}</td>
-                  <td><span class="status">Presente</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+    // Meta Info
+    doc.setFontSize(10);
+    doc.setTextColor(50, 50, 50);
+    doc.text(`Data de Fecho: ${now}`, 14, 45);
+    doc.text(`Professor: ${professorName}`, 14, 52);
+    doc.text(`Total Presentes: ${presentes.length} Alunos`, 14, 59);
+    doc.text(`Submetido Por: ${markerUserName}`, 14, 66);
 
-          <div class="footer">
-            <p>Gerado automaticamente pelo Sistema de Gestão do Complexo Desportivo</p>
-          </div>
-        </body>
-      </html>
-    `;
+    // Table
+    const tableData = presentes.map((a, i) => [
+      (i + 1).toString(),
+      a.nome,
+      'Presente'
+    ]);
 
-    // Create a hidden iframe
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+    (doc as any).autoTable({
+      startY: 75,
+      head: [['#', 'Nome do Aluno', 'Estado']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 77, 113] },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        2: { cellWidth: 30, textColor: [34, 197, 94], fontStyle: 'bold' }
+      }
+    });
 
-    // Write the document
-    if (iframe.contentDocument) {
-      iframe.contentDocument.write(html);
-      iframe.contentDocument.close();
-    }
-
-    // Print
-    if (iframe.contentWindow) {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    }
-
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 5000);
+    // Save
+    doc.save(`Aula_${turma.nome.replace(/\s+/g, '_')}_${now.replace(/[/:\s,]/g, '')}.pdf`);
   };
 
   const alunos = localAlunos.filter(a => !search || a.nome.toLowerCase().includes(search.toLowerCase()));
