@@ -86,7 +86,7 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
       onClick={onClose}>
 
       {/* Wide right-side drawer */}
-      <div className="bg-white h-full w-full max-w-3xl shadow-2xl flex flex-col animate-in slide-in-from-right-10 duration-300"
+      <div className="bg-white h-full w-full max-w-5xl shadow-2xl flex flex-col animate-in slide-in-from-right-10 duration-300"
         onClick={e => e.stopPropagation()}>
 
         {/* ── Header ── */}
@@ -631,7 +631,7 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/40 backdrop-blur-sm flex justify-end animate-in fade-in">
-      <div className="bg-white h-full w-full max-w-lg shadow-2xl flex flex-col animate-in slide-in-from-right-10 duration-300">
+      <div className="bg-white h-full w-full max-w-2xl shadow-2xl flex flex-col animate-in slide-in-from-right-10 duration-300">
 
         {/* header */}
         <div className={`${modColor(turma.modalidade)} px-7 pt-8 pb-5 text-white shrink-0`}>
@@ -754,22 +754,22 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
               const wasMarked = !!logIds[aluno.id];
               const isNew     = !turma.alunos.find(a => a.id === aluno.id);
               return (
-                <div key={aluno.id} className={`flex items-center gap-2 rounded-xl border transition-all ${
+                <div key={aluno.id} className={`flex items-center gap-1 rounded-lg border transition-all ${
                   isMarked ? 'bg-green-50 border-green-300' : 'bg-white border-slate-100'
                 }`}>
                   <button onClick={() => toggle(aluno.id)}
-                    className="flex items-center gap-3 flex-1 p-2.5 text-left active:scale-[0.98] min-w-0">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                    className="flex items-center gap-2 flex-1 py-1 px-2 text-left active:scale-[0.98] min-w-0">
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all ${
                       isMarked ? 'bg-green-500 text-white shadow-sm' : 'bg-slate-100 text-slate-300'
                     }`}>
-                      {isMarked ? <Check size={14}/> : <div className="w-3 h-3 rounded-sm border-2 border-slate-300"/>}
+                      {isMarked ? <Check size={12}/> : <div className="w-2 h-2 rounded-[2px] border border-slate-300"/>}
                     </div>
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                      <p className={`font-black text-xs uppercase leading-tight truncate ${isMarked ? 'text-green-800' : 'text-slate-700'}`}>
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                      <p className={`font-black text-[10px] uppercase leading-none truncate ${isMarked ? 'text-green-800' : 'text-slate-700'}`}>
                         {aluno.nome}
-                        {isNew && <span className="ml-1.5 text-[7px] font-black text-[#F7B500] bg-[#004D71] px-1.5 py-0.5 rounded-sm align-middle">Novo</span>}
+                        {isNew && <span className="ml-1 text-[6px] font-black text-[#F7B500] bg-[#004D71] px-1 py-0.5 rounded-sm align-middle">Novo</span>}
                       </p>
-                      <p className="text-[7px] font-black uppercase whitespace-nowrap">
+                      <p className="text-[6px] font-black uppercase whitespace-nowrap opacity-60">
                         {wasMarked && isMarked  && <span className="text-slate-400">Já marcado</span>}
                         {wasMarked && !isMarked && <span className="text-amber-500">A remover</span>}
                         {!wasMarked && isMarked && <span className="text-green-500">Novo</span>}
@@ -777,8 +777,8 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
                     </div>
                   </button>
                   <button onClick={() => setConfirmRemove(aluno)}
-                    className="p-2 mr-1 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-all active:scale-90 shrink-0">
-                    <X size={14}/>
+                    className="p-1 mr-1 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-md transition-all active:scale-90 shrink-0">
+                    <X size={12}/>
                   </button>
                 </div>
               );
