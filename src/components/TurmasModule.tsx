@@ -556,7 +556,6 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   const [allUtentes, setAllUtentes] = useState<{ id: string; nome: string; img?: string; idade?: string }[]>([]);
   const [searchResults, setSearchResults] = useState<{ id: string; nome: string; img?: string; idade?: string }[]>([]);
   const [loadingUtentes, setLoadingUtentes] = useState(false);
-  const [isCompensacao, setIsCompensacao] = useState(false);
   const [recentLogs, setRecentLogs] = useState<Record<string, number>>({});
   const [assiduidade, setAssiduidade] = useState<Record<string, number>>({});
   const [totalClasses, setTotalClasses] = useState(0);
@@ -661,34 +660,28 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
 
   const selectFromSearch = async (u: { id: string; nome: string }) => {
     const id = makeId(u.nome) + '_' + Date.now();
-    const newAluno = { id, nome: u.nome, userId: u.id, isCompensacao };
+    const newAluno = { id, nome: u.nome, userId: u.id };
     const newAlunos = [...localAlunos, newAluno];
     setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.add(id); return n; });
     setNewStudentName('');
     setSearchResults([]);
     setShowAddInput(false);
-    setIsCompensacao(false);
-    if (!isCompensacao) {
-      await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos.filter(a => !(a as any).isCompensacao) }).catch(console.error);
-    }
+    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
   };
 
   const addLocalAluno = async () => {
     const nome = newStudentName.trim().toUpperCase();
     if (!nome) return;
     const id = makeId(nome) + '_' + Date.now();
-    const newAluno = { id, nome, isCompensacao };
+    const newAluno = { id, nome };
     const newAlunos = [...localAlunos, newAluno];
     setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.add(id); return n; });
     setNewStudentName('');
     setSearchResults([]);
     setShowAddInput(false);
-    setIsCompensacao(false);
-    if (!isCompensacao) {
-      await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos.filter(a => !(a as any).isCompensacao) }).catch(console.error);
-    }
+    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
   };
 
   const removeLocalAluno = async (aluno: TurmaAluno) => {
@@ -696,9 +689,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
     setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.delete(aluno.id); return n; });
     setConfirmRemove(null);
-    if (!(aluno as any).isCompensacao) {
-      await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos.filter(a => !(a as any).isCompensacao) }).catch(console.error);
-    }
+    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
   };
 
   if (!professorName) {
@@ -738,12 +729,11 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
         }
       }
 
-      // Persist turma.alunos if list changed (excluding compensações)
+      // Persist turma.alunos if list changed
       const origIds = JSON.stringify((turma.alunos || []).map(a => a.id).sort());
-      const permAlunos = localAlunos.filter(a => !(a as any).isCompensacao);
-      const newIds  = JSON.stringify(permAlunos.map(a => a.id).sort());
+      const newIds  = JSON.stringify(localAlunos.map(a => a.id).sort());
       if (origIds !== newIds) {
-        batch.update(doc(db, TURMAS_PATH, turma.id), { alunos: permAlunos });
+        batch.update(doc(db, TURMAS_PATH, turma.id), { alunos: localAlunos });
       }
 
       await batch.commit();
@@ -925,12 +915,6 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
                 </button>
               </div>
 
-              {/* extra toggles */}
-              <label className="flex items-center gap-2 mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg cursor-pointer">
-                <input type="checkbox" checked={isCompensacao} onChange={e => setIsCompensacao(e.target.checked)} className="w-4 h-4 accent-amber-500 rounded cursor-pointer"/>
-                <span className="text-[10px] font-black text-amber-700 uppercase">Modo Compensação (Não guarda na turma)</span>
-              </label>
-
               {/* search results dropdown */}
               {searchResults.length > 0 && (
                 <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-y-auto max-h-[30vh]">
@@ -977,7 +961,6 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
               const isMarked  = marked.has(aluno.id);
               const wasMarked = !!logIds[aluno.id];
               const hasRecent = !!recentLogs[aluno.id] || !!recentLogs[aluno.userId || ''];
-              const isComp = !!(aluno as any).isCompensacao;
               const isNew = !turma.alunos?.find(a => a.id === aluno.id);
               
               // Attendance % calculation
@@ -1014,7 +997,6 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
                       </div>
                       <p className="text-[6px] font-black uppercase whitespace-nowrap opacity-60 mt-1 flex items-center gap-1">
                         {fullAluno?.idade && <span className="text-slate-400 normal-case">{fullAluno.idade} Anos</span>}
-                        {isComp && <span className="text-[#004D71] bg-[#F7B500] px-1 py-0.5 rounded-[2px]">A COMPENSAR</span>}
                         {wasMarked && isMarked  && <span className="text-slate-400 ml-auto">Marcado</span>}
                         {wasMarked && !isMarked && <span className="text-amber-500 ml-auto">Remover</span>}
                         {!wasMarked && isMarked && <span className="text-green-500 ml-auto">Novo</span>}
