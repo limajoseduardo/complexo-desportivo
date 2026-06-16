@@ -375,11 +375,14 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
           timestamp: serverTimestamp()
         });
 
+        const currentEntries = selectedUser.entradas_disponiveis || 0;
+
         // Update UserProfile status
         const userRef = doc(db, `artifacts/${APP_ID}/public/data/users`, selectedUser.id);
         await updateDoc(userRef, {
           isInside: true,
           location: selectedModality,
+          ...(currentEntries > 0 ? { entradas_disponiveis: currentEntries - 1 } : {}),
           lastIn: serverTimestamp()
         });
 
@@ -451,7 +454,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
         lastIn: serverTimestamp(),
         img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
         modalidade: selectedModality,
-        entradas_disponiveis: 10,
+        entradas_disponiveis: 9, // Dá 10 entradas de oferta, mas desconta logo 1 para esta primeira entrada
         termo_imagens: true,
         termo_responsabilidade: true,
         termo_imagens_data: new Date().toISOString(),
