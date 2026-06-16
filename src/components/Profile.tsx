@@ -98,6 +98,10 @@ export function ProfileViewModule({
   const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'saude' | 'atividade' | 'treino' | 'termos'>('geral');
   const isStaff = ['admin', 'staff', 'professor'].includes(currentRole);
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
+  
+  // Simulador de Pacotes
+  const [calcEntries, setCalcEntries] = useState<number>(15);
+  const [calcType, setCalcType] = useState<'ginasio' | 'piscina_adulto' | 'piscina_crianca'>('ginasio');
   const [logs, setLogs] = useState<any[]>([]);
   const [plan, setPlan] = useState<any | null>(null);
   const [durationText, setDurationText] = useState('');
@@ -637,6 +641,41 @@ export function ProfileViewModule({
                         <option value="Pacote">Usa Pacote de Entradas</option>
                         <option value="Isento">Acesso Isento / Livre Trânsito</option>
                       </select>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 mt-4 border-t border-slate-100">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Simulador de Preço (Venda de Entradas)</h4>
+                    <div className="bg-white border-2 border-[#004D71]/10 rounded-2xl p-4 flex flex-col gap-4">
+                      <div className="flex gap-2">
+                        <select 
+                          className="flex-1 border-2 border-slate-100 rounded-xl px-3 py-2 text-xs font-bold text-[#004D71] outline-none focus:border-[#F7B500]"
+                          value={calcType}
+                          onChange={e => setCalcType(e.target.value as any)}
+                        >
+                          <option value="ginasio">Ginásio (Base 15 ent.)</option>
+                          <option value="piscina_adulto">Piscina Adulto (Base 20 ent.)</option>
+                          <option value="piscina_crianca">Piscina Criança (Base 20 ent.)</option>
+                        </select>
+                        <input 
+                          type="number" 
+                          className="w-20 border-2 border-slate-100 rounded-xl px-3 py-2 text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500] text-center"
+                          value={calcEntries}
+                          onChange={e => setCalcEntries(parseInt(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-between">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Valor a Cobrar:</p>
+                        <p className="text-xl font-black text-[#004D71]">
+                          {(() => {
+                            let pricePerEntry = 0;
+                            if (calcType === 'ginasio') pricePerEntry = 16.68 / 15;
+                            else if (calcType === 'piscina_adulto') pricePerEntry = 32.01 / 20;
+                            else if (calcType === 'piscina_crianca') pricePerEntry = 22.17 / 20;
+                            return (pricePerEntry * calcEntries).toFixed(2);
+                          })()} €
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
