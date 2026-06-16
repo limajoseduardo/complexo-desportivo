@@ -906,17 +906,10 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
               const isComp = !!(aluno as any).isCompensacao;
               const isNew = !turma.alunos?.find(a => a.id === aluno.id);
               
-              // Attendance % calculation (with fallback for demo purposes if 0 classes)
+              // Attendance % calculation
               const freq = assiduidade[aluno.id] || assiduidade[aluno.userId || ''] || 0;
-              let pct = 0;
-              if (totalClasses > 0) {
-                pct = Math.round((freq / totalClasses) * 100);
-              } else {
-                // Fake deterministic percentage so user can visualize
-                const hash = aluno.nome.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-                pct = 30 + (hash % 71); // random between 30 and 100
-              }
-              const pctColor = pct >= 75 ? 'text-green-600 bg-green-50 border-green-100' : pct >= 40 ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-red-500 bg-red-50 border-red-100';
+              const pct = totalClasses > 0 ? Math.round((freq / totalClasses) * 100) : 100;
+              const pctColor = pct >= 85 ? 'text-green-600 bg-green-50 border-green-200' : pct >= 60 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-red-600 bg-red-50 border-red-200';
               
               return (
                 <div key={aluno.id} className={`flex items-center rounded border-b border-slate-50 transition-all ${
