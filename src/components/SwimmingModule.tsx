@@ -513,7 +513,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
 
   const availableUtentes = useMemo(() => {
     return utentes
-      .filter(u => u.role === 'utente')
+      .filter(u => !u.role || u.role === 'utente' || (u.role as string) === 'user')
       .filter(u => (u.nome || u.n || '').toLowerCase().includes(studentSearchTerm.toLowerCase()));
   }, [utentes, studentSearchTerm]);
 
@@ -524,7 +524,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
   const studentsNotInClass = useMemo(() => {
     if (!selectedClass) return [];
     return utentes
-      .filter(u => u.role === 'utente' && !selectedClass.alunos.includes(u.id))
+      .filter(u => (!u.role || u.role === 'utente' || (u.role as string) === 'user') && !selectedClass.alunos.includes(u.id))
       .filter(u => (u.nome || u.n || '').toLowerCase().includes(addStudentSearch.toLowerCase()));
   }, [utentes, selectedClass, addStudentSearch]);
 
@@ -1075,7 +1075,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
           {activeSubTab === 'classes' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Lista de Turmas */}
-              <div className="lg:col-span-1 space-y-3">
+              <div className={`lg:col-span-1 space-y-3 ${selectedClassId ? 'hidden lg:block' : 'block'}`}>
                 <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest px-2 mb-4">Escolha uma Turma</h3>
                 {classes.map(c => {
                   const isActive = selectedClassId === c.id;
@@ -1110,12 +1110,18 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
               </div>
 
               {/* Detalhes da Turma Selecionada */}
-              <div className="lg:col-span-2">
+              <div className={`lg:col-span-2 ${!selectedClassId ? 'hidden lg:block' : 'block'}`}>
                 {selectedClass ? (
                   <div className="bg-white rounded-[2.5rem] p-6 border-4 border-[#004D71]/5 shadow-sm space-y-6">
                     {/* Topo do Detalhe */}
-                    <div className="flex justify-between items-start border-b pb-6 border-slate-100">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-6 border-slate-100 gap-4">
                       <div>
+                        <button 
+                          onClick={() => setSelectedClassId(null)} 
+                          className="lg:hidden mb-4 flex items-center gap-2 text-[#004D71] bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors"
+                        >
+                          <ChevronLeft size={14}/> Voltar às Turmas
+                        </button>
                         <span className="text-[9px] font-black text-[#F7B500] bg-[#004D71]/5 px-3 py-1 rounded-full uppercase tracking-wider">{selectedClass.nivel}</span>
                         <h3 className="text-xl font-black text-[#004D71] uppercase tracking-tighter mt-3">{selectedClass.nome}</h3>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
@@ -1262,160 +1268,174 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
               SUB-TAB 2: DIÁRIO DE AULA (REGISTO REAL-TIME)
              ========================================== */}
           {activeSubTab === 'live' && (
-            <div className="bg-white rounded-[2.5rem] p-6 border-4 border-[#004D71]/5 shadow-sm space-y-6">
-              <div className="flex items-center gap-3 border-b pb-4 border-slate-100">
-                <NotebookPen className="text-[#F7B500]"/>
-                <div>
-                  <h3 className="text-base font-black text-[#004D71] uppercase">Diário de Aula</h3>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Registe dados pedagógicos e distâncias à beira da piscina em tempo real</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Seletores */}
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selecionar Turma</label>
-                    <select
-                      value={liveClassId}
-                      onChange={(e) => setLiveClassId(e.target.value)}
-                      className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-5 py-3.5 font-black text-xs text-[#004D71] outline-none"
-                    >
-                      <option value="">-- Escolher Turma --</option>
-                      {classes.map(c => (
-                        <option key={c.id} value={c.id}>{c.nome} ({c.horario})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Data da Aula</label>
-                    <input
-                      type="date"
-                      value={liveDate}
-                      onChange={(e) => setLiveDate(e.target.value)}
-                      className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-5 py-3.5 font-black text-xs text-[#004D71] outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Conteúdo / Sumário da Aula</label>
-                    <textarea
-                      value={liveSummary}
-                      onChange={(e) => setLiveSummary(e.target.value)}
-                      rows={4}
-                      placeholder="Ex: Treino de batimento de pernas de costas e técnica de bobbing rítmico."
-                      className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-5 py-4 font-bold text-xs text-[#004D71] outline-none resize-none"
-                    />
+            <div className="fixed inset-0 z-[100000] bg-slate-50 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              {/* Header Full-Screen */}
+              <div className="bg-[#004D71] text-white p-6 shadow-md flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setActiveSubTab('classes')} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white">
+                    <X size={24} />
+                  </button>
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-black uppercase flex items-center gap-3">
+                      <NotebookPen className="text-[#F7B500]"/> Diário de Aula
+                    </h3>
+                    <p className="text-[10px] md:text-xs font-bold text-white/60 uppercase tracking-widest mt-1">Registo à Beira da Piscina</p>
                   </div>
                 </div>
-
-                {/* Grelha de Alunos na Aula */}
-                <div className="md:col-span-2 space-y-4">
-                  <h4 className="text-[10px] font-black text-[#004D71] uppercase tracking-widest pl-2">Alunos & Avaliação em Tempo Real</h4>
-                  
-                  {activeLiveClass ? (
-                    <div className="space-y-4 max-h-[60dvh] overflow-y-auto pr-1">
-                      {activeLiveClass.alunos.map(aid => {
-                        const pupil = utentes.find(u => u.id === aid);
-                        if (!pupil) return null;
-
-                        const isPresent = livePresence[aid] ?? true;
-                        const dist = liveDistances[aid] ?? 50;
-                        const note = liveNotes[aid] ?? '';
-
-                        return (
-                          <div 
-                            key={aid} 
-                            className={`p-5 rounded-[2rem] border-4 transition-all shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 ${isPresent ? 'bg-white border-slate-100' : 'bg-slate-50/50 border-[#004D71]/5 opacity-60'}`}
-                          >
-                            {/* Aluno Perfil */}
-                            <div className="flex items-center gap-3 min-w-[200px]">
-                              <AvatarImage src={pupil.img} alt={pupil.n || pupil.nome} className="w-12 h-12 rounded-xl shrink-0" />
-                              <div className="min-w-0">
-                                <p className="font-black text-[#004D71] text-xs uppercase truncate leading-none">{pupil.n || pupil.nome}</p>
-                                <p className="text-[9px] font-bold text-slate-400 mt-2">IDADE: {pupil.idade || '—'}</p>
-                              </div>
-                            </div>
-
-                            {/* Controlo de Presença */}
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => setLivePresence(prev => ({ ...prev, [aid]: !isPresent }))}
-                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm ${isPresent ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}
-                              >
-                                {isPresent ? 'Presente' : 'Ausente'}
-                              </button>
-                            </div>
-
-                            {/* Controlo de Distância e Notas se estiver Presente */}
-                            {isPresent && (
-                              <div className="flex-1 space-y-3">
-                                {/* Distância Slider */}
-                                <div className="flex items-center gap-3">
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest w-16">Distância:</span>
-                                  <input
-                                    type="range"
-                                    min="0"
-                                    max="2000"
-                                    step="25"
-                                    value={dist}
-                                    onChange={(e) => setLiveDistances(prev => ({ ...prev, [aid]: parseInt(e.target.value) }))}
-                                    className="flex-1 accent-[#004D71] h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
-                                  />
-                                  <span className="text-xs font-black text-[#004D71] tabular-nums whitespace-nowrap min-w-[50px] text-right">{dist}m</span>
-                                </div>
-                                {/* Increments rápidos */}
-                                <div className="flex gap-1.5 justify-end pl-16">
-                                  {['+25', '+50', '+100'].map(val => (
-                                    <button
-                                      key={val}
-                                      onClick={() => {
-                                        const inc = parseInt(val.replace('+', ''));
-                                        setLiveDistances(prev => ({ ...prev, [aid]: Math.min(2000, (prev[aid] || 0) + inc) }));
-                                      }}
-                                      className="px-2 py-1 bg-[#004D71]/5 hover:bg-[#004D71]/10 rounded-md text-[8px] font-black text-[#004D71]"
-                                    >
-                                      {val}
-                                    </button>
-                                  ))}
-                                </div>
-                                {/* Notas Rápidas */}
-                                <div className="flex items-center gap-3">
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest w-16">Nota:</span>
-                                  <input
-                                    type="text"
-                                    value={note}
-                                    onChange={(e) => setLiveNotes(prev => ({ ...prev, [aid]: e.target.value }))}
-                                    placeholder="Escreva uma observação..."
-                                    className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 font-bold text-[10px] text-[#004D71] outline-none"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-24 text-center border-4 border-dashed border-slate-100 rounded-[2.5rem] text-slate-300">
-                      <PicotoIcon className="mx-auto mb-3 opacity-20" size={40}/>
-                      <p className="font-black text-[10px] uppercase">Selecione uma turma para carregar os alunos.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {activeLiveClass && (
-                <div className="flex justify-end pt-4 border-t border-slate-100">
+                {activeLiveClass && (
                   <button
                     onClick={handleSaveLiveLog}
-                    className="bg-[#004D71] text-[#F7B500] px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-[#004D71]/90 active:scale-95 transition-all flex items-center gap-3"
+                    className="bg-[#F7B500] text-[#004D71] px-6 py-4 md:px-8 md:py-4 rounded-2xl font-black text-[10px] md:text-sm uppercase tracking-widest shadow-lg hover:bg-[#F7B500]/90 active:scale-95 transition-all flex items-center gap-3"
                   >
-                    <Save size={16}/> Guardar Registo da Aula
+                    <Save size={20}/> <span className="hidden md:inline">Guardar Registo</span>
                   </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                <div className="max-w-6xl mx-auto space-y-6">
+                  {/* Seletores */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                    <div className="space-y-2">
+                      <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Selecionar Turma</label>
+                      <select
+                        value={liveClassId}
+                        onChange={(e) => setLiveClassId(e.target.value)}
+                        className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-5 py-4 font-black text-xs md:text-sm text-[#004D71] outline-none"
+                      >
+                        <option value="">-- Escolher Turma --</option>
+                        {classes.map(c => (
+                          <option key={c.id} value={c.id}>{c.nome} ({c.horario})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Data da Aula</label>
+                      <input
+                        type="date"
+                        value={liveDate}
+                        onChange={(e) => setLiveDate(e.target.value)}
+                        className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-5 py-4 font-black text-xs md:text-sm text-[#004D71] outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Conteúdo / Sumário da Aula</label>
+                      <textarea
+                        value={liveSummary}
+                        onChange={(e) => setLiveSummary(e.target.value)}
+                        rows={2}
+                        placeholder="Ex: Treino de pernas..."
+                        className="w-full bg-slate-50 border-4 border-[#004D71]/5 rounded-2xl px-5 py-4 font-bold text-xs md:text-sm text-[#004D71] outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Grelha de Alunos na Aula */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black text-[#004D71] uppercase tracking-widest pl-2">Controlo de Presenças e Desempenho</h4>
+                    
+                    {activeLiveClass ? (
+                      <div className="space-y-4">
+                        {activeLiveClass.alunos.map(aid => {
+                          const pupil = utentes.find(u => u.id === aid);
+                          if (!pupil) return null;
+
+                          const isPresent = livePresence[aid] ?? true;
+                          const dist = liveDistances[aid] ?? 50;
+                          const note = liveNotes[aid] ?? '';
+
+                          return (
+                            <div 
+                              key={aid} 
+                              className={`p-6 rounded-[2.5rem] border-4 transition-all shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-6 ${isPresent ? 'bg-white border-slate-100' : 'bg-slate-50/50 border-[#004D71]/5 opacity-60'}`}
+                            >
+                              {/* Aluno Perfil */}
+                              <div className="flex items-center gap-4 min-w-[250px]">
+                                <AvatarImage src={pupil.img} alt={pupil.n || pupil.nome} className="w-16 h-16 md:w-20 md:h-20 rounded-2xl shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="font-black text-[#004D71] text-sm md:text-lg uppercase truncate leading-none">{pupil.n || pupil.nome}</p>
+                                  <p className="text-[10px] md:text-xs font-bold text-slate-400 mt-2">IDADE: {pupil.idade || '—'}</p>
+                                </div>
+                              </div>
+
+                              {/* Controlo de Presença Gigante */}
+                              <div className="flex items-center gap-4 w-full xl:w-auto">
+                                <button
+                                  onClick={() => setLivePresence(prev => ({ ...prev, [aid]: true }))}
+                                  className={`flex-1 xl:flex-none px-6 py-4 md:py-6 md:px-8 rounded-2xl text-[10px] md:text-xs font-black uppercase transition-all shadow-sm ${isPresent ? 'bg-emerald-500 text-white scale-105 shadow-emerald-500/30' : 'bg-slate-100 text-slate-400'}`}
+                                >
+                                  Presente
+                                </button>
+                                <button
+                                  onClick={() => setLivePresence(prev => ({ ...prev, [aid]: false }))}
+                                  className={`flex-1 xl:flex-none px-6 py-4 md:py-6 md:px-8 rounded-2xl text-[10px] md:text-xs font-black uppercase transition-all shadow-sm ${!isPresent ? 'bg-red-500 text-white scale-105 shadow-red-500/30' : 'bg-slate-100 text-slate-400'}`}
+                                >
+                                  Ausente
+                                </button>
+                              </div>
+
+                              {/* Controlo de Distância e Notas se estiver Presente */}
+                              {isPresent && (
+                                <div className="flex-1 space-y-4 w-full">
+                                  {/* Distância Slider Alargado */}
+                                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl">
+                                    <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest w-20">Distância:</span>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max="2000"
+                                      step="25"
+                                      value={dist}
+                                      onChange={(e) => setLiveDistances(prev => ({ ...prev, [aid]: parseInt(e.target.value) }))}
+                                      className="flex-1 accent-[#004D71] h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                    <span className="text-sm md:text-lg font-black text-[#004D71] tabular-nums whitespace-nowrap min-w-[60px] text-right">{dist}m</span>
+                                  </div>
+                                  
+                                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                                    {/* Increments rápidos maiores */}
+                                    <div className="flex gap-2">
+                                      {['+25', '+50', '+100'].map(val => (
+                                        <button
+                                          key={val}
+                                          onClick={() => {
+                                            const inc = parseInt(val.replace('+', ''));
+                                            setLiveDistances(prev => ({ ...prev, [aid]: Math.min(2000, (prev[aid] || 0) + inc) }));
+                                          }}
+                                          className="px-4 py-3 bg-[#004D71]/5 hover:bg-[#004D71]/10 rounded-xl text-[10px] md:text-xs font-black text-[#004D71]"
+                                        >
+                                          {val}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    {/* Notas Rápidas */}
+                                    <div className="flex-1 w-full relative">
+                                      <input
+                                        type="text"
+                                        value={note}
+                                        onChange={(e) => setLiveNotes(prev => ({ ...prev, [aid]: e.target.value }))}
+                                        placeholder="Escreva uma observação de progresso..."
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 font-bold text-[10px] md:text-xs text-[#004D71] outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-24 text-center border-4 border-dashed border-slate-200 rounded-[2.5rem] bg-white text-slate-300">
+                        <PicotoIcon className="mx-auto mb-3 opacity-20" size={60}/>
+                        <p className="font-black text-xs uppercase">Selecione uma turma no topo para carregar os alunos.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -2018,41 +2038,45 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
 
       {/* MODAL: ADICIONAR ALUNO À TURMA */}
       {showAddStudentModal && selectedClass && (
-        <div className="fixed inset-0 z-[100000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl relative max-h-[80vh] flex flex-col">
-            <button onClick={() => setShowAddStudentModal(false)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"><X size={18}/></button>
-            <div className="mb-5">
-              <h3 className="text-base font-black text-[#004D71] uppercase">Adicionar Aluno</h3>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Turma: {selectedClass.nome}</p>
+        <div className="fixed inset-0 z-[100000] bg-[#004D71]/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in">
+          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-6 sm:p-10 shadow-2xl relative h-[90vh] flex flex-col">
+            <button onClick={() => setShowAddStudentModal(false)} className="absolute top-6 right-6 p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors"><X size={24}/></button>
+            <div className="mb-6 pr-12">
+              <h3 className="text-xl sm:text-3xl font-black text-[#004D71] uppercase">Adicionar Aluno</h3>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-2">Turma: {selectedClass.nome}</p>
             </div>
-            <div className="relative mb-4">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={15}/>
+            <div className="relative mb-6 shrink-0">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20}/>
               <input
                 type="text"
-                placeholder="Procurar utente..."
+                placeholder="Procurar utente pelo nome..."
                 value={addStudentSearch}
                 onChange={e => setAddStudentSearch(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-10 pr-4 py-3 text-xs font-black text-[#004D71] uppercase outline-none"
+                className="w-full bg-slate-50 border-4 border-slate-100 rounded-3xl pl-16 pr-6 py-5 text-sm font-black text-[#004D71] uppercase outline-none focus:border-[#F7B500]/50 transition-colors"
               />
             </div>
-            <div className="flex-1 overflow-y-auto space-y-2 hide-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
               {studentsNotInClass.length === 0 ? (
-                <p className="text-center text-[10px] font-black text-slate-400 uppercase py-8">Todos os utentes já estão na turma</p>
+                <p className="text-center text-xs font-black text-slate-400 uppercase py-12">Nenhum utente encontrado ou todos já estão na turma</p>
               ) : (
-                studentsNotInClass.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={async () => { await handleAddStudentToClass(u.id); }}
-                    className="w-full flex items-center gap-3 p-3 rounded-2xl border-2 border-slate-100 hover:border-[#004D71]/20 hover:bg-slate-50 transition-all text-left"
-                  >
-                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-10 h-10 rounded-xl shrink-0"/>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[#004D71] text-xs uppercase truncate">{u.n || u.nome}</p>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{u.idade || '—'} Anos · {u.modalidade || 'Utente Geral'}</p>
-                    </div>
-                    <div className="p-2 bg-[#004D71]/5 rounded-xl text-[#004D71]"><UserPlus size={14}/></div>
-                  </button>
-                ))
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {studentsNotInClass.map(u => (
+                    <button
+                      key={u.id}
+                      onClick={async () => { await handleAddStudentToClass(u.id); }}
+                      className="w-full flex items-center gap-4 p-4 rounded-3xl border-4 border-slate-50 hover:border-[#F7B500] hover:bg-slate-50 transition-all text-left group"
+                    >
+                      <AvatarImage src={u.img} alt={u.n || u.nome} className="w-14 h-14 rounded-2xl shrink-0"/>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-[#004D71] text-sm uppercase truncate">{u.n || u.nome}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{u.idade || '—'} Anos · {u.modalidade || 'Utente Geral'}</p>
+                      </div>
+                      <div className="p-3 bg-[#004D71]/5 group-hover:bg-[#F7B500] group-hover:text-[#004D71] rounded-2xl text-[#004D71] transition-colors">
+                        <UserPlus size={20}/>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
