@@ -16,12 +16,44 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
   const lastScanned = useRef<{ text: string; time: number } | null>(null);
 
   useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onExit();
+      if (e.key === 'Escape') {
+        onExit();
+        return;
+      }
+
+      // USB Scanner Logic
+      const currentTime = Date.now();
+      if (currentTime - lastKeyTime > 100) {
+        buffer = ''; // Reset if typing is too slow (human)
+      }
+
+      if (e.key === 'Enter') {
+        if (buffer.length > 3 && !isPaused.current) {
+          const scannedText = buffer;
+          buffer = '';
+          
+          const now = Date.now();
+          if (lastScanned.current && lastScanned.current.text === scannedText && (now - lastScanned.current.time < 10000)) {
+            return;
+          }
+          lastScanned.current = { text: scannedText, time: now };
+          isPaused.current = true;
+          onScan(scannedText);
+        }
+      } else if (e.key.length === 1) {
+        buffer += e.key;
+      }
+      
+      lastKeyTime = currentTime;
     };
+    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onExit]);
+  }, [onExit, onScan]);
 
   // Retomar leitura quando o resultado desaparece
   useEffect(() => {
@@ -69,7 +101,6 @@ export function KioskMode({ scanResult, onExit, onScan }: KioskModeProps) {
                     audio: false,
                     tracker: false
                   }}
-                  constraints={{ facingMode: 'user' }}
                />
              </div>
              <div className="absolute inset-0 border-4 border-[#F7B500] rounded-[3rem] pointer-events-none animate-pulse opacity-50 z-10"></div>
