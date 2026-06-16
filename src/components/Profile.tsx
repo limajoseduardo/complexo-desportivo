@@ -571,6 +571,7 @@ export function ProfileViewModule({
                     <option value="Cartão Jovem Municipal">Cartão Jovem Municipal (0-35 anos) - 20% Desc</option>
                     <option value="Cartão Municipal Idade-Ativa">Cartão Municipal Idade-Ativa (35-65 anos) - 20% Desc</option>
                     <option value="Cartão do Idoso">Cartão do Idoso (65+ anos) - 20% Desc</option>
+                    <option value="Cartão Universidade Sénior">Cartão Universidade Sénior - 50% Desc</option>
                     <option value="Família Numerosa">Família Numerosa - 50% Desc</option>
                     <option value="Atestado Médico">Atestado Médico / Reabilitação - Isento</option>
                   </select>

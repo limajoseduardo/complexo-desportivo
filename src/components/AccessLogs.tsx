@@ -1266,7 +1266,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                           let descStr = 'Preço Base';
                           const card = selectedUser.cartao_tipo || '';
                           if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) { discount = 0.20; descStr = 'Desc. 20% (Cartão Etário)'; }
-                          else if (card.includes('Família Numerosa')) { discount = 0.50; descStr = 'Desc. 50% (Família Numerosa)'; }
+                          else if (card.includes('Família Numerosa') || card.includes('Universidade Sénior')) { discount = 0.50; descStr = 'Desc. 50% (Especial/Universidade)'; }
                           else if (card.includes('Atestado Médico')) { discount = 1.0; descStr = 'Isento (Atestado)'; }
 
                           const finalPrice = basePrice * (1 - discount);

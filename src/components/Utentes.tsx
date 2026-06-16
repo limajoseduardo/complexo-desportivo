@@ -54,7 +54,7 @@ export function UtentesList({
 }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'c_jovem' | 'c_ativa' | 'c_idoso'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'incomplete' | 'atestado' | 'c_jovem' | 'c_ativa' | 'c_idoso' | 'c_univ'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -111,13 +111,15 @@ export function UtentesList({
     let c_jovem = 0;
     let c_ativa = 0;
     let c_idoso = 0;
+    let c_univ = 0;
     utenteProfiles.forEach(u => {
       if (u.cartao_tipo === 'Cartão Jovem Municipal') c_jovem++;
       else if (u.cartao_tipo === 'Cartão Municipal Idade-Ativa') c_ativa++;
       else if (u.cartao_tipo === 'Cartão do Idoso') c_idoso++;
+      else if (u.cartao_tipo === 'Cartão Universidade Sénior') c_univ++;
     });
 
-    return { total, incomplete, atestado, c_jovem, c_ativa, c_idoso };
+    return { total, incomplete, atestado, c_jovem, c_ativa, c_idoso, c_univ };
   }, [utenteProfiles]);
 
   const filtered = useMemo(() => {
@@ -132,6 +134,7 @@ export function UtentesList({
         if (activeFilter === 'c_jovem') return u.cartao_tipo === 'Cartão Jovem Municipal';
         if (activeFilter === 'c_ativa') return u.cartao_tipo === 'Cartão Municipal Idade-Ativa';
         if (activeFilter === 'c_idoso') return u.cartao_tipo === 'Cartão do Idoso';
+        if (activeFilter === 'c_univ') return u.cartao_tipo === 'Cartão Universidade Sénior';
         return true;
       })
       .filter(u => {
@@ -250,6 +253,7 @@ export function UtentesList({
           { key: 'c_jovem',    value: stats.c_jovem,     label: 'Cartão Jovem Municipal',       icon: <CreditCard size={16}/> },
           { key: 'c_ativa',    value: stats.c_ativa,     label: 'Cartão Municipal Idade-Ativa', icon: <CreditCard size={16}/> },
           { key: 'c_idoso',    value: stats.c_idoso,     label: 'Cartão do Idoso',              icon: <CreditCard size={16}/> },
+          { key: 'c_univ',     value: stats.c_univ,      label: 'Universidade Sénior',          icon: <CreditCard size={16}/> },
         ] as const).map(({ key, value, label, icon }) => (
           <button
             key={key}
@@ -426,6 +430,7 @@ export function UtentesList({
                   <option value="Cartão Jovem Municipal">Cartão Jovem Municipal (0-35 anos)</option>
                   <option value="Cartão Municipal Idade-Ativa">Cartão Municipal Idade-Ativa (35-65 anos)</option>
                   <option value="Cartão do Idoso">Cartão do Idoso (65+ anos)</option>
+                  <option value="Cartão Universidade Sénior">Cartão Universidade Sénior</option>
                   <option value="Cartão Universal H2O">Cartão Universal H2O</option>
                 </select>
               </div>
