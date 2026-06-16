@@ -1591,17 +1591,22 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                             <td className="px-3 py-1.5 text-center">
                               {log.checkOut ? (
                                 <div className="flex flex-col items-center gap-1">
-                                  <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px]">
-                                    <LogOut size={11} />
-                                    {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
-                                  </div>
-                                  {!readOnly && log.date === todayStr && (
+                                  {readOnly || log.date !== todayStr ? (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px]">
+                                      <LogOut size={11} />
+                                      {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                                    </div>
+                                  ) : (
                                     <button
                                       onClick={() => handleUndoCheckOut(log)}
-                                      className="text-[8px] font-black uppercase text-slate-400 hover:text-[#004D71] transition-colors"
-                                      title="Desfazer saída por engano"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[10px] hover:bg-red-600 hover:text-white transition-colors cursor-pointer group"
+                                      title="Clique para desfazer a saída e voltar a colocar no recinto"
                                     >
-                                      Desfazer Saída
+                                      <LogOut size={11} className="group-hover:hidden" />
+                                      <span className="group-hover:hidden">
+                                        {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                                      </span>
+                                      <span className="hidden group-hover:inline">Desfazer Saída</span>
                                     </button>
                                   )}
                                 </div>
