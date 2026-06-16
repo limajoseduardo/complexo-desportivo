@@ -282,6 +282,10 @@ export function ProfileViewModule({
     try {
       if (action === 'IN') await handleCheckIn(user, zone === 'C. Desportivo' ? (user.modalidade || 'Ginásio') : zone);
       else await handleCheckOut(user);
+      
+      if (isExternalView) {
+        onLogout();
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `access/${user.id}`);
     } finally {
