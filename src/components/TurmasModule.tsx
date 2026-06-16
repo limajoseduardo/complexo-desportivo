@@ -54,6 +54,7 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
   const [selected, setSelected]   = useState<Turma | null>(null);
   const [view, setView]           = useState<'list' | 'attend' | 'manage' | 'create'>('list');
   const [filterToday, setFilterToday] = useState(true);
+  const [filterProf, setFilterProf] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Turma | null>(null);
 
   useEffect(() => onSnapshot(collection(db, TURMAS_PATH), snap => {
@@ -65,7 +66,10 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
 
   const dow          = todayDow();
   const todayTurmas  = turmas.filter(t => t.diasSemana?.includes(dow));
-  const displayTurmas = filterToday ? todayTurmas : turmas;
+  const baseTurmas   = filterToday ? todayTurmas : turmas;
+  const displayTurmas = baseTurmas.filter(t => !filterProf || t.professor === filterProf);
+  
+  const allProfs = Array.from(new Set(baseTurmas.map(t => t.professor).filter(Boolean)));
 
   const deleteTurma = async (t: Turma) => {
     await deleteDoc(doc(db, TURMAS_PATH, t.id));
@@ -121,23 +125,41 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
         </div>
 
         {/* ── Toolbar ── */}
-        <div className="px-8 py-4 border-b border-slate-100 flex items-center gap-3 shrink-0 flex-wrap">
-          <div className="flex bg-slate-100 p-1 rounded-xl flex-1 min-w-[200px]">
-            <button onClick={() => setFilterToday(true)}
-              className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${filterToday ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-400'}`}>
-              Hoje ({todayTurmas.length})
-            </button>
-            <button onClick={() => setFilterToday(false)}
-              className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${!filterToday ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-400'}`}>
-              Todas ({turmas.length})
+        <div className="px-8 py-4 border-b border-slate-100 flex flex-col gap-3 shrink-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex bg-slate-100 p-1 rounded-xl flex-1 min-w-[200px]">
+              <button onClick={() => { setFilterToday(true); setFilterProf(null); }}
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${filterToday ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-400'}`}>
+                Hoje ({todayTurmas.length})
+              </button>
+              <button onClick={() => { setFilterToday(false); setFilterProf(null); }}
+                className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${!filterToday ? 'bg-white text-[#004D71] shadow-sm' : 'text-slate-400'}`}>
+                Todas ({turmas.length})
+              </button>
+            </div>
+            <button onClick={() => setView('create')}
+              className="flex items-center gap-2 bg-[#F7B500] text-[#004D71] px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm shrink-0">
+              <Plus size={14}/> Nova Turma
             </button>
           </div>
-          <button onClick={() => setView('create')}
-            className="flex items-center gap-2 bg-[#F7B500] text-[#004D71] px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm shrink-0">
-            <Plus size={14}/> Nova Turma
-          </button>
+          
+          {/* Prof Filter */}
+          {allProfs.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+              <button onClick={() => setFilterProf(null)}
+                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${!filterProf ? 'bg-[#004D71] text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>
+                Todos os Professores
+              </button>
+              {allProfs.map(p => (
+                <button key={p} onClick={() => setFilterProf(p)}
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${filterProf === p ? 'bg-[#004D71] text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>
+                  <User size={10}/> {p}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-
+        
         {/* ── List ── */}
         <div className="flex-1 overflow-y-auto px-8 py-5 hide-scrollbar">
           {displayTurmas.length === 0 ? (
@@ -483,6 +505,8 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   const [allUtentes, setAllUtentes] = useState<{ id: string; nome: string; img?: string; idade?: string }[]>([]);
   const [searchResults, setSearchResults] = useState<{ id: string; nome: string; img?: string; idade?: string }[]>([]);
   const [loadingUtentes, setLoadingUtentes] = useState(false);
+  const [isCompensacao, setIsCompensacao] = useState(false);
+  const [recentLogs, setRecentLogs] = useState<Record<string, number>>({});
 
   const dateStr = todayStr();
 
@@ -502,6 +526,29 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
       setMarked(m);
     }).catch(() => {});
   }, [turma.id, dateStr, professorName]);
+
+  // Load recent logs for absence warnings (last 14 dias)
+  useEffect(() => {
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 14);
+    const limitDateStr = limitDate.toISOString().split('T')[0];
+
+    getDocs(query(collection(db, LOGS_PATH),
+      where('turmaId', '==', turma.id),
+      where('date', '>=', limitDateStr)
+    )).then(snap => {
+      const recent: Record<string, number> = {};
+      snap.forEach(d => {
+        const data = d.data();
+        const dateMs = new Date(data.date).getTime();
+        const id = data.turmaAlunoId || data.userId;
+        if (id && (!recent[id] || dateMs > recent[id])) {
+          recent[id] = dateMs;
+        }
+      });
+      setRecentLogs(recent);
+    }).catch(console.error);
+  }, [turma.id]);
 
   const toggle = useCallback((id: string) => {
     setMarked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -552,28 +599,34 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
 
   const selectFromSearch = async (u: { id: string; nome: string }) => {
     const id = makeId(u.nome) + '_' + Date.now();
-    const newAluno = { id, nome: u.nome, userId: u.id };
+    const newAluno = { id, nome: u.nome, userId: u.id, isCompensacao };
     const newAlunos = [...localAlunos, newAluno];
     setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.add(id); return n; });
     setNewStudentName('');
     setSearchResults([]);
     setShowAddInput(false);
-    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
+    setIsCompensacao(false);
+    if (!isCompensacao) {
+      await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos.filter(a => !(a as any).isCompensacao) }).catch(console.error);
+    }
   };
 
   const addLocalAluno = async () => {
     const nome = newStudentName.trim().toUpperCase();
     if (!nome) return;
     const id = makeId(nome) + '_' + Date.now();
-    const newAluno = { id, nome };
+    const newAluno = { id, nome, isCompensacao };
     const newAlunos = [...localAlunos, newAluno];
     setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.add(id); return n; });
     setNewStudentName('');
     setSearchResults([]);
     setShowAddInput(false);
-    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
+    setIsCompensacao(false);
+    if (!isCompensacao) {
+      await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos.filter(a => !(a as any).isCompensacao) }).catch(console.error);
+    }
   };
 
   const removeLocalAluno = async (aluno: TurmaAluno) => {
@@ -581,7 +634,9 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
     setLocalAlunos(newAlunos);
     setMarked(prev => { const n = new Set(prev); n.delete(aluno.id); return n; });
     setConfirmRemove(null);
-    await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos }).catch(console.error);
+    if (!(aluno as any).isCompensacao) {
+      await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos: newAlunos.filter(a => !(a as any).isCompensacao) }).catch(console.error);
+    }
   };
 
   if (!professorName) {
@@ -621,11 +676,12 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
         }
       }
 
-      // Persist turma.alunos if list changed
+      // Persist turma.alunos if list changed (excluding compensações)
       const origIds = JSON.stringify((turma.alunos || []).map(a => a.id).sort());
-      const newIds  = JSON.stringify(localAlunos.map(a => a.id).sort());
+      const permAlunos = localAlunos.filter(a => !(a as any).isCompensacao);
+      const newIds  = JSON.stringify(permAlunos.map(a => a.id).sort());
       if (origIds !== newIds) {
-        batch.update(doc(db, TURMAS_PATH, turma.id), { alunos: localAlunos });
+        batch.update(doc(db, TURMAS_PATH, turma.id), { alunos: permAlunos });
       }
 
       await batch.commit();
@@ -734,6 +790,12 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
                 </button>
               </div>
 
+              {/* extra toggles */}
+              <label className="flex items-center gap-2 mt-2 p-2 bg-amber-50 border border-amber-100 rounded-lg cursor-pointer">
+                <input type="checkbox" checked={isCompensacao} onChange={e => setIsCompensacao(e.target.checked)} className="w-4 h-4 accent-amber-500 rounded cursor-pointer"/>
+                <span className="text-[10px] font-black text-amber-700 uppercase">Modo Compensação (Não guarda na turma)</span>
+              </label>
+
               {/* search results dropdown */}
               {searchResults.length > 0 && (
                 <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-y-auto max-h-[30vh]">
@@ -779,6 +841,11 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
               const fullAluno = allUtentes.find(u => u.id === aluno.userId || u.nome === aluno.nome);
               const isMarked  = marked.has(aluno.id);
               const wasMarked = !!logIds[aluno.id];
+              const hasRecent = !!recentLogs[aluno.id] || !!recentLogs[aluno.userId || ''];
+              const isComp = !!(aluno as any).isCompensacao;
+              const isNew = !turma.alunos?.find(a => a.id === aluno.id);
+              const isAbsent = !hasRecent && !isNew && !isComp;
+              
               return (
                 <div key={aluno.id} className={`flex items-center rounded border-b border-slate-50 transition-all ${
                   isMarked ? 'bg-green-50/50' : 'bg-transparent'
@@ -801,6 +868,8 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
                       <p className={`font-black text-[9px] uppercase leading-none truncate ${isMarked ? 'text-green-800' : 'text-slate-600'}`}>
                         {aluno.nome}
                         {fullAluno?.idade && <span className="ml-1 text-[7px] text-slate-400 normal-case font-bold tracking-widest">{fullAluno.idade} Anos</span>}
+                        {isComp && <span className="ml-1 text-[6px] text-[#004D71] bg-[#F7B500] px-1 py-0.5 rounded-[3px] font-black tracking-widest align-middle">A COMPENSAR</span>}
+                        {isAbsent && <span className="ml-1 text-orange-500 inline-flex items-center align-middle" title="Sem presenças nos últimos 14 dias"><AlertTriangle size={10} className="fill-orange-100"/></span>}
                       </p>
                       <p className="text-[5px] font-black uppercase whitespace-nowrap opacity-60 mt-0.5">
                         {wasMarked && isMarked  && <span className="text-slate-400">Marcado</span>}
@@ -876,6 +945,31 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
   const [novoNome, setNovoNome] = useState('');
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
+  const [assiduidade, setAssiduidade] = useState<Record<string, number>>({});
+  const [totalClasses, setTotalClasses] = useState(1);
+
+  useEffect(() => {
+    // Carregar logs dos últimos 30 dias para calcular % de assiduidade
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 30);
+    const limitDateStr = limitDate.toISOString().split('T')[0];
+
+    getDocs(query(collection(db, LOGS_PATH),
+      where('turmaId', '==', turma.id),
+      where('date', '>=', limitDateStr)
+    )).then(snap => {
+      const dates = new Set<string>();
+      const counts: Record<string, number> = {};
+      snap.forEach(d => {
+        const data = d.data();
+        dates.add(data.date);
+        const id = data.turmaAlunoId || data.userId;
+        if (id) counts[id] = (counts[id] || 0) + 1;
+      });
+      setTotalClasses(Math.max(1, dates.size));
+      setAssiduidade(counts);
+    }).catch(console.error);
+  }, [turma.id]);
 
   const addAluno = () => {
     const nome = novoNome.trim();
@@ -932,16 +1026,28 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
         <div className="flex-1 overflow-y-auto px-7 py-5 hide-scrollbar">
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">{alunos.length} alunos inscritos</p>
           <div className="space-y-2">
-            {alunos.map((a, i) => (
-              <div key={a.id} className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
-                <span className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 shrink-0">{i + 1}</span>
-                <p className="flex-1 font-black text-sm text-slate-700 uppercase truncate">{a.nome}</p>
-                <button onClick={() => setAlunos(prev => prev.filter(x => x.id !== a.id))}
-                  className="p-2 bg-red-50 text-red-400 rounded-xl active:scale-90 hover:bg-red-100 transition-all">
-                  <Trash2 size={13}/>
-                </button>
-              </div>
-            ))}
+            {alunos.map(aluno => {
+              const freq = assiduidade[aluno.id] || assiduidade[aluno.userId || ''] || 0;
+              const pct = Math.round((freq / totalClasses) * 100);
+              return (
+                <div key={aluno.id} className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 group">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm text-slate-700 uppercase truncate">{aluno.nome}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[8px] font-black uppercase text-slate-400">Assiduidade 30d:</p>
+                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden max-w-[100px]">
+                        <div className={`h-full rounded-full ${pct >= 75 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-500'}`} style={{ width: `${Math.min(100, pct)}%` }}/>
+                      </div>
+                      <p className={`text-[8px] font-black ${pct >= 75 ? 'text-green-600' : pct >= 40 ? 'text-amber-600' : 'text-red-500'}`}>{pct}%</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setAlunos(prev => prev.filter(x => x.id !== aluno.id))}
+                    className="p-2 bg-red-50 text-red-400 rounded-xl active:scale-90 hover:bg-red-100 transition-all">
+                    <Trash2 size={13}/>
+                  </button>
+                </div>
+              );
+            })}
             {alunos.length === 0 && (
               <div className="py-12 text-center text-slate-300">
                 <p className="font-black text-[10px] uppercase tracking-widest">Sem alunos nesta turma</p>
