@@ -1513,9 +1513,18 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                                   alt={log.userName}
                                   className="w-7 h-7 rounded-lg border border-slate-100 shadow-sm shrink-0 object-cover"
                                 />
-                                <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">
-                                  {log.userName}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">
+                                    {(() => {
+                                      const parts = (log.userName || '').trim().split(/\s+/);
+                                      if (parts.length > 1) return `${parts[0]} ${parts[parts.length - 1]}`;
+                                      return parts[0] || '---';
+                                    })()}
+                                  </span>
+                                  <span className="text-[8px] font-bold text-slate-400 mt-0.5 tracking-widest">
+                                    UTENTE: {profile?.nif || '---'}
+                                  </span>
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-1.5 text-center">
