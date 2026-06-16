@@ -454,7 +454,6 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
         lastIn: serverTimestamp(),
         img: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
         modalidade: selectedModality,
-        entradas_disponiveis: 9, // Dá 10 entradas de oferta, mas desconta logo 1 para esta primeira entrada
         termo_imagens: true,
         termo_responsabilidade: true,
         termo_imagens_data: new Date().toISOString(),
