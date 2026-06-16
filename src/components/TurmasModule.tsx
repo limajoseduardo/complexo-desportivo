@@ -506,20 +506,22 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
     setMarked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
 
-  // Load utentes from DB when add panel opens
+  // Load utentes from DB in real-time when add panel opens
   useEffect(() => {
-    if (!showAddInput || allUtentes.length > 0) return;
+    if (!showAddInput) return;
     setLoadingUtentes(true);
-    getDocs(collection(db, `artifacts/${APP_ID}/public/data/users`)).then(snap => {
+    const unsub = onSnapshot(collection(db, `artifacts/${APP_ID}/public/data/users`), snap => {
       const usersList = snap.docs.map(d => {
         const data = d.data();
+        // Ignore admins/professors/staff
         if (data.role === 'admin' || data.role === 'professor' || data.role === 'staff' || data.role === 'chefia') return null;
         return { id: d.id, nome: data.n || data.nome || d.id };
       }).filter(Boolean) as { id: string; nome: string }[];
-      
       setAllUtentes(usersList.sort((a, b) => a.nome.localeCompare(b.nome)));
-    }).catch(() => {}).finally(() => setLoadingUtentes(false));
-  }, [showAddInput, allUtentes.length]);
+      setLoadingUtentes(false);
+    }, () => setLoadingUtentes(false));
+    return () => unsub();
+  }, [showAddInput]);
 
   // Filter search results as user types
   useEffect(() => {
