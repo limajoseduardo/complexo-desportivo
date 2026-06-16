@@ -345,8 +345,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
 
         await updateDoc(logDoc, {
           userName: selectedUser.n || selectedUser.nome || 'Utente',
-          userId: selectedUser.id,
-          modalidade: selectedModality,
+          userId: selectedUser.id || 'sem_id',
+          modalidade: selectedModality || 'Outra',
           checkIn: Timestamp.fromDate(checkInDate),
           checkOut: checkOutDate ? Timestamp.fromDate(checkOutDate) : null,
           date: editDate,
@@ -363,15 +363,15 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
         }
       } else {
         // Create mode
-        const logId = `${Date.now()}_${selectedUser.id}`;
+        const logId = `${Date.now()}_${selectedUser.id || 'sem_id'}`;
         await setDoc(doc(db, path, logId), {
-          userId: selectedUser.id,
+          userId: selectedUser.id || 'sem_id',
           userName: selectedUser.n || selectedUser.nome || 'Utente',
-          userRole: selectedUser.role,
+          userRole: selectedUser.role || 'utente',
           checkIn: Timestamp.now(),
           date: today,
           zone: 'Entrada Manual',
-          modalidade: selectedModality,
+          modalidade: selectedModality || 'Outra',
           timestamp: serverTimestamp()
         });
 
