@@ -1491,6 +1491,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-slate-50 border-b border-slate-200 shadow-sm">
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Utente</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50 text-center">Idade</th>
+                        <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50 text-center">Cartão</th>
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Data</th>
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-50">Modalidade</th>
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Entrada</th>
@@ -1511,23 +1513,29 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                                   alt={log.userName}
                                   className="w-7 h-7 rounded-lg border border-slate-100 shadow-sm shrink-0 object-cover"
                                 />
-                                <div className="flex flex-col">
-                                  <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">
-                                    {log.userName}
-                                    {profile?.data_nasc && (
-                                      <span className="ml-1.5 text-[8.5px] font-bold text-slate-400 lowercase whitespace-nowrap">
-                                        ({new Date().getFullYear() - new Date(profile.data_nasc).getFullYear()} anos)
-                                      </span>
-                                    )}
-                                  </span>
-                                  {profile?.cartao_tipo && (
-                                    <span className="text-[7.5px] font-black text-emerald-600 uppercase tracking-widest mt-0.5 whitespace-nowrap">
-                                      <CreditCard size={8} className="inline mr-1" />
-                                      {profile.cartao_tipo}
-                                    </span>
-                                  )}
-                                </div>
+                                <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">
+                                  {log.userName}
+                                </span>
                               </div>
+                            </td>
+                            <td className="px-3 py-1.5 text-center">
+                              {profile?.data_nasc ? (
+                                <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                                  {new Date().getFullYear() - new Date(profile.data_nasc).getFullYear()}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-300">--</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-1.5 text-center">
+                              {profile?.cartao_tipo ? (
+                                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest whitespace-nowrap">
+                                  <CreditCard size={9} className="inline mr-1" />
+                                  {profile.cartao_tipo}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-300">--</span>
+                              )}
                             </td>
                             <td className="px-3 py-1.5">
                               <span className="text-[10px] font-bold text-slate-500">{log.date}</span>
