@@ -21,7 +21,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { BarChart, Bar } from 'recharts';
 import { GlobalErrorBoundary as ErrorBoundary } from './ErrorBoundary';
 
-function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[] } = {}) {
+function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[]; onUserClick?: (u: UserProfile) => void } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1518,7 +1518,11 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                                   className="w-7 h-7 rounded-lg border border-slate-100 shadow-sm shrink-0 object-cover"
                                 />
                                 <div className="flex flex-col">
-                                  <span className="text-[10px] font-black text-[#004D71] uppercase leading-tight">
+                                  <span 
+                                    className="text-[10px] font-black text-[#004D71] uppercase leading-tight cursor-pointer hover:underline"
+                                    onClick={() => onUserClick && profile && onUserClick(profile)}
+                                    title="Ver Perfil"
+                                  >
                                     {(() => {
                                       const parts = (log.userName || '').trim().split(/\s+/);
                                       if (parts.length > 1) return `${parts[0]} ${parts[parts.length - 1]}`;

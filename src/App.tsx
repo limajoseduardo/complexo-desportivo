@@ -943,7 +943,7 @@ export default function App() {
                   />
                 )}
 
-                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} />}
+                {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} onUserClick={setViewingProfile} />}
                 {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                 {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                 {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
