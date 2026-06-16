@@ -10,6 +10,7 @@ const ModalitiesDashboard = React.lazy(() => import('./components/Dashboards').t
 const UtenteDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.UtenteDashboard })));
 const StaffDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.StaffDashboard })));
 const ProfessorDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.ProfessorDashboard })));
+const GlobalDashboard = React.lazy(() => import('./components/GlobalDashboard').then(m => ({ default: m.GlobalDashboard })));
 const EntranceDashboard = React.lazy(() => import('./components/EntranceDashboard').then(m => ({ default: m.EntranceDashboard })));
 const UtentesList = React.lazy(() => import('./components/Utentes').then(m => ({ default: m.UtentesList })));
 const ScannerScreen = React.lazy(() => import('./components/Utentes').then(m => ({ default: m.ScannerScreen })));
@@ -917,7 +918,10 @@ export default function App() {
                         logs={logs}
                       />
                     )}
-                    {activeTab === 'inicio' && !['utente', 'staff', 'professor'].includes(user.role) && (
+                    {activeTab === 'inicio' && ['admin', 'chefia'].includes(user.role) && (
+                      <GlobalDashboard utentes={utentes} logs={logs} />
+                    )}
+                    {activeTab === 'inicio' && !['utente', 'staff', 'professor', 'admin', 'chefia'].includes(user.role) && (
                       <ModalitiesDashboard
                         onUserClick={setViewingProfile}
                         logs={logs}

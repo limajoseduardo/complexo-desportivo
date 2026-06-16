@@ -11,7 +11,7 @@ import {
   collection, onSnapshot, doc, updateDoc, addDoc,
   deleteDoc, getDocs, query, where, serverTimestamp, writeBatch
 } from 'firebase/firestore';
-import { AvatarImage } from './Common';
+import { AvatarImage, SkeletonLoader } from './Common';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const TURMAS_PATH = `artifacts/${APP_ID}/public/data/turmas`;
@@ -56,6 +56,7 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
   const [filterToday, setFilterToday] = useState(true);
   const [filterProf, setFilterProf] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Turma | null>(null);
+  const [loadingTurmas, setLoadingTurmas] = useState(true);
 
   useEffect(() => onSnapshot(collection(db, TURMAS_PATH), snap => {
     setTurmas(snap.docs
@@ -162,8 +163,26 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
         
         {/* ── List ── */}
         <div className="flex-1 overflow-y-auto px-8 py-5 hide-scrollbar">
-          {displayTurmas.length === 0 ? (
-            <div className="py-24 text-center text-slate-300">
+          {loadingTurmas ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white border-2 border-slate-100 rounded-3xl overflow-hidden shadow-sm flex flex-col h-44">
+                  <SkeletonLoader className="h-1.5 w-full rounded-none shrink-0" />
+                  <div className="p-5 flex-1 flex flex-col">
+                    <SkeletonLoader className="h-4 w-1/2 mb-2" />
+                    <SkeletonLoader className="h-2 w-1/4 mb-5" />
+                    <SkeletonLoader className="h-2 w-3/4 mb-2" />
+                    <SkeletonLoader className="h-2 w-2/3 mb-6" />
+                    <div className="flex gap-2 mt-auto">
+                      <SkeletonLoader className="h-8 flex-1 rounded-xl" />
+                      <SkeletonLoader className="h-8 w-24 rounded-xl" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : displayTurmas.length === 0 ? (
+            <div className="py-24 text-center text-slate-300 animate-in fade-in zoom-in-95">
               <BookOpen size={52} className="mx-auto mb-3 opacity-20"/>
               <p className="uppercase font-black text-[10px] tracking-widest">
                 {filterToday ? 'Nenhuma turma hoje' : 'Nenhuma turma criada'}

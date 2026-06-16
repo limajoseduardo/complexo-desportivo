@@ -77,3 +77,7 @@ export function CVCard({ icon, label, value }: { icon: React.ReactNode, label: s
     </div>
   );
 }
+
+export const SkeletonLoader = React.memo(({ className = "h-4 w-full rounded" }: { className?: string }) => {
+  return <div className={`animate-pulse bg-slate-200 ${className}`}></div>;
+});
