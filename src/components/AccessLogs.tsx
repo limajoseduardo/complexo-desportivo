@@ -1418,24 +1418,24 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                   <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0 mb-0.5`}>
                     {z.icon}
                   </span>
-                  <p className="text-[9px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2" title={z.label}>
+                  <p className="text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2" title={z.label}>
                     {z.label}
                   </p>
                 </div>
                 
                 {/* Right side: Stacked Numbers */}
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <div className="flex items-center justify-between w-14 px-1.5 py-0.5 rounded bg-black/20" title="Total Hoje">
-                    <span className="text-[6px] font-black text-white/50 uppercase">HOJE</span>
-                    <span className="text-sm font-black text-white tabular-nums">{z.count}</span>
+                <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
+                  <div className="flex items-center justify-between w-[4.5rem] px-2 py-0.5 rounded bg-black/20" title="Total Hoje">
+                    <span className="text-[7px] font-black text-white/60 uppercase">HOJE</span>
+                    <span className="text-base font-black text-white tabular-nums">{z.count}</span>
                   </div>
-                  <div className={`flex items-center justify-between w-14 px-1.5 py-0.5 rounded ${z.liveCount > 0 ? 'bg-green-500/40 shadow-sm border border-green-400/30' : 'bg-black/20'}`} title="Agora no Recinto">
+                  <div className={`flex items-center justify-between w-[4.5rem] px-2 py-0.5 rounded ${z.liveCount > 0 ? 'bg-green-500/40 shadow-sm border border-green-400/30' : 'bg-black/20'}`} title="Agora no Recinto">
                     {z.liveCount > 0 ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0 shadow-[0_0_5px_rgba(74,222,128,0.5)]" />
+                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0 shadow-[0_0_5px_rgba(74,222,128,0.5)]" />
                     ) : (
-                      <span className="text-[6px] font-black text-white/50 uppercase">AGR</span>
+                      <span className="text-[7px] font-black text-white/60 uppercase">AGR</span>
                     )}
-                    <span className="text-sm font-black text-white tabular-nums">{z.liveCount}</span>
+                    <span className="text-base font-black text-white tabular-nums">{z.liveCount}</span>
                   </div>
                 </div>
               </div>
