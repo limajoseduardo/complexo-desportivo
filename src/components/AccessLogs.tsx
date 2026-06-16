@@ -1170,6 +1170,83 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                     </div>
                   </div>
 
+                  {!editingLogId && (
+                    <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-[10px] font-black text-emerald-900 uppercase tracking-widest flex items-center gap-1.5">
+                          <CreditCard size={12}/> Faturação Automática
+                        </h4>
+                        {(() => {
+                          if (selectedUser.tipoAcesso === 'Pacote') {
+                            return <p className="text-[9px] font-bold text-emerald-700 mt-1 uppercase">Debita 1 Entrada do Pacote</p>;
+                          }
+                          if (selectedUser.tipoAcesso === 'Isento') {
+                            return <p className="text-[9px] font-bold text-emerald-700 mt-1 uppercase">Acesso Isento / Livre Trânsito</p>;
+                          }
+
+                          let basePrice = 0;
+                          const mod = (selectedModality || '').toLowerCase();
+                          let ageStr = '';
+                          
+                          if (mod.includes('piscina') || mod.includes('natação')) {
+                            if (selectedUser.data_nasc) {
+                              const age = new Date().getFullYear() - new Date(selectedUser.data_nasc).getFullYear();
+                              ageStr = ` (${age} anos)`;
+                              if (age >= 15) basePrice = 2.10;
+                              else if (age >= 7) basePrice = 1.09;
+                            } else {
+                              basePrice = 2.10;
+                            }
+                          } else if (mod.includes('ginásio') || mod.includes('musculação')) {
+                            basePrice = 1.39;
+                          }
+
+                          let discount = 0;
+                          let descStr = 'Preço Base';
+                          const card = selectedUser.cartao_tipo || '';
+                          if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) { discount = 0.20; descStr = 'Desc. 20% (Cartão Etário)'; }
+                          else if (card.includes('Família Numerosa')) { discount = 0.50; descStr = 'Desc. 50% (Família Numerosa)'; }
+                          else if (card.includes('Atestado Médico')) { discount = 1.0; descStr = 'Isento (Atestado)'; }
+
+                          const finalPrice = basePrice * (1 - discount);
+
+                          return (
+                            <p className="text-[9px] font-bold text-emerald-700 mt-1 uppercase">
+                              {descStr}{ageStr}
+                            </p>
+                          );
+                        })()}
+                      </div>
+                      <div className="text-right">
+                        {(() => {
+                          if (selectedUser.tipoAcesso === 'Pacote' || selectedUser.tipoAcesso === 'Isento') {
+                            return <span className="text-2xl font-black text-emerald-600">0.00 €</span>;
+                          }
+                          let basePrice = 0;
+                          const mod = (selectedModality || '').toLowerCase();
+                          if (mod.includes('piscina') || mod.includes('natação')) {
+                            if (selectedUser.data_nasc) {
+                              const age = new Date().getFullYear() - new Date(selectedUser.data_nasc).getFullYear();
+                              if (age >= 15) basePrice = 2.10;
+                              else if (age >= 7) basePrice = 1.09;
+                            } else {
+                              basePrice = 2.10;
+                            }
+                          } else if (mod.includes('ginásio') || mod.includes('musculação')) {
+                            basePrice = 1.39;
+                          }
+                          let discount = 0;
+                          const card = selectedUser.cartao_tipo || '';
+                          if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) discount = 0.20;
+                          else if (card.includes('Família Numerosa')) discount = 0.50;
+                          else if (card.includes('Atestado Médico')) discount = 1.0;
+                          const finalPrice = basePrice * (1 - discount);
+                          return <span className="text-2xl font-black text-emerald-600">{finalPrice.toFixed(2)} €</span>;
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
                   {editingLogId && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-2">
@@ -1726,8 +1803,10 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                         }
 
                         let discount = 0;
-                        if (u.desconto === 'Cartões Etários (20%)') discount = 0.20;
-                        else if (u.desconto === 'Família Numerosa (50%)') discount = 0.50;
+                        const card = u.cartao_tipo || '';
+                        if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) discount = 0.20;
+                        else if (card.includes('Família Numerosa')) discount = 0.50;
+                        else if (card.includes('Atestado Médico')) discount = 1.0;
 
                         total += basePrice * (1 - discount);
                       });
@@ -1775,8 +1854,10 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                           }
 
                           let discount = 0;
-                          if (u.desconto === 'Cartões Etários (20%)') discount = 0.20;
-                          else if (u.desconto === 'Família Numerosa (50%)') discount = 0.50;
+                          const card = u.cartao_tipo || '';
+                          if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) discount = 0.20;
+                          else if (card.includes('Família Numerosa')) discount = 0.50;
+                          else if (card.includes('Atestado Médico')) discount = 1.0;
 
                           const finalPrice = basePrice * (1 - discount);
                           
