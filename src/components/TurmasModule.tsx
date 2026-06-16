@@ -526,10 +526,13 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   // Filter search results as user types
   useEffect(() => {
     if (newStudentName.trim().length < 2) { setSearchResults([]); return; }
-    const term = newStudentName.toLowerCase();
+    const term = newStudentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
     const existingIds = new Set(localAlunos.map(a => a.userId || a.id));
     const filtered = allUtentes
-      .filter(u => u.nome.toLowerCase().includes(term) && !existingIds.has(u.id))
+      .filter(u => {
+        const normalizedNome = u.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+        return normalizedNome.includes(term) && !existingIds.has(u.id);
+      })
       .slice(0, 8);
     setSearchResults(filtered);
   }, [newStudentName, allUtentes, localAlunos]);
