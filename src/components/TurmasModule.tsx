@@ -517,7 +517,15 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
         if (data.role === 'admin' || data.role === 'professor' || data.role === 'staff' || data.role === 'chefia') return null;
         return { id: d.id, nome: data.n || data.nome || d.id };
       }).filter(Boolean) as { id: string; nome: string }[];
-      setAllUtentes(usersList.sort((a, b) => a.nome.localeCompare(b.nome)));
+      
+      // Deduplicate by normalized name
+      const uniqueMap = new Map();
+      usersList.forEach(u => {
+        const key = u.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
+        if (!uniqueMap.has(key)) uniqueMap.set(key, u);
+      });
+      
+      setAllUtentes(Array.from(uniqueMap.values()).sort((a, b) => a.nome.localeCompare(b.nome)));
       setLoadingUtentes(false);
     }, () => setLoadingUtentes(false));
     return () => unsub();
