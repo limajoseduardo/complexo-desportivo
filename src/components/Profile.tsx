@@ -240,8 +240,8 @@ export function ProfileViewModule({
 
   const save = async () => {
     if (saving) return;
-    // Validate terms for utentes
-    if (formData.role === 'utente' && (!formData.termo_imagens || !formData.termo_responsabilidade)) {
+    // Validate terms for utentes (Only enforce if it's the user themselves editing, staff can bypass)
+    if (!isStaff && formData.role === 'utente' && (!formData.termo_imagens || !formData.termo_responsabilidade)) {
       alert('É obrigatório aceitar os dois termos de responsabilidade para continuar.');
       return;
     }
