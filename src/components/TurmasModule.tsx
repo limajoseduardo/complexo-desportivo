@@ -534,14 +534,19 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
   // Filter search results as user types
   useEffect(() => {
     if (newStudentName.trim().length < 2) { setSearchResults([]); return; }
-    const term = newStudentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    
+    // Divide a pesquisa em palavras individuais
+    const terms = newStudentName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim().split(/\s+/);
     const existingIds = new Set(localAlunos.map(a => a.userId || a.id));
+    
     const filtered = allUtentes
       .filter(u => {
         const normalizedNome = u.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-        return normalizedNome.includes(term) && !existingIds.has(u.id);
+        // Tem de conter TODAS as palavras pesquisadas
+        return terms.every(t => normalizedNome.includes(t)) && !existingIds.has(u.id);
       })
-      .slice(0, 8);
+      .slice(0, 25); // Mostrar até 25 alunos para não esconder nomes do fim do alfabeto
+      
     setSearchResults(filtered);
   }, [newStudentName, allUtentes, localAlunos]);
 
@@ -731,7 +736,7 @@ function AttendanceSheet({ turma, markerUserId, markerUserName, onBack }:
 
               {/* search results dropdown */}
               {searchResults.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-y-auto max-h-[30vh]">
                   {searchResults.map(u => (
                     <button key={u.id} onClick={() => selectFromSearch(u)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#004D71]/5 active:bg-[#004D71]/10 text-left transition-colors border-b border-slate-50 last:border-0">
