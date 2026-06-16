@@ -3,7 +3,7 @@ import {
   Users, LogIn, LogOut, Calendar, Search,
   Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
-  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard
 } from 'lucide-react';
 import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -71,7 +71,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
   const [modalMode, setModalMode] = useState<'single' | 'outdoor_pool'>('single');
   const [adultEntradas, setAdultEntradas] = useState(0);
   const [childEntradas, setChildEntradas] = useState(0);
-  const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas'>('diario');
+  const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas' | 'caixa'>('diario');
 
   // CORREÇÃO E AUTO-CHECKOUT (19h)
   useEffect(() => {
@@ -1322,6 +1322,12 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
         >
           <FileText size={14} /> Relatórios & Estatísticas
         </button>
+        <button
+          onClick={() => setActiveTab('caixa')}
+          className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'caixa' ? 'bg-emerald-600 text-white shadow-sm border border-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <CreditCard size={14} /> Fecho de Caixa
+        </button>
       </div>
 
       {activeTab === 'diario' && (
@@ -1671,6 +1677,139 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [] }: { onScan?:
                 Sem registos de hoje
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'caixa' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+          <div className="bg-white rounded-[2rem] border-2 border-emerald-100 p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 border-b border-emerald-50 pb-4">
+              <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                <CreditCard size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-emerald-900 uppercase">Fecho de Caixa Automático</h3>
+                <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mt-0.5">
+                  Cálculo com base no preçário e nos perfis dos utentes
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Esperado</p>
+                  <p className="text-5xl font-black text-emerald-600 tabular-nums">
+                    {(() => {
+                      let total = 0;
+                      allDateLogs.forEach(log => {
+                        const u = utentes.find(ut => ut.id === log.userId);
+                        if (!u || u.tipoAcesso === 'Pacote' || u.tipoAcesso === 'Isento') return;
+                        
+                        let basePrice = 0;
+                        const mod = (log.modalidade || '').toLowerCase();
+                        
+                        if (mod.includes('piscina') || mod.includes('natação')) {
+                          if (u.data_nasc) {
+                            const birthYear = new Date(u.data_nasc).getFullYear();
+                            const currentYear = new Date().getFullYear();
+                            const age = currentYear - birthYear;
+                            if (age >= 15) basePrice = 2.10;
+                            else if (age >= 7) basePrice = 1.09;
+                            else basePrice = 0;
+                          } else {
+                            basePrice = 2.10; // default adult
+                          }
+                        } else if (mod.includes('ginásio') || mod.includes('musculação')) {
+                          basePrice = 1.39;
+                        }
+
+                        let discount = 0;
+                        if (u.desconto === 'Cartões Etários (20%)') discount = 0.20;
+                        else if (u.desconto === 'Família Numerosa (50%)') discount = 0.50;
+
+                        total += basePrice * (1 - discount);
+                      });
+                      return total.toFixed(2);
+                    })()} €
+                  </p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase">
+                    Apenas pagamentos diários (exclui passes e isentos)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-[2] space-y-3">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resumo de Entradas a Pagamento Diário</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-slate-100">
+                        <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">Modalidade</th>
+                        <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Qtd</th>
+                        <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Total Gerado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const summary: Record<string, { qty: number, total: number }> = {};
+                        allDateLogs.forEach(log => {
+                          const u = utentes.find(ut => ut.id === log.userId);
+                          if (!u || u.tipoAcesso === 'Pacote' || u.tipoAcesso === 'Isento') return;
+                          
+                          let basePrice = 0;
+                          const modStr = log.modalidade || 'Outra';
+                          const mod = modStr.toLowerCase();
+                          
+                          if (mod.includes('piscina') || mod.includes('natação')) {
+                            if (u.data_nasc) {
+                              const age = new Date().getFullYear() - new Date(u.data_nasc).getFullYear();
+                              if (age >= 15) basePrice = 2.10;
+                              else if (age >= 7) basePrice = 1.09;
+                            } else {
+                              basePrice = 2.10;
+                            }
+                          } else if (mod.includes('ginásio') || mod.includes('musculação')) {
+                            basePrice = 1.39;
+                          }
+
+                          let discount = 0;
+                          if (u.desconto === 'Cartões Etários (20%)') discount = 0.20;
+                          else if (u.desconto === 'Família Numerosa (50%)') discount = 0.50;
+
+                          const finalPrice = basePrice * (1 - discount);
+                          
+                          if (!summary[modStr]) summary[modStr] = { qty: 0, total: 0 };
+                          summary[modStr].qty++;
+                          summary[modStr].total += finalPrice;
+                        });
+
+                        const entries = Object.entries(summary).sort((a, b) => b[1].total - a[1].total);
+                        
+                        if (entries.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={3} className="py-8 text-center text-slate-400 text-xs font-bold italic">
+                                Não há registos de pagamento diário neste período.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return entries.map(([mod, data]) => (
+                          <tr key={mod} className="border-b border-slate-50 hover:bg-slate-50/50">
+                            <td className="py-2 text-xs font-bold text-[#004D71]">{mod}</td>
+                            <td className="py-2 text-xs font-bold text-slate-500 text-right">{data.qty}</td>
+                            <td className="py-2 text-sm font-black text-emerald-600 text-right">{data.total.toFixed(2)} €</td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

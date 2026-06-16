@@ -620,6 +620,40 @@ export function ProfileViewModule({
                       value={formData.entradas_disponiveis || 0} disabled={!isEditing}
                       onChange={v => set('entradas_disponiveis', parseInt(v) || 0)} />
                   </div>
+                  
+                  <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-2">
+                        <CreditCard size={12}/> Faturação / Acesso
+                      </label>
+                      <select
+                        value={formData.tipoAcesso || 'Diário'}
+                        disabled={!isEditing}
+                        onChange={e => set('tipoAcesso', e.target.value)}
+                        className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all cursor-pointer disabled:opacity-75"
+                      >
+                        <option value="Diário">Paga Bilhete Diário</option>
+                        <option value="Pacote">Usa Pacote de Entradas</option>
+                        <option value="Isento">Acesso Isento / Livre Trânsito</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-2">
+                        <CreditCard size={12}/> Descontos
+                      </label>
+                      <select
+                        value={formData.desconto || 'Nenhum'}
+                        disabled={!isEditing}
+                        onChange={e => set('desconto', e.target.value)}
+                        className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all cursor-pointer disabled:opacity-75"
+                      >
+                        <option value="Nenhum">Nenhum / Preço Base</option>
+                        <option value="Cartões Etários (20%)">Cartões Etários (20% desconto)</option>
+                        <option value="Família Numerosa (50%)">Família Numerosa (50% desconto)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 

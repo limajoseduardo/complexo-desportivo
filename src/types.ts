@@ -63,6 +63,8 @@ export interface UserProfile {
 
   // Financeiro (Carregamentos)
   entradas_disponiveis?: number;
+  tipoAcesso?: 'Diário' | 'Pacote' | 'Isento';
+  desconto?: 'Nenhum' | 'Cartões Etários (20%)' | 'Família Numerosa (50%)';
 
   // Assiduidade e Treino Dinâmico
   lastCheckInDate?: string;
