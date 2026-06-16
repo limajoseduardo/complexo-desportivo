@@ -5,6 +5,7 @@ import { PicotoIcon, FormInput, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
 import { doc, setDoc, collection } from 'firebase/firestore';
 import { MODALIDADES } from './Profile';
+import { Html5Qrcode } from 'html5-qrcode';
 
 import { handleCheckIn, handleCheckOut } from '../lib/access';
 import { normalizeSearchString } from '../lib/logic';
@@ -592,7 +593,6 @@ export function ScannerScreen({ onBack, onResult, utentes }: { onBack: () => voi
 
     let scanner: any;
     try {
-      const { Html5Qrcode } = await import('html5-qrcode');
       scanner = new Html5Qrcode(scannerRegionId);
       await scanner.start(
         { facingMode: 'environment' },
