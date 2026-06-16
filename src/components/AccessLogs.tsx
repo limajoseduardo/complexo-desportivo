@@ -1584,7 +1584,6 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Entrada</th>
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Saída</th>
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50">Dur.</th>
-                        {!readOnly && <th className="px-3 py-2 text-[9px] font-black text-emerald-600 uppercase tracking-wider text-center bg-emerald-50 rounded-tr-xl">Valor Pago</th>}
                         <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider text-center bg-slate-50"></th>
                       </tr>
                     </thead>
@@ -1717,92 +1716,6 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                                 })()
                               )}
                             </td>
-                            {!readOnly && (
-                              <td className="px-2 py-1.5 text-center">
-                                {(() => {
-                                  const mod = (log.modalidade || '').toLowerCase();
-                                  const card = (profile?.cartao_tipo || '');
-                                  const isExempt = card.includes('Atestado') || card.includes('Universidade Sénior') || log.userId === 'ext_entrada';
-                                  
-                                  // Modalidades pagas por mensalidade — nunca cobradas por entrada
-                                  const isMensalidade = 
-                                    mod.includes('hidro') || 
-                                    mod.includes('natação nível') ||
-                                    mod.includes('natacao nivel') ||
-                                    mod.includes('escola de natação') ||
-                                    mod.includes('bebés') ||
-                                    mod.includes('bebes') ||
-                                    mod.includes('ama') ||
-                                    mod.includes('aula');
-                                  
-                                  if (isMensalidade) {
-                                    return (
-                                      <span className="text-[8px] font-black px-2 py-0.5 rounded-lg bg-blue-50 text-blue-500 border border-blue-100 uppercase tracking-widest whitespace-nowrap">
-                                        Mensalidade
-                                      </span>
-                                    );
-                                  }
-
-                                  // Predefine price options based on modality
-                                  let opts: {label: string, val: number}[] = [];
-                                  if (mod.includes('ginásio') || mod.includes('muscula') || mod.includes('cardio')) {
-                                    opts = [
-                                      { label: '1,39€ (Normal)', val: 1.39 },
-                                      { label: '1,69€ (FDS)', val: 1.69 },
-                                      { label: '1,11€ (-20%)', val: 1.11 },
-                                      { label: '0,00€ (Isento)', val: 0 },
-                                    ];
-                                  } else if (mod.includes('piscina') || mod.includes('natação livre') || mod.includes('natacao livre')) {
-                                    opts = [
-                                      { label: '2,10€ Adulto', val: 2.10 },
-                                      { label: '2,79€ Adulto FDS', val: 2.79 },
-                                      { label: '1,09€ Criança', val: 1.09 },
-                                      { label: '1,39€ Criança FDS', val: 1.39 },
-                                      { label: '1,68€ (-20%)', val: 1.68 },
-                                      { label: '0,00€ (Isento)', val: 0 },
-                                    ];
-                                  } else {
-                                    opts = [
-                                      { label: '0,00€', val: 0 },
-                                    ];
-                                  }
-
-                                  if (log.valorPago !== undefined && log.valorPago !== null) {
-                                    return (
-                                      <div className="flex flex-col items-center gap-0.5">
-                                        <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${log.valorPago === 0 ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                                          {log.valorPago.toFixed(2)} €
-                                        </span>
-                                        <button
-                                          onClick={async () => {
-                                            await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/logs_acesso`, log.id), { valorPago: null });
-                                          }}
-                                          className="text-[8px] text-slate-300 hover:text-red-400 uppercase tracking-widest"
-                                        >alterar</button>
-                                      </div>
-                                    );
-                                  }
-
-                                  return (
-                                    <select
-                                      defaultValue=""
-                                      onChange={async (e) => {
-                                        const v = parseFloat(e.target.value);
-                                        if (!isNaN(v)) {
-                                          await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/logs_acesso`, log.id), { valorPago: v });
-                                        }
-                                      }}
-                                      className="text-[9px] font-black border border-emerald-200 rounded-lg px-1 py-1 bg-emerald-50 text-emerald-700 cursor-pointer outline-none max-w-[110px]"
-                                    >
-                                      <option value="">-- cobrar --</option>
-                                      {isExempt && <option value="0">0,00€ (Isento)</option>}
-                                      {opts.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                                    </select>
-                                  );
-                                })()}
-                              </td>
-                            )}
-
                             {!readOnly && (
                               <td className="px-3 py-1.5 text-center">
                                 <div className="flex items-center justify-center gap-0.5">
@@ -2072,20 +1985,54 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex-1 space-y-4">
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Confirmado (Cobrado)</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Esperado</p>
                   <p className="text-5xl font-black text-emerald-600 tabular-nums">
-                    {allDateLogs.filter(l => l.valorPago !== undefined && l.valorPago !== null).reduce((s, l) => s + (l.valorPago || 0), 0).toFixed(2)} €
+                    {(() => {
+                      let total = 0;
+                      allDateLogs.forEach(log => {
+                        const modStr = log.modalidade || 'Outra';
+
+                        if (log.userId === 'ext_entrada') {
+                          if (log.valorPago) total += log.valorPago;
+                          return;
+                        }
+
+                        const u = utentes.find(ut => ut.id === log.userId);
+                        if (!u || u.tipoAcesso === 'Pacote' || u.tipoAcesso === 'Isento') return;
+                        
+                        let ageNum: number | null = null;
+                        
+                        let logDate = new Date();
+                        if (log.checkIn instanceof Timestamp) logDate = log.checkIn.toDate();
+                        else if (log.checkIn) logDate = new Date(log.checkIn);
+                        const isWeekend = logDate.getDay() === 0 || logDate.getDay() === 6;
+                        
+                        if (u.data_nasc) {
+                          ageNum = new Date().getFullYear() - new Date(u.data_nasc).getFullYear();
+                        }
+                        
+                        let basePrice = getBasePrice(ageNum, modStr, isWeekend);
+
+                        const card = u.cartao_tipo || '';
+                        if (card.includes('Universidade Sénior') || card.includes('Atestado Médico')) {
+                          basePrice = 0;
+                        }
+
+                        let discount = 0;
+                        if (basePrice > 0) {
+                          if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) discount = 0.20;
+                          else if (card.includes('Família Numerosa')) discount = 0.50;
+                        }
+
+                        total += basePrice * (1 - discount);
+                      });
+                      
+                      return total.toFixed(2);
+                    })()} €
                   </p>
                   <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase">
-                    Soma dos valores registados pelo staff
+                    Apenas pagamentos diários e piscina exterior (exclui passes e isentos)
                   </p>
-                </div>
-                <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 mt-3">
-                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-1">⚠️ Por Confirmar</p>
-                  <p className="text-sm font-black text-amber-700">
-                    {allDateLogs.filter(l => l.valorPago === undefined || l.valorPago === null).filter(l => l.userId !== 'ext_entrada').length} entradas sem valor registado
-                  </p>
-                  <p className="text-[9px] font-bold text-amber-500 mt-1 uppercase">Selecione o valor em cada linha na tabela de acessos</p>
                 </div>
               </div>
 
@@ -2096,25 +2043,55 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                     <thead>
                       <tr className="border-b-2 border-slate-100">
                         <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">Modalidade</th>
-                        <th className="py-2 text-[9px] font-black text-emerald-600 uppercase tracking-widest text-right">Confirmados</th>
-                        <th className="py-2 text-[9px] font-black text-amber-500 uppercase tracking-widest text-right">⏳ Pendentes</th>
-                        <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Total Cobrado</th>
+                        <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Qtd</th>
+                        <th className="py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Total Gerado</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(() => {
-                        const summary: Record<string, { confirmed: number, pending: number, total: number }> = {};
+                        const summary: Record<string, { qty: number, total: number }> = {};
+                        
                         allDateLogs.forEach(log => {
                           const modStr = log.modalidade || 'Outra';
-                          if (!summary[modStr]) summary[modStr] = { confirmed: 0, pending: 0, total: 0 };
-
-                          if (log.valorPago !== undefined && log.valorPago !== null) {
-                            // Staff confirmed the value
-                            summary[modStr].confirmed++;
-                            summary[modStr].total += log.valorPago;
-                          } else {
-                            summary[modStr].pending++;
+                          
+                          if (log.userId === 'ext_entrada') {
+                             if (!summary[modStr]) summary[modStr] = { qty: 0, total: 0 };
+                             summary[modStr].qty++;
+                             if (log.valorPago) summary[modStr].total += log.valorPago;
+                             return;
                           }
+
+                          const u = utentes.find(ut => ut.id === log.userId);
+                          if (!u || u.tipoAcesso === 'Pacote' || u.tipoAcesso === 'Isento') return;
+                          
+                          let ageNum: number | null = null;
+                          let logDate = new Date();
+                          if (log.checkIn instanceof Timestamp) logDate = log.checkIn.toDate();
+                          else if (log.checkIn) logDate = new Date(log.checkIn);
+                          const isWeekend = logDate.getDay() === 0 || logDate.getDay() === 6;
+                          
+                          if (u.data_nasc) {
+                            ageNum = new Date().getFullYear() - new Date(u.data_nasc).getFullYear();
+                          }
+                          
+                          let basePrice = getBasePrice(ageNum, modStr, isWeekend);
+
+                          const card = u.cartao_tipo || '';
+                          if (card.includes('Universidade Sénior') || card.includes('Atestado Médico')) {
+                            basePrice = 0;
+                          }
+
+                          let discount = 0;
+                          if (basePrice > 0) {
+                            if (card.includes('Jovem') || card.includes('Idade-Ativa') || card.includes('Idoso')) discount = 0.20;
+                            else if (card.includes('Família Numerosa')) discount = 0.50;
+                          }
+
+                          const finalPrice = basePrice * (1 - discount);
+                          
+                          if (!summary[modStr]) summary[modStr] = { qty: 0, total: 0 };
+                          summary[modStr].qty++;
+                          summary[modStr].total += finalPrice;
                         });
 
                         const entries = Object.entries(summary).sort((a, b) => b[1].total - a[1].total);
@@ -2122,8 +2099,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                         if (entries.length === 0) {
                           return (
                             <tr>
-                              <td colSpan={4} className="py-8 text-center text-slate-400 text-xs font-bold italic">
-                                Não há registos neste período.
+                              <td colSpan={3} className="py-8 text-center text-slate-400 text-xs font-bold italic">
+                                Não há registos de pagamento diário neste período.
                               </td>
                             </tr>
                           );
@@ -2132,8 +2109,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                         return entries.map(([mod, data]) => (
                           <tr key={mod} className="border-b border-slate-50 hover:bg-slate-50/50">
                             <td className="py-2 text-xs font-bold text-[#004D71]">{mod}</td>
-                            <td className="py-2 text-xs font-bold text-emerald-600 text-right">{data.confirmed}</td>
-                            <td className="py-2 text-xs font-bold text-amber-500 text-right">{data.pending > 0 ? data.pending : '--'}</td>
+                            <td className="py-2 text-xs font-bold text-slate-500 text-right">{data.qty}</td>
                             <td className="py-2 text-sm font-black text-emerald-600 text-right">{data.total.toFixed(2)} €</td>
                           </tr>
                         ));
