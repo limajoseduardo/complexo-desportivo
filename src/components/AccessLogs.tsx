@@ -1556,30 +1556,29 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
           {/* Quadrados em tempo real */}
           <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
             {dailyStats.map(z => (
-              <div key={z.id} className={`${z.bg} rounded-xl p-2 text-white shadow-sm flex items-center justify-between gap-2 border border-white/10 transition-transform hover:scale-[1.02]`}>
-                {/* Left side: Icon + Label */}
-                <div className="flex flex-col items-start gap-1 min-w-0">
-                  <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0 mb-0.5`}>
+              <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm border border-white/10 transition-transform hover:scale-[1.02] flex flex-col gap-2`}>
+                {/* Topo: ícone + nome — largura toda, nunca compete com os números */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0`}>
                     {z.icon}
                   </span>
-                  <p className="text-[11px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2" title={z.label}>
+                  <p className="text-[10px] font-black uppercase tracking-wide text-white leading-tight line-clamp-2 min-w-0 break-words" title={z.label}>
                     {z.label}
                   </p>
                 </div>
-                
-                {/* Right side: Stacked Numbers */}
-                <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
-                  <div className="flex items-center justify-between w-[4.5rem] px-2 py-0.5 rounded bg-black/20" title="Total Hoje">
-                    <span className="text-[7px] font-black text-white/60 uppercase">HOJE</span>
-                    <span className="text-base font-black text-white tabular-nums">{z.count}</span>
+
+                {/* Baixo: Hoje / Agora — sempre numa barra própria, nunca ao lado do nome */}
+                <div className="flex items-center gap-1.5 mt-auto">
+                  <div className="flex-1 flex items-center justify-between px-2 py-1 rounded bg-black/20 min-w-0" title="Total Hoje">
+                    <span className="text-[7px] font-black text-white/60 uppercase">Hoje</span>
+                    <span className="text-sm font-black text-white tabular-nums">{z.count}</span>
                   </div>
-                  <div className={`flex items-center justify-between w-[4.5rem] px-2 py-0.5 rounded ${z.liveCount > 0 ? 'bg-green-500/40 shadow-sm border border-green-400/30' : 'bg-black/20'}`} title="Agora no Recinto">
-                    {z.liveCount > 0 ? (
-                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0 shadow-[0_0_5px_rgba(74,222,128,0.5)]" />
-                    ) : (
-                      <span className="text-[7px] font-black text-white/60 uppercase">AGR</span>
-                    )}
-                    <span className="text-base font-black text-white tabular-nums">{z.liveCount}</span>
+                  <div className={`flex-1 flex items-center justify-between px-2 py-1 rounded min-w-0 ${z.liveCount > 0 ? 'bg-green-500/40 shadow-sm border border-green-400/30' : 'bg-black/20'}`} title="Agora no Recinto">
+                    <span className="text-[7px] font-black text-white/60 uppercase flex items-center gap-1">
+                      {z.liveCount > 0 && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />}
+                      Agr
+                    </span>
+                    <span className="text-sm font-black text-white tabular-nums">{z.liveCount}</span>
                   </div>
                 </div>
               </div>
