@@ -118,16 +118,6 @@ export interface Exercicio {
   createdBy?: string;
 }
 
-export interface HealthMetric {
-  id: string;
-  userId: string;
-  timestamp: any;
-  type: 'peso' | 'glicemia' | 'tensao';
-  value: number;
-  value2?: number;
-  unit: string;
-}
-
 export interface Refeicao {
   id: string;
   userId: string;

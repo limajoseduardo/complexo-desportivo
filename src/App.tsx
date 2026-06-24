@@ -19,7 +19,6 @@ const ProfileViewModule = React.lazy(() => import('./components/Profile').then(m
 const MapsManager = React.lazy(() => import('./components/Maps').then(m => ({ default: m.MapsManager })));
 const SyncPortalMunicipal = React.lazy(() => import('./components/SyncPortalMunicipal').then(m => ({ default: m.SyncPortalMunicipal })));
 
-const UtenteTrainingModule = React.lazy(() => import('./components/UtenteTraining').then(m => ({ default: m.UtenteTrainingModule })));
 const TrainerTrainingModule = React.lazy(() => import('./components/TrainerTrainingPlans').then(m => ({ default: m.TrainerTrainingModule })));
 
 const AccessLogsModule = React.lazy(() => import('./components/AccessLogs').then(m => ({ default: m.AccessLogsModule })));
@@ -987,7 +986,6 @@ export default function App() {
                     {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
                     {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
                     {activeTab === 'mapas' && <MapsManager user={user} logs={logs} tempLogs={tempLogs} sondasLogs={sondasLogs} equipLogs={equipLogs} tratamentosLogs={tratamentosLogs} eletricidadeLogs={eletricidadeLogs} />}
-                    {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                     {activeTab === 'qr' && user.role === 'utente' && (
                       <UtenteQRCard
                         user={user}
