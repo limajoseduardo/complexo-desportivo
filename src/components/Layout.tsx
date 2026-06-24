@@ -460,12 +460,12 @@ const MENU_ITEMS = () => [
   { id: 'eventos',   icon: <Trophy />,        label: 'Eventos',    mobileLabel: 'PROVAS',  roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'alunos',    icon: <Waves />,          label: 'Portal',             mobileLabel: 'PORTAL',     roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
-  { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor'] },
+  { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor', 'staff', 'chefia'] },
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
-  { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff'] },
-  { id: 'horarios',     icon: <Clock />,         label: 'Horários',     mobileLabel: 'HORAS', roles: ['admin', 'staff'] },
+  { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff', 'chefia'] },
+  { id: 'horarios',     icon: <Clock />,         label: 'Horários',     mobileLabel: 'HORAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
@@ -518,7 +518,7 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimu
 // inacessível no telemóvel, como acontecia antes).
 const MOBILE_PRIMARY_BY_ROLE: Record<string, string[]> = {
   admin: ['inicio', 'acessos', 'utentes', 'agenda'],
-  chefia: ['inicio', 'acessos', 'utentes', 'mapas'],
+  chefia: ['inicio', 'acessos', 'utentes', 'agenda'],
   staff: ['inicio', 'acessos', 'utentes', 'agenda'],
   professor: ['inicio', 'agenda', 'alunos', 'utentes'],
 };

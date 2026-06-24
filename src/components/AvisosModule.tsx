@@ -14,7 +14,7 @@ interface Aviso {
   dataCriacao?: any;
 }
 
-export function AvisosModule({ user, utentes }: { user: UserProfile; utentes: UserProfile[] }) {
+export function AvisosModule({ user, utentes, readOnly = false }: { user: UserProfile; utentes: UserProfile[]; readOnly?: boolean }) {
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [titulo, setTitulo] = useState('');
   const [mensagem, setMensagem] = useState('');
@@ -90,33 +90,35 @@ export function AvisosModule({ user, utentes }: { user: UserProfile; utentes: Us
         <Megaphone className="text-[#F7B500]" /> Avisos Gerais
       </h2>
 
-      <div className="bg-white rounded-[2.5rem] p-6 border-2 border-slate-50 shadow-sm space-y-4">
-        <input
-          value={titulo}
-          onChange={e => setTitulo(e.target.value)}
-          placeholder="Título do aviso"
-          className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-black text-[#004D71] outline-none focus:border-[#004D71]/20"
-        />
-        <textarea
-          value={mensagem}
-          onChange={e => setMensagem(e.target.value)}
-          placeholder="Mensagem"
-          rows={4}
-          className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-medium text-[#004D71] outline-none focus:border-[#004D71]/20 resize-none"
-        />
-        <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer">
-          <input type="checkbox" checked={enviarEmail} onChange={e => setEnviarEmail(e.target.checked)} className="w-4 h-4" />
-          <Mail size={14} /> Enviar também por email a todos os utentes
-        </label>
-        {feedback && <p className="text-[11px] font-bold text-slate-500">{feedback}</p>}
-        <button
-          onClick={publicar}
-          disabled={sending || !titulo.trim() || !mensagem.trim()}
-          className="w-full bg-[#004D71] text-[#F7B500] py-4 rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          {sending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />} Publicar Aviso
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="bg-white rounded-[2.5rem] p-6 border-2 border-slate-50 shadow-sm space-y-4">
+          <input
+            value={titulo}
+            onChange={e => setTitulo(e.target.value)}
+            placeholder="Título do aviso"
+            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-black text-[#004D71] outline-none focus:border-[#004D71]/20"
+          />
+          <textarea
+            value={mensagem}
+            onChange={e => setMensagem(e.target.value)}
+            placeholder="Mensagem"
+            rows={4}
+            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-medium text-[#004D71] outline-none focus:border-[#004D71]/20 resize-none"
+          />
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer">
+            <input type="checkbox" checked={enviarEmail} onChange={e => setEnviarEmail(e.target.checked)} className="w-4 h-4" />
+            <Mail size={14} /> Enviar também por email a todos os utentes
+          </label>
+          {feedback && <p className="text-[11px] font-bold text-slate-500">{feedback}</p>}
+          <button
+            onClick={publicar}
+            disabled={sending || !titulo.trim() || !mensagem.trim()}
+            className="w-full bg-[#004D71] text-[#F7B500] py-4 rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {sending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />} Publicar Aviso
+          </button>
+        </div>
+      )}
 
       <div className="space-y-2">
         {avisos.map(a => (
@@ -126,9 +128,11 @@ export function AvisosModule({ user, utentes }: { user: UserProfile; utentes: Us
               <p className="text-[11px] text-slate-500 mt-0.5">{a.mensagem}</p>
               <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{a.nomeProfessor}</p>
             </div>
-            <button onClick={() => remover(a.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0">
-              <Trash2 size={14} />
-            </button>
+            {!readOnly && (
+              <button onClick={() => remover(a.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         ))}
       </div>

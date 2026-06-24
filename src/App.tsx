@@ -20,6 +20,7 @@ const MapsManager = React.lazy(() => import('./components/Maps').then(m => ({ de
 const SyncPortalMunicipal = React.lazy(() => import('./components/SyncPortalMunicipal').then(m => ({ default: m.SyncPortalMunicipal })));
 const AvisosModule = React.lazy(() => import('./components/AvisosModule').then(m => ({ default: m.AvisosModule })));
 const HorariosManager = React.lazy(() => import('./components/HorariosModule').then(m => ({ default: m.HorariosManager })));
+const HorariosCard = React.lazy(() => import('./components/HorariosModule').then(m => ({ default: m.HorariosCard })));
 
 const TrainerTrainingModule = React.lazy(() => import('./components/TrainerTrainingPlans').then(m => ({ default: m.TrainerTrainingModule })));
 
@@ -72,7 +73,7 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 
 const TABS_BY_ROLE: Record<string, string[]> = {
   admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'sincronizar', 'perfil'],
-  chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
+  chefia: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
   staff: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
   professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'perfil'],
   utente: ['inicio', 'eventos', 'agenda', 'perfil'],
@@ -999,8 +1000,8 @@ export default function App() {
                     {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                     {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                     {activeTab === 'sincronizar' && user.role === 'admin' && <SyncPortalMunicipal utentes={utentes} />}
-                    {activeTab === 'avisos' && ['admin', 'staff'].includes(user.role) && <AvisosModule user={user} utentes={utentes} />}
-                    {activeTab === 'horarios' && ['admin', 'staff'].includes(user.role) && <HorariosManager />}
+                    {activeTab === 'avisos' && ['admin', 'staff', 'chefia'].includes(user.role) && <AvisosModule user={user} utentes={utentes} readOnly={user.role === 'chefia'} />}
+                    {activeTab === 'horarios' && ['admin', 'staff', 'chefia'].includes(user.role) && (user.role === 'chefia' ? <HorariosCard /> : <HorariosManager />)}
                     {activeTab === 'perfil' && (
                       <ProfileViewModuleCustom
                         user={user}
