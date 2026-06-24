@@ -1,9 +1,9 @@
 import React from 'react';
 import {
-  Home, Users, Dumbbell, User, Calendar, LogOut,
+  Home, Users, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -368,10 +368,10 @@ const MENU_ITEMS = () => [
   { id: 'alunos',    icon: <Waves />,          label: 'Portal',             mobileLabel: 'PORTAL',     roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
   { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor'] },
-  { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: [] },
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
+  { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff'] },
   { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
