@@ -3,7 +3,7 @@ import {
   Home, Users, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone,
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone, Clock,
   Download, Share, X as XIcon, QrCode as QrCodeIcon
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
@@ -460,6 +460,7 @@ const MENU_ITEMS = () => [
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
   { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff'] },
+  { id: 'horarios',     icon: <Clock />,         label: 'Horários',     mobileLabel: 'HORAS', roles: ['admin', 'staff'] },
   { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];

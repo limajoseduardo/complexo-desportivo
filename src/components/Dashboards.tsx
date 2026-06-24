@@ -17,6 +17,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot 
 import { SwimmingStudentPortal } from './SwimmingModule';
 import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { GlobalErrorBoundary } from './ErrorBoundary';
+import { HorariosCard } from './HorariosModule';
 
 export const ModalitiesDashboard = React.memo(({ onUserClick, logs, tempLogs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], tempLogs: any[], utentes: UserProfile[] }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
@@ -1151,6 +1152,8 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
         </div>
 
       </div>
+
+      <HorariosCard />
 
       {/* ── QR Full Screen Brilhante ── */}
       {showQR && typeof document !== 'undefined' && ReactDOM.createPortal(
