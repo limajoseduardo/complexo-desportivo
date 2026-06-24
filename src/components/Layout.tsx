@@ -3,11 +3,96 @@ import {
   Home, Users, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone,
+  Download, Share, X as XIcon, QrCode as QrCodeIcon
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
 import { useWeather } from '../lib/weather';
+
+function isStandalonePwa(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+}
+
+function isIos(): boolean {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+// Banner para incentivar utentes a instalar a app no ambiente de trabalho/ecrã
+// principal, para depois usarem o Modo Quiosque (leitura de QR) sem ter de abrir
+// o browser todas as vezes. No Android/Chrome usamos o prompt nativo; no
+// iOS Safari não há API para isso, por isso mostramos o passo a passo manual.
+function InstallPwaBanner() {
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+  const [dismissed, setDismissed] = React.useState(() => localStorage.getItem('cpx_install_banner_dismissed') === 'true');
+  const [showIosSteps, setShowIosSteps] = React.useState(false);
+
+  React.useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  if (dismissed || isStandalonePwa()) return null;
+
+  const dismiss = () => {
+    setDismissed(true);
+    localStorage.setItem('cpx_install_banner_dismissed', 'true');
+  };
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+      dismiss();
+    } else if (isIos()) {
+      setShowIosSteps(true);
+    } else {
+      setShowIosSteps(true);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-[460px] mb-4">
+      <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-2xl border-4 border-white/20 flex items-start gap-4">
+        <div className="w-12 h-12 bg-[#004D71] rounded-2xl flex items-center justify-center shrink-0 border-2 border-[#F7B500]">
+          <QrCodeIcon className="text-[#F7B500]" size={22} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-black text-[#004D71] uppercase tracking-tight">Instala a app no teu dispositivo</p>
+          {!showIosSteps ? (
+            <p className="text-[10px] text-slate-500 font-bold mt-1 leading-relaxed">
+              Adiciona o Complexo Desportivo ao ecrã principal para entrar mais rápido e usar o teu QR Code no Modo Quiosque.
+            </p>
+          ) : (
+            <p className="text-[10px] text-slate-500 font-bold mt-1 leading-relaxed">
+              {isIos()
+                ? <>Toca em <Share size={11} className="inline -mt-0.5" /> <strong>Partilhar</strong> na barra do Safari e depois em <strong>"Adicionar ao Ecrã Principal"</strong>.</>
+                : <>Abre o menu do browser (⋮) e escolhe <strong>"Instalar app"</strong> ou <strong>"Adicionar ao ecrã principal"</strong>.</>}
+            </p>
+          )}
+          <div className="flex items-center gap-2 mt-3">
+            {!showIosSteps && (
+              <button onClick={handleInstall} className="bg-[#004D71] text-[#F7B500] px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 active:scale-95">
+                <Download size={12} /> Instalar
+              </button>
+            )}
+            <button onClick={dismiss} className="text-slate-400 text-[9px] font-black uppercase tracking-widest px-2">
+              {showIosSteps ? 'Entendido' : 'Agora não'}
+            </button>
+          </div>
+        </div>
+        <button onClick={dismiss} className="text-slate-300 hover:text-slate-500 shrink-0">
+          <XIcon size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 
 export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPublicDashboard }: { onLogin: (e: string, p: string) => void, onRegister: (e: string, p: string, code: string) => void, onGoogleLogin: () => void, error: string, onPublicDashboard?: () => void }) => {
@@ -17,8 +102,11 @@ export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPubli
   const [inviteCode, setInviteCode] = React.useState('');
 
   return (
-    <div className="min-h-screen w-full login-bg flex items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen w-full login-bg flex flex-col items-center justify-center p-4 sm:p-6">
        <div className="absolute inset-0 login-overlay"></div>
+       <div className="relative w-full max-w-[460px]">
+         <InstallPwaBanner />
+       </div>
        <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] md:rounded-[4rem] p-6 md:p-8 lg:p-12 shadow-2xl relative w-full max-w-[460px] border-4 border-white/20">
           <div className="text-center mb-8 md:mb-10">
              <div className="w-20 h-20 md:w-24 md:h-24 bg-[#004D71] rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 shadow-xl border-4 border-[#F7B500]">
