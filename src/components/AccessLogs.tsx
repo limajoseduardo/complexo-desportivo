@@ -3,7 +3,7 @@ import {
   Users, LogIn, LogOut, Calendar, Search,
   Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
-  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target
 } from 'lucide-react';
 import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -97,6 +97,9 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [modalMode, setModalMode] = useState<'single' | 'outdoor_pool'>('single');
   const [adultEntradas, setAdultEntradas] = useState(0);
   const [childEntradas, setChildEntradas] = useState(0);
+  const [pavilhaoEntradas, setPavilhaoEntradas] = useState(0);
+  const [padelEntradas, setPadelEntradas] = useState(0);
+  const [isSubmittingSimple, setIsSubmittingSimple] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas' | 'caixa'>('diario');
 
   // CORREÇÃO E AUTO-CHECKOUT (19h)
@@ -246,6 +249,60 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     }, 50);
   };
 
+  // Registo rápido genérico de utilização anónima de um espaço (Pavilhão, Padel) —
+  // mesmo padrão da Piscina Exterior, mas sem distinção adulto/criança nem preçário,
+  // serve só para gerar dados reais de quantidade de uso do espaço.
+  const handleSimpleSpaceSubmit = (modalidade: string, count: number, resetCount: () => void) => {
+    if (count === 0) {
+      alert('Por favor, ajuste o número de entradas.');
+      return;
+    }
+    setIsSubmittingSimple(modalidade);
+    setTimeout(() => {
+      try {
+        const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+        const today = new Date().toISOString().split('T')[0];
+        const batch = writeBatch(db);
+
+        if (count > 0) {
+          for (let i = 0; i < count; i++) {
+            const logId = `ext_${Date.now() + Math.random() * 1000 + i}`;
+            batch.set(doc(db, path, logId), {
+              userId: 'ext_entrada',
+              userName: modalidade.toUpperCase(),
+              userRole: 'utente',
+              checkIn: Timestamp.now(),
+              date: today,
+              zone: modalidade,
+              modalidade,
+              timestamp: serverTimestamp(),
+            });
+          }
+        } else {
+          const recentLogs = allDateLogs
+            .filter(l => l.userId === 'ext_entrada' && l.date === today && l.modalidade === modalidade)
+            .sort((a, b) => {
+              const timeA = a.checkIn instanceof Timestamp ? a.checkIn.toMillis() : 0;
+              const timeB = b.checkIn instanceof Timestamp ? b.checkIn.toMillis() : 0;
+              return timeB - timeA;
+            });
+          const logsToRemove = recentLogs.slice(0, Math.abs(count));
+          if (logsToRemove.length < Math.abs(count)) {
+            alert(`Atenção: Apenas foram encontrados ${logsToRemove.length} registos recentes de ${modalidade} para remover hoje.`);
+          }
+          logsToRemove.forEach(log => batch.delete(doc(db, path, log.id)));
+        }
+
+        batch.commit().catch(error => console.error('Erro ao enviar batch para o servidor:', error));
+        resetCount();
+      } catch (error) {
+        console.error('Error building batch:', error);
+      } finally {
+        setIsSubmittingSimple(null);
+      }
+    }, 50);
+  };
+
   const generateInviteCode = async () => {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
@@ -269,7 +326,9 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     'Bebés/AMA',
     'Aulas Fitness',
     'Ginásio',
-    'Sauna'
+    'Sauna',
+    'Pavilhão',
+    'Padel'
   ];
 
   const normalizeModality = (m: string) => {
@@ -1494,6 +1553,51 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
           </button>
         </div>
       </div>
+
+      {/* BARRAS DE REGISTO RÁPIDO — PAVILHÃO E PADEL */}
+      {([
+        { modalidade: 'Pavilhão', icon: <Building2 size={20} />, count: pavilhaoEntradas, setCount: setPavilhaoEntradas,
+          wrapClass: 'bg-amber-50/50 border border-amber-100', iconClass: 'bg-amber-100 text-amber-600' },
+        { modalidade: 'Padel', icon: <Target size={20} />, count: padelEntradas, setCount: setPadelEntradas,
+          wrapClass: 'bg-lime-50/50 border border-lime-100', iconClass: 'bg-lime-100 text-lime-600' },
+      ]).map(space => (
+        <div key={space.modalidade} className={`${space.wrapClass} rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-2`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 ${space.iconClass} rounded-full flex items-center justify-center`}>
+              {space.icon}
+            </div>
+            <div>
+              <h4 className="font-black text-[#004D71] text-xs uppercase">{space.modalidade}</h4>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registo Rápido de Utilização</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100">
+              <button type="button" onClick={() => space.setCount(prev => prev - 1)}
+                className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors">-</button>
+              <span className={`text-xl font-black w-6 text-center ${space.count < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{space.count}</span>
+              <button type="button" onClick={() => space.setCount(prev => prev + 1)}
+                className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors">+</button>
+            </div>
+
+            <button
+              disabled={isSubmittingSimple === space.modalidade || space.count === 0}
+              onClick={() => handleSimpleSpaceSubmit(space.modalidade, space.count, () => space.setCount(0))}
+              className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${space.count < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+            >
+              {isSubmittingSimple === space.modalidade ? (
+                <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+              ) : space.count < 0 ? (
+                <Trash2 size={14} />
+              ) : (
+                <LogIn size={14} />
+              )}
+              {space.count < 0 ? 'Remover Registos' : 'Registar Entradas'}
+            </button>
+          </div>
+        </div>
+      ))}
 
       {/* TABS */}
       <div className="flex bg-slate-200/50 p-1 rounded-xl w-full sm:w-fit overflow-hidden border border-slate-100 mb-4">
