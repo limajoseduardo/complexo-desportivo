@@ -1476,128 +1476,64 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
         </div>
       )}
 
-      {/* BARRA DE REGISTO RÁPIDO PISCINA EXTERIOR */}
-      <div className="bg-cyan-50/50 border border-cyan-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-2 mt-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center text-cyan-500">
-            <Sun size={20} className="animate-[spin_4s_linear_infinite]" />
-          </div>
-          <div>
-            <h4 className="font-black text-[#004D71] text-xs uppercase">Piscina Exterior</h4>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registo Rápido Múltiplo</p>
-          </div>
-        </div>
+      {/* BARRAS DE REGISTO RÁPIDO — Piscina Exterior, Pavilhão, Padel (compactas, uma por linha) */}
+      <div className="bg-white border border-slate-100 rounded-2xl divide-y divide-slate-50 mb-2 mt-4 overflow-hidden">
+        {/* Piscina Exterior — único caso com Adultos/Crianças separados */}
+        <div className="flex flex-wrap items-center gap-2.5 px-3 py-2 border-l-4 border-cyan-300">
+          <Sun size={15} className="text-cyan-500 shrink-0" />
+          <span className="font-black text-[#004D71] text-[11px] uppercase shrink-0">Piscina Exterior</span>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center gap-4 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100">
-            {/* Adultos */}
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] font-black uppercase text-slate-400 mb-1">Adultos</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAdultEntradas(prev => prev - 1)}
-                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
-                >
-                  -
-                </button>
-                <span className={`text-xl font-black w-6 text-center ${adultEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{adultEntradas}</span>
-                <button
-                  type="button"
-                  onClick={() => setAdultEntradas(prev => prev + 1)}
-                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
-                >
-                  +
-                </button>
-              </div>
+          <div className="flex items-center gap-2.5 ml-auto">
+            <div className="flex items-center gap-1">
+              <span className="text-[8px] font-black uppercase text-slate-400">Ad.</span>
+              <button type="button" onClick={() => setAdultEntradas(prev => prev - 1)} className="w-5 h-5 rounded text-slate-400 hover:text-[#004D71] hover:bg-slate-50 font-black text-sm">-</button>
+              <span className={`text-sm font-black w-5 text-center ${adultEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{adultEntradas}</span>
+              <button type="button" onClick={() => setAdultEntradas(prev => prev + 1)} className="w-5 h-5 rounded text-slate-400 hover:text-[#004D71] hover:bg-slate-50 font-black text-sm">+</button>
             </div>
-            
-            <div className="w-[1px] h-10 bg-slate-100 mx-1"></div>
-
-            {/* Crianças */}
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] font-black uppercase text-slate-400 mb-1">Crianças</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setChildEntradas(prev => prev - 1)}
-                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
-                >
-                  -
-                </button>
-                <span className={`text-xl font-black w-6 text-center ${childEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{childEntradas}</span>
-                <button
-                  type="button"
-                  onClick={() => setChildEntradas(prev => prev + 1)}
-                  className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors"
-                >
-                  +
-                </button>
-              </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[8px] font-black uppercase text-slate-400">Cri.</span>
+              <button type="button" onClick={() => setChildEntradas(prev => prev - 1)} className="w-5 h-5 rounded text-slate-400 hover:text-[#004D71] hover:bg-slate-50 font-black text-sm">-</button>
+              <span className={`text-sm font-black w-5 text-center ${childEntradas < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{childEntradas}</span>
+              <button type="button" onClick={() => setChildEntradas(prev => prev + 1)} className="w-5 h-5 rounded text-slate-400 hover:text-[#004D71] hover:bg-slate-50 font-black text-sm">+</button>
             </div>
-          </div>
-
-          <button
-            disabled={isSubmitting || (adultEntradas === 0 && childEntradas === 0)}
-            onClick={handleOutdoorPoolSubmit}
-            className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${adultEntradas < 0 || childEntradas < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
-          >
-            {isSubmitting ? (
-              <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-            ) : (adultEntradas < 0 || childEntradas < 0) ? (
-              <Trash2 size={14} />
-            ) : (
-              <LogIn size={14} />
-            )}
-            {(adultEntradas < 0 || childEntradas < 0) ? `Remover Registos` : `Registar Entradas`}
-          </button>
-        </div>
-      </div>
-
-      {/* BARRAS DE REGISTO RÁPIDO — PAVILHÃO E PADEL */}
-      {([
-        { modalidade: 'Pavilhão', icon: <Building2 size={20} />, count: pavilhaoEntradas, setCount: setPavilhaoEntradas,
-          wrapClass: 'bg-amber-50/50 border border-amber-100', iconClass: 'bg-amber-100 text-amber-600' },
-        { modalidade: 'Padel', icon: <Target size={20} />, count: padelEntradas, setCount: setPadelEntradas,
-          wrapClass: 'bg-lime-50/50 border border-lime-100', iconClass: 'bg-lime-100 text-lime-600' },
-      ]).map(space => (
-        <div key={space.modalidade} className={`${space.wrapClass} rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-2`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 ${space.iconClass} rounded-full flex items-center justify-center`}>
-              {space.icon}
-            </div>
-            <div>
-              <h4 className="font-black text-[#004D71] text-xs uppercase">{space.modalidade}</h4>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registo Rápido de Utilização</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100">
-              <button type="button" onClick={() => space.setCount(prev => prev - 1)}
-                className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors">-</button>
-              <span className={`text-xl font-black w-6 text-center ${space.count < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{space.count}</span>
-              <button type="button" onClick={() => space.setCount(prev => prev + 1)}
-                className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 hover:text-[#004D71] hover:bg-slate-50 transition-colors">+</button>
-            </div>
-
             <button
-              disabled={isSubmittingSimple === space.modalidade || space.count === 0}
-              onClick={() => handleSimpleSpaceSubmit(space.modalidade, space.count, () => space.setCount(0))}
-              className={`px-6 py-3 rounded-xl font-black uppercase text-[10px] shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${space.count < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+              disabled={isSubmitting || (adultEntradas === 0 && childEntradas === 0)}
+              onClick={handleOutdoorPoolSubmit}
+              className={`px-3 py-1.5 rounded-lg font-black uppercase text-[9px] active:scale-95 transition-all flex items-center gap-1 disabled:opacity-40 ${adultEntradas < 0 || childEntradas < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
             >
-              {isSubmittingSimple === space.modalidade ? (
-                <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-              ) : space.count < 0 ? (
-                <Trash2 size={14} />
-              ) : (
-                <LogIn size={14} />
-              )}
-              {space.count < 0 ? 'Remover Registos' : 'Registar Entradas'}
+              {isSubmitting ? <div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : (adultEntradas < 0 || childEntradas < 0) ? <Trash2 size={11} /> : <LogIn size={11} />}
+              Registar
             </button>
           </div>
         </div>
-      ))}
+
+        {/* Pavilhão / Padel — contador único */}
+        {([
+          { modalidade: 'Pavilhão', icon: <Building2 size={15} className="text-amber-500 shrink-0" />, count: pavilhaoEntradas, setCount: setPavilhaoEntradas, border: 'border-amber-300' },
+          { modalidade: 'Padel', icon: <Target size={15} className="text-lime-600 shrink-0" />, count: padelEntradas, setCount: setPadelEntradas, border: 'border-lime-300' },
+        ]).map(space => (
+          <div key={space.modalidade} className={`flex items-center gap-2.5 px-3 py-2 border-l-4 ${space.border}`}>
+            {space.icon}
+            <span className="font-black text-[#004D71] text-[11px] uppercase">{space.modalidade}</span>
+
+            <div className="flex items-center gap-2.5 ml-auto">
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => space.setCount(prev => prev - 1)} className="w-5 h-5 rounded text-slate-400 hover:text-[#004D71] hover:bg-slate-50 font-black text-sm">-</button>
+                <span className={`text-sm font-black w-5 text-center ${space.count < 0 ? 'text-red-500' : 'text-[#004D71]'}`}>{space.count}</span>
+                <button type="button" onClick={() => space.setCount(prev => prev + 1)} className="w-5 h-5 rounded text-slate-400 hover:text-[#004D71] hover:bg-slate-50 font-black text-sm">+</button>
+              </div>
+              <button
+                disabled={isSubmittingSimple === space.modalidade || space.count === 0}
+                onClick={() => handleSimpleSpaceSubmit(space.modalidade, space.count, () => space.setCount(0))}
+                className={`px-3 py-1.5 rounded-lg font-black uppercase text-[9px] active:scale-95 transition-all flex items-center gap-1 disabled:opacity-40 ${space.count < 0 ? 'bg-red-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+              >
+                {isSubmittingSimple === space.modalidade ? <div className="w-2.5 h-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> : space.count < 0 ? <Trash2 size={11} /> : <LogIn size={11} />}
+                Registar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* TABS */}
       <div className="flex bg-slate-200/50 p-1 rounded-xl w-full sm:w-fit overflow-hidden border border-slate-100 mb-4">
