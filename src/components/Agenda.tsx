@@ -307,73 +307,77 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
             >
               <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: aula.cancelada ? '#EF4444' : (aula.color || '#004D71') }} />
 
-              <div className="flex items-center gap-3 pl-5 pr-3 py-3">
-                {/* Hora */}
-                <div className="shrink-0 w-[4.5rem] text-center">
-                  <p className="text-sm font-black text-[#004D71] tabular-nums leading-none">{aula.horaInicio}</p>
-                  <p className="text-[9px] font-black text-slate-300 leading-none my-0.5">—</p>
-                  <p className="text-sm font-black text-[#004D71] tabular-nums leading-none">{aula.horaFim}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 pl-5 pr-3 py-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* Hora */}
+                  <div className="shrink-0 w-[4.5rem] text-center">
+                    <p className="text-sm font-black text-[#004D71] tabular-nums leading-none">{aula.horaInicio}</p>
+                    <p className="text-[9px] font-black text-slate-300 leading-none my-0.5">—</p>
+                    <p className="text-sm font-black text-[#004D71] tabular-nums leading-none">{aula.horaFim}</p>
+                  </div>
+
+                  <div className="w-px h-8 bg-slate-100 shrink-0" />
+
+                  {/* Modalidade + tags */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      {aula.categoria && (
+                        <span className="text-[7px] font-black text-slate-400 uppercase bg-slate-50 px-1.5 py-0.5 rounded-full border border-slate-100">{aula.categoria}</span>
+                      )}
+                      {aula.sala && (
+                        <span className="text-[7px] font-black text-[#F7B500] uppercase">{aula.sala}</span>
+                      )}
+                      {aula.cancelada && (
+                        <span className="text-[7px] font-black text-red-500 uppercase bg-red-50 px-1.5 py-0.5 rounded-full border border-red-100 animate-pulse">Cancelada</span>
+                      )}
+                    </div>
+                    <h4 className="text-xs font-black text-[#004D71] uppercase leading-tight">{aula.modalidade}</h4>
+                  </div>
                 </div>
 
-                <div className="w-px h-8 bg-slate-100 shrink-0" />
+                <div className="flex items-center justify-between sm:justify-end gap-3 sm:shrink-0 pl-[4.5rem] sm:pl-0">
+                  {/* Professor */}
+                  <div className="shrink-0 hidden sm:block min-w-[90px]">
+                    <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Professor</p>
+                    <p className="text-[9px] font-black text-[#004D71] uppercase leading-tight">{aula.professor || 'A Atribuir'}</p>
+                    {aula.professor2 && <p className="text-[9px] font-black text-[#004D71]/60 uppercase leading-tight">{aula.professor2}</p>}
+                  </div>
 
-                {/* Modalidade + tags */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                    {aula.categoria && (
-                      <span className="text-[7px] font-black text-slate-400 uppercase bg-slate-50 px-1.5 py-0.5 rounded-full border border-slate-100">{aula.categoria}</span>
-                    )}
-                    {aula.sala && (
-                      <span className="text-[7px] font-black text-[#F7B500] uppercase">{aula.sala}</span>
-                    )}
-                    {aula.cancelada && (
-                      <span className="text-[7px] font-black text-red-500 uppercase bg-red-50 px-1.5 py-0.5 rounded-full border border-red-100 animate-pulse">Cancelada</span>
+                  {/* Ocupação */}
+                  <div className="shrink-0 text-right min-w-[44px]">
+                    <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Vagas</p>
+                    <p className="text-[9px] font-black text-[#F7B500]">{inscritos.length} / {vagas || '—'}</p>
+                    {vagas > 0 && (
+                      <div className="w-10 h-1 bg-slate-100 rounded-full overflow-hidden mt-1 ml-auto">
+                        <div className={`h-full rounded-full ${ocupacao >= 1 ? 'bg-red-500' : 'bg-[#F7B500]'}`} style={{ width: `${Math.min(100, ocupacao * 100)}%` }} />
+                      </div>
                     )}
                   </div>
-                  <h4 className="text-xs font-black text-[#004D71] uppercase leading-none truncate">{aula.modalidade}</h4>
-                </div>
 
-                {/* Professor */}
-                <div className="shrink-0 hidden sm:block min-w-[90px]">
-                  <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Professor</p>
-                  <p className="text-[9px] font-black text-[#004D71] uppercase leading-tight">{aula.professor || 'A Atribuir'}</p>
-                  {aula.professor2 && <p className="text-[9px] font-black text-[#004D71]/60 uppercase leading-tight">{aula.professor2}</p>}
-                </div>
-
-                {/* Ocupação */}
-                <div className="shrink-0 text-right min-w-[44px]">
-                  <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Vagas</p>
-                  <p className="text-[9px] font-black text-[#F7B500]">{inscritos.length} / {vagas || '—'}</p>
-                  {vagas > 0 && (
-                    <div className="w-10 h-1 bg-slate-100 rounded-full overflow-hidden mt-1 ml-auto">
-                      <div className={`h-full rounded-full ${ocupacao >= 1 ? 'bg-red-500' : 'bg-[#F7B500]'}`} style={{ width: `${Math.min(100, ocupacao * 100)}%` }} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Botões de ação */}
-                <div className="shrink-0 flex items-center gap-1">
-                  {canEdit && (
-                    <>
-                      <button onClick={() => openEditor(aula)} className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-[#004D71] transition-colors opacity-0 group-hover:opacity-100"><Edit2 size={11}/></button>
-                      <button onClick={() => handleDelete(aula.id)} className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={11}/></button>
-                    </>
-                  )}
-                  {userRole === 'utente' && (
-                    <button
-                      onClick={() => toggleInscricao(aula)}
-                      disabled={aula.cancelada}
-                      className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                        aula.cancelada
-                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                          : isInscrito
-                          ? 'bg-red-50 text-red-500 border border-red-100'
-                          : 'bg-[#004D71] text-[#F7B500] shadow-md active:scale-95'
-                      }`}
-                    >
-                      {aula.cancelada ? 'Cancelada' : isInscrito ? 'Sair' : 'Inscrever'}
-                    </button>
-                  )}
+                  {/* Botões de ação */}
+                  <div className="shrink-0 flex items-center gap-1">
+                    {canEdit && (
+                      <>
+                        <button onClick={() => openEditor(aula)} className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-[#004D71] transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Edit2 size={11}/></button>
+                        <button onClick={() => handleDelete(aula.id)} className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:text-red-500 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={11}/></button>
+                      </>
+                    )}
+                    {userRole === 'utente' && (
+                      <button
+                        onClick={() => toggleInscricao(aula)}
+                        disabled={aula.cancelada}
+                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                          aula.cancelada
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            : isInscrito
+                            ? 'bg-red-50 text-red-500 border border-red-100'
+                            : 'bg-[#004D71] text-[#F7B500] shadow-md active:scale-95'
+                        }`}
+                      >
+                        {aula.cancelada ? 'Cancelada' : isInscrito ? 'Sair' : 'Inscrever'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -385,9 +385,9 @@ export function ProfileViewModule({
                 </button>
                 <button
                   onClick={onLogout}
-                  className="px-4 py-2 rounded-xl font-black text-[10px] uppercase bg-red-50 text-red-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm border border-red-100 hover:bg-red-100"
+                  className="px-3 py-2 rounded-xl font-black text-[10px] uppercase bg-red-50 text-red-600 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm border border-red-100 hover:bg-red-100"
                 >
-                  <LogOut size={13}/> Terminar Sessão
+                  <LogOut size={13}/> <span className="sm:hidden">Saída</span><span className="hidden sm:inline">Terminar Sessão</span>
                 </button>
               </>
             )}
@@ -402,9 +402,9 @@ export function ProfileViewModule({
             <button
               onClick={() => isEditing ? save() : setIsEditing(true)}
               disabled={saving}
-              className={`px-5 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 active:scale-95 transition-all shadow-sm ${isEditing ? 'bg-emerald-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+              className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 active:scale-95 transition-all shadow-sm ${isEditing ? 'bg-emerald-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
             >
-              {saving ? '…' : isEditing ? <><Check size={13}/> Gravar</> : <><Edit2 size={13}/> Editar Perfil</>}
+              {saving ? '…' : isEditing ? <><Check size={13}/> Gravar</> : <><Edit2 size={13}/> <span className="sm:hidden">Editar</span><span className="hidden sm:inline">Editar Perfil</span></>}
             </button>
           </div>
         </div>
@@ -413,14 +413,14 @@ export function ProfileViewModule({
       {/* Tabs */}
       <div className="flex p-2 bg-slate-200/50 backdrop-blur rounded-[2.5rem] gap-1 sticky top-0 z-20 overflow-x-auto hide-scrollbar">
         {[
-          { id: 'geral',      label: 'Identificação',   icon: <User size={15}/> },
+          { id: 'geral',      label: 'Dados',   icon: <User size={15}/> },
           { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
           ...(formData.role === 'utente' ? [{ id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> }] : []),
           ...(formData.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-            className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 rounded-[2rem] text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
-            {t.icon} <span className="hidden sm:inline">{t.label}</span>
+            className={`shrink-0 flex items-center justify-center gap-1.5 py-3 px-3.5 rounded-[2rem] text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
+            {t.icon} <span>{t.label}</span>
           </button>
         ))}
       </div>
