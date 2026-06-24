@@ -102,8 +102,9 @@ export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPubli
   const [inviteCode, setInviteCode] = React.useState('');
 
   return (
-    <div className="min-h-screen w-full login-bg flex flex-col items-center justify-center p-4 sm:p-6">
+    <div className="h-screen w-full overflow-y-auto login-bg relative">
        <div className="absolute inset-0 login-overlay"></div>
+       <div className="relative min-h-full w-full flex flex-col items-center justify-center p-4 sm:p-6 py-8">
        <div className="relative w-full max-w-[460px]">
          <InstallPwaBanner />
        </div>
@@ -181,6 +182,7 @@ export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPubli
             Consola Municipal • Provedoria de Dados<br/>
             Vila de Rei v.3.3
           </p>
+       </div>
        </div>
     </div>
   );
