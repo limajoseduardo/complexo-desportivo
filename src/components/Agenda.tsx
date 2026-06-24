@@ -550,7 +550,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                      >
                        <option value="">— Selecionar —</option>
                        {professors.map(p => (
-                         <option key={p.id} value={p.n || p.nome}>{p.n || p.nome}</option>
+                         <option key={p.id} value={p.nome || p.n}>{p.nome || p.n}</option>
                        ))}
                        <option value="A Atribuir">A Atribuir</option>
                      </select>
@@ -573,7 +573,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                      >
                        <option value="">— Nenhum —</option>
                        {professors.map(p => (
-                         <option key={p.id} value={p.n || p.nome}>{p.n || p.nome}</option>
+                         <option key={p.id} value={p.nome || p.n}>{p.nome || p.n}</option>
                        ))}
                      </select>
                    ) : (

@@ -907,9 +907,14 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     const byProf: Record<string, Stat> = {};
 
     const addToProf = (nome: string, aula: Aula, oc: number) => {
-      const key = nome.trim();
-      if (!key) return;
-      if (!byProf[key]) byProf[key] = { professor: key, dadas: 0, canceladas: 0, presencas: 0, vagas: 0 };
+      const display = nome.trim();
+      if (!display) return;
+      // Agrupar sem distinguir maiúsculas/minúsculas: a mesma pessoa fica gravada
+      // ora como "Cláudia Rechena" ora como "CLÁUDIA RECHENA" em aulas diferentes
+      // (inconsistência de quando a aula foi criada/editada), e sem isto aparecia
+      // duas vezes na tabela como se fossem dois professores.
+      const key = display.toUpperCase();
+      if (!byProf[key]) byProf[key] = { professor: display, dadas: 0, canceladas: 0, presencas: 0, vagas: 0 };
       const stat = byProf[key];
       if (aula.cancelada) { stat.canceladas += oc; return; }
       stat.dadas += oc;
