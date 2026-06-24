@@ -13,8 +13,8 @@ Este documento foi criado especificamente para servir de **prompt mestre** e map
 - Gráficos: `recharts`
 - Geração de QR Codes: `qrcode.react`
 - Geração de PDFs e Relatórios: `jspdf`, `jspdf-autotable`
-- Backend/Base de Dados: Firebase Firestore (Cloud Firestore)
-- Autenticação: Implementação Própria (email + password guardados no Firestore, sem Firebase Auth)
+- Backend/Base de Dados: Firebase Firestore (Cloud Firestore), projeto `complexo-desportivo-vr`
+- Autenticação: Firebase Auth (sessão anónima automática para todos + verificação de email/password contra a coleção `users` no Firestore)
 
 **Conceito Base:**
 Uma aplicação web orientada a Progressive Web App (PWA) e desenhada *mobile-first* / tablet-first, concebida para ser usada na receção, por professores, treinadores e pelos próprios utentes através de quiosques de self-service.
@@ -26,7 +26,7 @@ Uma aplicação web orientada a Progressive Web App (PWA) e desenhada *mobile-fi
 ## 2. Estrutura de Base de Dados (Firestore)
 A base de dados não usa as raízes standard, mas sim um caminho prefixado dinâmico baseado no `APP_ID` para permitir multi-tenancy ou ambientes de teste (ex: `artifacts/complexo-desportivo/public/data/`).
 
-O `APP_ID` é definido em `App.tsx` como `const APP_ID = 'complexo-desportivo'`.
+O `APP_ID` é definido em `src/lib/firebase.ts` como `'cpx-vila-rei-main'`.
 
 ### Coleções Principais:
 
@@ -161,7 +161,12 @@ Se uma IA receber este ficheiro e for instruída a continuar o projeto:
 4. **NÃO usar `window.confirm()`** — usar modais ou botões inline.
 5. **PREÇÁRIO:** Usar sempre a função `getBasePrice(age, modality, isWeekend)` de `AccessLogs.tsx` para calcular preços.
 6. **ISENÇÕES:** Verificar sempre `cartao_tipo.includes('Universidade Sénior')` e `atestado_medico` antes de aplicar preços.
-7. **COMPILAÇÃO:** Executar `npx tsc --noEmit` após qualquer alteração para verificar erros TypeScript.
-8. **GIT:** Após cada funcionalidade, fazer `git add . && git commit -m "..." && git push`.
+7. **COMPILAÇÃO:** Executar `npx tsc --noEmit` após qualquer alteração para verificar erros TypeScript. Nota: este projeto tem um `global.d.ts` que redeclara o namespace `JSX`, o que quebra o "key stripping" automático do TypeScript em componentes customizados usados em `.map()`. Workaround já usado no código: adicionar `key?: any;` ao tipo de props do componente (ver `UtenteRow` em `Utentes.tsx`, `PickerRow` em `Chat.tsx`, `UtenteSyncCard` em `SyncPortalMunicipal.tsx`).
+8. **GIT:** Fazer commit após cada funcionalidade. **NÃO fazer `git push` sem autorização explícita do utilizador** — a publicação (GitHub Pages / Vercel) é desencadeada a partir do `main`, por isso um push é uma ação de produção, não só de backup.
+9. **DEPLOY DE REGRAS DO FIRESTORE:** `firebase deploy --only firestore:rules` exige sempre `--project complexo-desportivo-vr` (ou `firebase use complexo-desportivo-vr` antes). O `.firebaserc` já foi corrigido para ter este projeto como default (Jun 2026) — antes disso apontava para um projeto Firebase errado (`gen-lang-client-0241795743`), o que pode ter feito com que deploys de regras anteriores nunca chegassem a `complexo-desportivo-vr`, o projeto real da app.
+
+## 9. Estado Atual / Incidentes
+
+**2026-06-24:** A app em produção ficou sem acesso à base de dados — `request.auth != null` deveria chegar para todas as leituras/escritas (ver `firestore.rules`), mas uma sessão anónima nova era recusada com `permission-denied` mesmo assim, confirmado com `scripts/test-cloud-connection.ts` correndo diretamente contra `complexo-desportivo-vr` (fora da app). Isto indica que as regras realmente publicadas no Firestore desse projeto estão desatualizadas/diferentes do `firestore.rules` deste repositório. Ação pendente (requer login interativo do utilizador, uma IA não consegue fazer `firebase login` sem browser): `firebase login && firebase deploy --only firestore:rules --project complexo-desportivo-vr`.
 
 *Documento gerado para servir de memória persistente da arquitetura desenvolvida — Complexo Desportivo de Vila de Rei.*

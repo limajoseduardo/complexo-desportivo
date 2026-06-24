@@ -10,5 +10,6 @@ O projeto é uma aplicação React (construída com Vite e TailwindCSS) para a g
 - **Servidor Local:** O `localhost:3100` está funcional e a correr via `npm run dev` com sucesso (o `Node.js` teve de ser ativado indicando o caminho absoluto do `npm.cmd`, visto que as variáveis do sistema Windows não o encontravam).
 
 ## O que falta fazer / Regras:
-1. **Publicação (Deploy):** A IA não tem permissões para executar o *push* para o GitHub nem Vercel por restrição de credenciais. A publicação online em `buildlab.pt` tem de ser desencadeada manualmente pelo utilizador enviando o código para o repositório remoto.
+1. **Publicação (Deploy):** A IA pode fazer commits locais, mas só deve fazer `git push` com autorização explícita do utilizador nesse momento — o push despoleta o deploy real (GitHub Pages / Vercel).
 2. **Histórico:** A formatação da tabela de acessos deve ser revista sempre que a visualização colapsar em monitores <14 polegadas.
+3. **Incidente 2026-06-24:** Base de dados em produção (`complexo-desportivo-vr`) sem acesso — regras do Firestore publicadas no projeto não correspondem ao `firestore.rules` do repositório. Ver secção 9 do `AI_BLUEPRINT.md` para detalhes e o comando de correção (requer login Firebase do utilizador).
