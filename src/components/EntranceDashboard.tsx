@@ -91,6 +91,9 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [cobertaLogs, setCobertaLogs] = useState<any[]>([]);
   const [descobertaLogs, setDescobertaLogs] = useState<any[]>([]);
+  const [tempInteriorLatest, setTempInteriorLatest] = useState<any | null>(null);
+  const [tempExteriorAdultoLatest, setTempExteriorAdultoLatest] = useState<any | null>(null);
+  const [tempExteriorInfantilLatest, setTempExteriorInfantilLatest] = useState<any | null>(null);
   const [todayLogs, setTodayLogs] = useState<any[]>([]);
   const [agenda, setAgenda] = useState<Aula[]>([]);
   const { weather, aqi } = useWeather();
@@ -144,8 +147,29 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
     return onSnapshot(q, (snap) => {
       const todayStr = new Date().toISOString().split('T')[0];
       const logs = snap.docs.map(d => d.data());
-      const todayLogs = logs.filter(l => l.data === todayStr).slice(0, 3);
+      const todayLogs = logs.filter(l => l.data === todayStr).slice(0, 6);
       setDescobertaLogs(todayLogs);
+    });
+  }, [appId]);
+
+  useEffect(() => {
+    const path = `artifacts/${appId}/public/data/mapas_interior_temperaturas`;
+    const q = query(collection(db, path), orderBy('timestamp', 'desc'), limit(5));
+    return onSnapshot(q, (snap) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const logs = snap.docs.map(d => d.data()).filter(l => l.data === todayStr);
+      setTempInteriorLatest(logs[0] || null);
+    });
+  }, [appId]);
+
+  useEffect(() => {
+    const path = `artifacts/${appId}/public/data/mapas_exterior_temperaturas`;
+    const q = query(collection(db, path), orderBy('timestamp', 'desc'), limit(10));
+    return onSnapshot(q, (snap) => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const logs = snap.docs.map(d => d.data()).filter(l => l.data === todayStr);
+      setTempExteriorAdultoLatest(logs.find(l => (l.zona || 'adulto') === 'adulto') || null);
+      setTempExteriorInfantilLatest(logs.find(l => l.zona === 'infantil') || null);
     });
   }, [appId]);
 
@@ -204,6 +228,9 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
   );
 
   const aqiInfo = aqi !== null ? aqiLabel(aqi) : null;
+
+  const descobertaAdultoLogs = useMemo(() => descobertaLogs.filter(l => (l.zona || 'adulto') === 'adulto').slice(0, 2), [descobertaLogs]);
+  const descobertaInfantilLogs = useMemo(() => descobertaLogs.filter(l => l.zona === 'infantil').slice(0, 2), [descobertaLogs]);
 
   return (
     <div className="fixed inset-0 bg-[#003a55] text-white font-sans overflow-hidden flex flex-col select-none">
@@ -376,7 +403,7 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
                       </div>
                       <div className="text-center">
                         <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">Temp.</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-200 tabular-nums leading-none">{log.tempAgua ? `${log.tempAgua}°` : '--'}</p>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-200 tabular-nums leading-none">{tempInteriorLatest?.aguaPiscinaTemp ? `${tempInteriorLatest.aguaPiscinaTemp}°` : '--'}</p>
                       </div>
                     </div>
                   )) : (
@@ -386,34 +413,42 @@ export const EntranceDashboard = React.memo(({ appId, onBack }: EntranceDashboar
                   )}
                 </div>
               </div>
-              {/* Piscina Exterior */}
+              {/* Piscina Exterior — Adulto / Infantil */}
               <div className="flex-1 bg-emerald-400/10 border border-emerald-400/20 rounded-2xl p-3 sm:p-4 flex flex-col gap-2 min-h-[160px] sm:min-h-0 overflow-hidden">
                 <div className="flex items-center gap-2 shrink-0">
                   <Waves size={13} className="text-emerald-400" />
                   <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-300">Piscina Exterior</p>
                 </div>
                 <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-y-auto lg:overflow-hidden">
-                  {descobertaLogs.length ? descobertaLogs.map((log, i) => (
-                    <div key={i} className="flex-none lg:flex-1 bg-white/5 rounded-xl px-3 py-2.5 lg:py-0 flex items-center justify-between gap-2 min-h-[56px] lg:min-h-0">
-                      <span className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-300 tabular-nums shrink-0">{log.hora}</span>
-                      <div className="text-center">
-                        <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">pH</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white tabular-nums leading-none">{log.ph ?? '--'}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">Cloro</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-300 tabular-nums leading-none">{log.clLivre ?? '--'}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">Temp.</p>
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-200 tabular-nums leading-none">{log.tempAgua ? `${log.tempAgua}°` : '--'}</p>
-                      </div>
+                  {([
+                    { label: 'Adulto', logs: descobertaAdultoLogs, temp: tempExteriorAdultoLatest?.temp },
+                    { label: 'Infantil', logs: descobertaInfantilLogs, temp: tempExteriorInfantilLatest?.temp },
+                  ]).map(zona => (
+                    <div key={zona.label} className="flex flex-col gap-1">
+                      <p className="text-[7px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-200/70">{zona.label}</p>
+                      {zona.logs.length ? zona.logs.map((log: any, i: number) => (
+                        <div key={i} className="flex-none lg:flex-1 bg-white/5 rounded-xl px-3 py-2.5 lg:py-0 flex items-center justify-between gap-2 min-h-[56px] lg:min-h-0">
+                          <span className="text-lg sm:text-2xl lg:text-3xl font-black text-slate-300 tabular-nums shrink-0">{log.hora}</span>
+                          <div className="text-center">
+                            <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">pH</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white tabular-nums leading-none">{log.ph ?? '--'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">Cloro</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-300 tabular-nums leading-none">{log.clLivre ?? '--'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[7px] sm:text-[9px] uppercase text-slate-500">Temp.</p>
+                            <p className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-200 tabular-nums leading-none">{zona.temp ? `${zona.temp}°` : '--'}</p>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="flex items-center justify-center py-2">
+                          <p className="text-[9px] text-slate-500 uppercase">Sem registos</p>
+                        </div>
+                      )}
                     </div>
-                  )) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <p className="text-[9px] text-slate-500 uppercase">Sem registos</p>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
             </div>

@@ -17,6 +17,7 @@ const ScannerScreen = React.lazy(() => import('./components/Utentes').then(m => 
 const BugReportModule = React.lazy(() => import('./components/BugReport').then(m => ({ default: m.BugReportModule })));
 const ProfileViewModule = React.lazy(() => import('./components/Profile').then(m => ({ default: m.ProfileViewModule })));
 const MapsManager = React.lazy(() => import('./components/Maps').then(m => ({ default: m.MapsManager })));
+const SyncPortalMunicipal = React.lazy(() => import('./components/SyncPortalMunicipal').then(m => ({ default: m.SyncPortalMunicipal })));
 
 const ChatModule = React.lazy(() => import('./components/Chat').then(m => ({ default: m.ChatModule })));
 const UtenteTrainingModule = React.lazy(() => import('./components/UtenteTraining').then(m => ({ default: m.UtenteTrainingModule })));
@@ -70,7 +71,7 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
+  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'sincronizar', 'perfil'],
   chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
   staff: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
   professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'mensagens', 'perfil'],
@@ -132,6 +133,11 @@ export default function App() {
   const [showBugReport, setShowBugReport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<any[]>([]);
+  const [tempLogs, setTempLogs] = useState<any[]>([]);
+  const [sondasLogs, setSondasLogs] = useState<any[]>([]);
+  const [equipLogs, setEquipLogs] = useState<any[]>([]);
+  const [tratamentosLogs, setTratamentosLogs] = useState<any[]>([]);
+  const [eletricidadeLogs, setEletricidadeLogs] = useState<any[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
   const [rfidToast, setRfidToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [latestAviso, setLatestAviso] = useState<{ id: string; titulo: string; mensagem: string; nomeProfessor: string } | null>(null);
@@ -527,6 +533,61 @@ export default function App() {
     return () => { unsubC(); unsubD(); };
   }, [user?.id, user?.role]);
 
+  // Sync Temperaturas (Mapas)
+  useEffect(() => {
+    if (!user) return;
+
+    const pathTI = `artifacts/${APP_ID}/public/data/mapas_interior_temperaturas`;
+    const pathTE = `artifacts/${APP_ID}/public/data/mapas_exterior_temperaturas`;
+
+    const mergeTempLogs = (newLogs: any[], scope: string) => {
+      setTempLogs(prev => {
+        const filtered = prev.filter(p => p.scope !== scope);
+        return [...filtered, ...newLogs].sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      });
+    };
+
+    const qTI = query(collection(db, pathTI), orderBy('timestamp', 'desc'), limit(50));
+    const unsubTI = onSnapshot(qTI, (snap) => {
+      mergeTempLogs(snap.docs.map(d => ({ ...d.data(), id: d.id, scope: 'interior' })), 'interior');
+    }, (err) => handleFirestoreError(err, OperationType.GET, pathTI));
+
+    const qTE = query(collection(db, pathTE), orderBy('timestamp', 'desc'), limit(50));
+    const unsubTE = onSnapshot(qTE, (snap) => {
+      mergeTempLogs(snap.docs.map(d => ({ ...d.data(), id: d.id, scope: 'exterior' })), 'exterior');
+    }, (err) => handleFirestoreError(err, OperationType.GET, pathTE));
+
+    return () => { unsubTI(); unsubTE(); };
+  }, [user?.id, user?.role]);
+
+  // Sync Sondas / Equipamentos / Tratamentos / Eletricidade (Mapas)
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubs: (() => void)[] = [];
+
+    const watchScoped = (path: string, scope: string, setter: React.Dispatch<React.SetStateAction<any[]>>) => {
+      const q = query(collection(db, `artifacts/${APP_ID}/public/data/${path}`), orderBy('timestamp', 'desc'), limit(50));
+      return onSnapshot(q, (snap) => {
+        const newLogs = snap.docs.map(d => ({ ...d.data(), id: d.id, scope }));
+        setter(prev => [...prev.filter(p => p.scope !== scope), ...newLogs].sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
+      }, (err) => handleFirestoreError(err, OperationType.GET, path));
+    };
+
+    unsubs.push(watchScoped('mapas_interior_sondas', 'interior', setSondasLogs));
+    unsubs.push(watchScoped('mapas_interior_equipamentos', 'interior', setEquipLogs));
+    unsubs.push(watchScoped('mapas_exterior_equipamentos', 'exterior', setEquipLogs));
+    unsubs.push(watchScoped('mapas_interior_tratamentos', 'interior', setTratamentosLogs));
+    unsubs.push(watchScoped('mapas_exterior_tratamentos', 'exterior', setTratamentosLogs));
+
+    const qEl = query(collection(db, `artifacts/${APP_ID}/public/data/mapas_eletricidade`), orderBy('timestamp', 'desc'), limit(50));
+    unsubs.push(onSnapshot(qEl, (snap) => {
+      setEletricidadeLogs(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    }, (err) => handleFirestoreError(err, OperationType.GET, 'mapas_eletricidade')));
+
+    return () => unsubs.forEach(u => u());
+  }, [user?.id, user?.role]);
+
   const handleLogin = React.useCallback(async (emailInput: string, pass: string) => {
     setAuthError('');
     setLoading(true);
@@ -865,7 +926,7 @@ export default function App() {
         />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} unreadCount={totalUnread} logs={logs} />
+          <Header user={user} unreadCount={totalUnread} logs={logs} tempLogs={tempLogs} />
 
           <React.Suspense fallback={null}>
             <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
@@ -916,6 +977,7 @@ export default function App() {
                         utentes={utentes}
                         onUserClick={setViewingProfile}
                         logs={logs}
+                        tempLogs={tempLogs}
                       />
                     )}
                     {activeTab === 'inicio' && ['admin', 'chefia'].includes(user.role) && (
@@ -925,6 +987,7 @@ export default function App() {
                       <ModalitiesDashboard
                         onUserClick={setViewingProfile}
                         logs={logs}
+                        tempLogs={tempLogs}
                         utentes={utentes}
                       />
                     )}
@@ -938,7 +1001,7 @@ export default function App() {
                     )}
                     {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
                     {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
-                    {activeTab === 'mapas' && <MapsManager user={user} logs={logs} />}
+                    {activeTab === 'mapas' && <MapsManager user={user} logs={logs} tempLogs={tempLogs} sondasLogs={sondasLogs} equipLogs={equipLogs} tratamentosLogs={tratamentosLogs} eletricidadeLogs={eletricidadeLogs} />}
                     {activeTab === 'treino' && user.role === 'utente' && <UtenteTrainingModule user={user} />}
                     {activeTab === 'qr' && user.role === 'utente' && (
                       <UtenteQRCard
@@ -951,6 +1014,7 @@ export default function App() {
                     {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                     {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                     {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
+                    {activeTab === 'sincronizar' && user.role === 'admin' && <SyncPortalMunicipal utentes={utentes} />}
                     {activeTab === 'perfil' && (
                       <ProfileViewModuleCustom
                         user={user}

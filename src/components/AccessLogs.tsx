@@ -12,7 +12,7 @@ import {
   Timestamp, limit, getDocs, setDoc, updateDoc,
   doc, serverTimestamp, deleteDoc, orderBy, writeBatch, deleteField
 } from 'firebase/firestore';
-import { AccessLog, UserProfile } from '../types';
+import { AccessLog, UserProfile, Aula } from '../types';
 import { TurmasModule } from './TurmasModule';
 import { isUserInZone, normalizeSearchString } from '../lib/logic';
 import { jsPDF } from 'jspdf';
@@ -49,6 +49,14 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [monthlyLogs, setMonthlyLogs] = useState<AccessLog[]>([]);
+  const [agendaAulas, setAgendaAulas] = useState<Aula[]>([]);
+  const [profStatsMode, setProfStatsMode] = useState<'mes' | 'custom'>('mes');
+  const [profStatsFrom, setProfStatsFrom] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [profStatsTo, setProfStatsTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [profStatsLogs, setProfStatsLogs] = useState<AccessLog[]>([]);
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -288,7 +296,24 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     }, () => { });
   }, []);
 
+  useEffect(() => {
+    const path = `artifacts/${APP_ID}/public/data/agenda`;
+    return onSnapshot(collection(db, path), snap => {
+      setAgendaAulas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Aula)));
+    }, (err) => handleFirestoreError(err, OperationType.GET, path));
+  }, []);
 
+  useEffect(() => {
+    const from = profStatsMode === 'mes'
+      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+      : profStatsFrom;
+    const to = profStatsMode === 'mes' ? new Date().toISOString().split('T')[0] : profStatsTo;
+    const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+    const q = query(collection(db, path), where('date', '>=', from), where('date', '<=', to));
+    return onSnapshot(q, snap => {
+      setProfStatsLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as AccessLog)));
+    }, (err) => handleFirestoreError(err, OperationType.GET, path));
+  }, [profStatsMode, profStatsFrom, profStatsTo]);
 
   useEffect(() => {
     setLoading(true);
@@ -311,6 +336,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       setLoading(false);
     }, (error) => {
       console.warn("Firestore access log query range error, falling back to all:", error);
+      handleFirestoreError(error, OperationType.GET, path);
       const qFallback = query(collection(db, path), limit(500));
       onSnapshot(qFallback, (snapFallback) => {
         const list = snapFallback.docs.map(doc => ({ id: doc.id, ...doc.data() } as AccessLog));
@@ -780,6 +806,76 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       .map(([local, entradas]) => ({ local, entradas }))
       .sort((a, b) => b.entradas - a.entradas);
   }, [monthlyLogs]);
+
+  const professorStats = React.useMemo(() => {
+    const from = profStatsMode === 'mes'
+      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+      : profStatsFrom;
+    const to = profStatsMode === 'mes' ? new Date().toISOString().split('T')[0] : profStatsTo;
+
+    const countOccurrences = (diaSemana: number) => {
+      const target = diaSemana === 7 ? 0 : diaSemana;
+      const start = new Date(`${from}T00:00:00`);
+      const end = new Date(`${to}T00:00:00`);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
+      let count = 0;
+      const cur = new Date(start);
+      while (cur <= end) {
+        if (cur.getDay() === target) count++;
+        cur.setDate(cur.getDate() + 1);
+      }
+      return count;
+    };
+
+    // Presenças registadas por modalidade no período (logs_acesso não distingue qual aula/professor específico).
+    const presencasPorModalidade: Record<string, number> = {};
+    profStatsLogs.forEach(l => {
+      const key = (l.modalidade || '').trim();
+      if (!key) return;
+      presencasPorModalidade[key] = (presencasPorModalidade[key] || 0) + 1;
+    });
+
+    // Ocorrências totais por modalidade no período, para repartir as presenças proporcionalmente entre professores que partilham a modalidade.
+    const ocorrenciasPorModalidade: Record<string, number> = {};
+    agendaAulas.forEach(a => {
+      if (a.cancelada) return;
+      const key = (a.modalidade || '').trim();
+      if (!key) return;
+      ocorrenciasPorModalidade[key] = (ocorrenciasPorModalidade[key] || 0) + countOccurrences(a.diaSemana);
+    });
+
+    type Stat = { professor: string; dadas: number; canceladas: number; presencas: number; vagas: number };
+    const byProf: Record<string, Stat> = {};
+
+    const addToProf = (nome: string, aula: Aula, oc: number) => {
+      const key = nome.trim();
+      if (!key) return;
+      if (!byProf[key]) byProf[key] = { professor: key, dadas: 0, canceladas: 0, presencas: 0, vagas: 0 };
+      const stat = byProf[key];
+      if (aula.cancelada) { stat.canceladas += oc; return; }
+      stat.dadas += oc;
+      stat.vagas += (aula.vagas || 0) * oc;
+      const modKey = (aula.modalidade || '').trim();
+      const totalOc = ocorrenciasPorModalidade[modKey] || 0;
+      const totalPres = presencasPorModalidade[modKey] || 0;
+      stat.presencas += totalOc > 0 ? (totalPres * oc) / totalOc : 0;
+    };
+
+    agendaAulas.forEach(a => {
+      const oc = countOccurrences(a.diaSemana);
+      if (oc === 0) return;
+      if (a.professor) addToProf(a.professor, a, oc);
+      if (a.professor2) addToProf(a.professor2, a, oc);
+    });
+
+    return Object.values(byProf)
+      .map(s => ({
+        ...s,
+        presencas: Math.round(s.presencas),
+        ocupacao: s.vagas > 0 ? Math.round((s.presencas / s.vagas) * 100) : null,
+      }))
+      .sort((a, b) => b.dadas - a.dadas);
+  }, [agendaAulas, profStatsLogs, profStatsMode, profStatsFrom, profStatsTo]);
 
   const demographicsStats = React.useMemo(() => {
     const ageGroups = { '< 18': 0, '18-35': 0, '36-55': 0, '> 55': 0 };
@@ -1889,6 +1985,69 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                 Sem registos de hoje
               </div>
             )}
+          </div>
+
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div>
+                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                  <BookOpen className="text-[#F7B500]" size={14} /> Estatística de Professores
+                </h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  Aulas dadas, canceladas, presenças estimadas e ocupação
+                </p>
+              </div>
+              <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
+                <button onClick={() => setProfStatsMode('mes')} className={`px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${profStatsMode === 'mes' ? 'bg-[#004D71] text-[#F7B500] shadow' : 'text-slate-400'}`}>Mês Atual</button>
+                <button onClick={() => setProfStatsMode('custom')} className={`px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${profStatsMode === 'custom' ? 'bg-[#004D71] text-[#F7B500] shadow' : 'text-slate-400'}`}>Período</button>
+              </div>
+            </div>
+
+            {profStatsMode === 'custom' && (
+              <div className="flex items-center gap-2 mb-4">
+                <input type="date" value={profStatsFrom} onChange={e => setProfStatsFrom(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl text-[11px] font-black text-[#004D71] outline-none focus:border-[#004D71]/20" />
+                <span className="text-[9px] font-black text-slate-400 uppercase">a</span>
+                <input type="date" value={profStatsTo} onChange={e => setProfStatsTo(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl text-[11px] font-black text-[#004D71] outline-none focus:border-[#004D71]/20" />
+              </div>
+            )}
+
+            {professorStats.length > 0 ? (
+              <div className="space-y-2">
+                {professorStats.map(p => (
+                  <div key={p.professor} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate">{p.professor}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dadas</span>
+                        <span className="text-xs font-black text-[#004D71] tabular-nums">{p.dadas}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Canceladas</span>
+                        <span className="text-xs font-black text-red-500 tabular-nums">{p.canceladas}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Presenças</span>
+                        <span className="text-xs font-black text-[#004D71] tabular-nums">~{p.presencas}</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Ocupação</span>
+                        <span className="text-xs font-black text-emerald-600 tabular-nums">{p.ocupacao !== null ? `${p.ocupacao}%` : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                Sem aulas atribuídas a professores
+              </div>
+            )}
+
+            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-3 leading-relaxed">
+              Presenças estimadas por modalidade (sem registo de turma específica) e repartidas entre professores que partilham a mesma modalidade. Canceladas refletem o estado atual da aula, não o histórico exato no período.
+            </p>
           </div>
         </div>
       )}

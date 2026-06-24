@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectAuthEmulator, getAuth, signInAnonymously, signOut } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore, doc, getDocFromServer, enableIndexedDbPersistence } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -71,6 +71,29 @@ export interface FirestoreErrorInfo {
   }
 }
 
+// Quando o token de autenticação anónima fica obsoleto/inválido, o Firestore devolve
+// 'permission-denied' mesmo com as regras a permitir qualquer utilizador autenticado —
+// a app continua a mostrar o perfil em cache (localStorage) como se estivesse tudo bem,
+// dando a falsa impressão de "sessão ativa sem dados". Recuperamos automaticamente
+// renovando a sessão anónima e recarregando, em vez de deixar o utilizador preso nesse estado.
+let authRecoveryInFlight = false;
+
+async function attemptAuthRecovery() {
+  if (typeof window === 'undefined' || authRecoveryInFlight) return;
+  const lastAttempt = Number(sessionStorage.getItem('cpx_auth_recovery_at') || '0');
+  if (Date.now() - lastAttempt < 20000) return; // no máximo 1 tentativa a cada 20s, evita loop de reload
+  authRecoveryInFlight = true;
+  sessionStorage.setItem('cpx_auth_recovery_at', String(Date.now()));
+  try {
+    await signOut(auth);
+    await signInAnonymously(auth);
+    window.location.reload();
+  } catch (e) {
+    console.warn('Falha ao recuperar sessão automaticamente:', e);
+    authRecoveryInFlight = false;
+  }
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
@@ -89,4 +112,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   };
   console.warn('Firestore Error:', JSON.stringify(errInfo));
+
+  if ((error as any)?.code === 'permission-denied') {
+    attemptAuthRecovery();
+  }
 }

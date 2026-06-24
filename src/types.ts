@@ -153,15 +153,52 @@ export interface TreinoPlano {
 
 export interface OperationalLog {
   id: string;
-  tempAgua: number | string;
+  tempAgua?: number | string;
   ph: number | string;
   clLivre?: string;
+  clTotal?: string;
+  clComb?: string;
+  acidoCianurico?: string;
+  banhistas?: number | string;
+  obs?: string;
   hora?: string;
   data?: string;
   tecnico?: string;
   utaHum?: string;
   timestamp: any;
   tipo: 'coberta' | 'descoberta';
+  zona?: 'adulto' | 'infantil';
+  editedAt?: any;
+  editedBy?: string;
+}
+
+export interface TemperaturaInteriorLog {
+  id: string;
+  data?: string;
+  hora?: string;
+  tecnico?: string;
+  naveTemp?: string;
+  naveHumidade?: string;
+  balneariosTemp?: string;
+  aguaPiscinaTemp?: string;
+  aqsTemp?: string;
+  quadroTemp?: string;
+  depositoTemp?: string;
+  timestamp: any;
+  editedAt?: any;
+  editedBy?: string;
+}
+
+export interface TemperaturaExteriorLog {
+  id: string;
+  data?: string;
+  hora?: string;
+  tecnico?: string;
+  zona: 'adulto' | 'infantil';
+  temp?: string;
+  timestamp: any;
+  editedAt?: any;
+  editedBy?: string;
 }
 
 export interface Aula {

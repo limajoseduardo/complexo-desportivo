@@ -18,9 +18,11 @@ import { SwimmingStudentPortal } from './SwimmingModule';
 import { AreaChart, Area, BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { GlobalErrorBoundary } from './ErrorBoundary';
 
-export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], utentes: UserProfile[] }) => {
+export const ModalitiesDashboard = React.memo(({ onUserClick, logs, tempLogs, utentes }: { onUserClick: (u: UserProfile) => void, logs: OperationalLog[], tempLogs: any[], utentes: UserProfile[] }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
   const latestDescoberta = logs.find(l => l.tipo === 'descoberta') || {} as OperationalLog;
+  const latestTempInterior = tempLogs.find(l => l.scope === 'interior') || ({} as any);
+  const latestTempExteriorAdulto = tempLogs.find(l => l.scope === 'exterior' && (l.zona || 'adulto') === 'adulto') || ({} as any);
 
   const [selected, setSelected] = useState<{label: string, target: string} | null>(null);
 
@@ -55,14 +57,23 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
     if (!showLogModal || !logForm.tempAgua) return;
     setIsSaving(true);
     try {
-      const path = `artifacts/${APP_ID}/public/data/mapas_${showLogModal}`;
       const now = new Date();
-      await addDoc(collection(db, path), {
-        tempAgua: logForm.tempAgua,
+      const hora = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const data = now.toISOString().split('T')[0];
+      const analisesPath = `artifacts/${APP_ID}/public/data/mapas_${showLogModal}`;
+      await addDoc(collection(db, analisesPath), {
         ph: logForm.ph,
         clLivre: logForm.clLivre,
-        hora: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        data: now.toISOString().split('T')[0],
+        hora, data,
+        ...(showLogModal === 'descoberta' ? { zona: 'adulto' } : {}),
+        timestamp: serverTimestamp()
+      });
+      const tempPath = showLogModal === 'coberta'
+        ? `artifacts/${APP_ID}/public/data/mapas_interior_temperaturas`
+        : `artifacts/${APP_ID}/public/data/mapas_exterior_temperaturas`;
+      await addDoc(collection(db, tempPath), {
+        ...(showLogModal === 'coberta' ? { aguaPiscinaTemp: logForm.tempAgua } : { temp: logForm.tempAgua, zona: 'adulto' }),
+        hora, data,
         timestamp: serverTimestamp()
       });
       setShowLogModal(null);
@@ -115,7 +126,7 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
              <div className="grid grid-cols-3 gap-2 font-mono text-center">
                 <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
                   <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">Água</span>
-                  <span className="text-[12px] font-black text-[#004D71]">{latestCoberta.tempAgua ? `${latestCoberta.tempAgua}ºC` : '---'}</span>
+                  <span className="text-[12px] font-black text-[#004D71]">{latestTempInterior.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}ºC` : '---'}</span>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
                   <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">pH</span>
@@ -143,7 +154,7 @@ export const ModalitiesDashboard = React.memo(({ onUserClick, logs, utentes }: {
              <div className="grid grid-cols-3 gap-2 font-mono text-center">
                 <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
                   <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">Água</span>
-                  <span className="text-[12px] font-black text-[#004D71]">{latestDescoberta.tempAgua ? `${latestDescoberta.tempAgua}ºC` : '---'}</span>
+                  <span className="text-[12px] font-black text-[#004D71]">{latestTempExteriorAdulto.temp ? `${latestTempExteriorAdulto.temp}ºC` : '---'}</span>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
                   <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">pH</span>
@@ -732,14 +743,17 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   );
 });
 
-export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick, logs }: {
+export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick, logs, tempLogs = [] }: {
   user: UserProfile;
   utentes?: UserProfile[];
   onUserClick: (u: UserProfile) => void;
   logs: OperationalLog[];
+  tempLogs?: any[];
 }) => {
   const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
   const latestDescoberta = logs.find(l => l.tipo === 'descoberta') || {} as OperationalLog;
+  const latestTempInterior = tempLogs.find(l => l.scope === 'interior') || ({} as any);
+  const latestTempExteriorAdulto = tempLogs.find(l => l.scope === 'exterior' && (l.zona || 'adulto') === 'adulto') || ({} as any);
 
   const todayDow = new Date().getDay() || 7;
   const todayStr = new Date().toISOString().split('T')[0];
@@ -905,9 +919,9 @@ export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick,
         </h3>
         <div className="space-y-6">
           {[
-            { label: 'Piscina Coberta', color: 'bg-blue-500', data: latestCoberta },
-            { label: 'Piscina Exterior', color: 'bg-amber-500', data: latestDescoberta },
-          ].map(({ label, color, data }) => (
+            { label: 'Piscina Coberta', color: 'bg-blue-500', data: latestCoberta, temp: latestTempInterior.aguaPiscinaTemp },
+            { label: 'Piscina Exterior', color: 'bg-amber-500', data: latestDescoberta, temp: latestTempExteriorAdulto.temp },
+          ].map(({ label, color, data, temp }) => (
             <div key={label} className="space-y-2">
               <div className="flex items-center gap-2 px-1">
                 <div className={`w-1.5 h-1.5 rounded-full ${color}`}/>
@@ -916,7 +930,7 @@ export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick,
               </div>
               <div className="grid grid-cols-3 gap-2 font-mono text-center">
                 {[
-                  { key: 'Água', val: data.tempAgua ? `${data.tempAgua}ºC` : '---', cls: 'text-[#004D71]' },
+                  { key: 'Água', val: temp ? `${temp}ºC` : '---', cls: 'text-[#004D71]' },
                   { key: 'pH',   val: data.ph || '---',      cls: 'text-orange-600' },
                   { key: 'Cloro', val: data.clLivre || '---', cls: 'text-blue-600'   },
                 ].map(({ key, val, cls }) => (

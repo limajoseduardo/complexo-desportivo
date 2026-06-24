@@ -3,7 +3,7 @@ import {
   Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
 import { PicotoIcon, AvatarImage } from './Common';
@@ -172,7 +172,7 @@ function headerAqiLabel(aqi: number): { label: string; color: string } {
   return                 { label: 'Crítica',      color: 'text-purple-500' };
 }
 
-export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile, unreadCount?: number, logs?: any[] }) {
+export function Header({ user, unreadCount = 0, logs = [], tempLogs = [] }: { user: UserProfile, unreadCount?: number, logs?: any[], tempLogs?: any[] }) {
   const [time, setTime] = React.useState(new Date());
   const { weather, aqi } = useWeather();
 
@@ -194,6 +194,8 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
 
   const latestCoberta = logs.find(l => l.tipo === 'coberta');
   const latestDescoberta = logs.find(l => l.tipo === 'descoberta');
+  const latestTempInterior = tempLogs.find(l => l.scope === 'interior');
+  const latestTempExterior = tempLogs.find(l => l.scope === 'exterior' && (l.zona || 'adulto') === 'adulto');
 
   return (
     <header className="bg-white px-5 pt-safe flex justify-between items-center sticky top-0 z-40 py-2 border-b-4 border-slate-100">
@@ -239,13 +241,13 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <span className="flex items-center gap-1 text-xs font-black text-[#004D71]" title="Temperatura da Água">
-                  <Thermometer size={13} className="text-blue-500" /> {latestCoberta.tempAgua ? `${latestCoberta.tempAgua}°C` : '—'}
+                  <Thermometer size={13} className="text-blue-500" /> {latestTempInterior?.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}°C` : '—'}
                 </span>
                 <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="pH da Água">
                   <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestCoberta.ph || '—'}
                 </span>
-                <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="Humidade UTA">
-                  <Droplets size={13} className="text-sky-400" /> {latestCoberta.utaHum ? `${latestCoberta.utaHum}%` : '—'}
+                <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="Humidade Nave">
+                  <Droplets size={13} className="text-sky-400" /> {latestTempInterior?.naveHumidade ? `${latestTempInterior.naveHumidade}%` : '—'}
                 </span>
               </div>
             </div>
@@ -271,7 +273,7 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <span className="flex items-center gap-1 text-xs font-black text-[#004D71]" title="Temperatura da Água">
-                  <Thermometer size={13} className="text-blue-500" /> {latestDescoberta.tempAgua ? `${latestDescoberta.tempAgua}°C` : '—'}
+                  <Thermometer size={13} className="text-blue-500" /> {latestTempExterior?.temp ? `${latestTempExterior.temp}°C` : '—'}
                 </span>
                 <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="pH da Água">
                   <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescoberta.ph || '—'}
@@ -286,14 +288,14 @@ export function Header({ user, unreadCount = 0, logs = [] }: { user: UserProfile
           {latestCoberta && (
             <div className="flex items-center gap-1.5 text-[#004D71]">
               <Waves size={16} className="text-sky-500" />
-              <span className="text-xs font-black tabular-nums">{latestCoberta.tempAgua ? `${latestCoberta.tempAgua}°C` : '—'}</span>
+              <span className="text-xs font-black tabular-nums">{latestTempInterior?.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}°C` : '—'}</span>
               <span className="text-[10px] font-bold text-orange-600">pH {latestCoberta.ph || '—'}</span>
             </div>
           )}
           {latestDescoberta && (
             <div className="flex items-center gap-1.5 text-amber-700">
               <Sun size={16} className="text-amber-500" />
-              <span className="text-xs font-black tabular-nums">{latestDescoberta.tempAgua ? `${latestDescoberta.tempAgua}°C` : '—'}</span>
+              <span className="text-xs font-black tabular-nums">{latestTempExterior?.temp ? `${latestTempExterior.temp}°C` : '—'}</span>
               <span className="text-[10px] font-bold text-orange-600">pH {latestDescoberta.ph || '—'}</span>
             </div>
           )}
@@ -379,8 +381,9 @@ const MENU_ITEMS = (unreadCount: number) => [
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
   { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor'], badge: unreadCount },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
-  { id: 'agenda',    icon: <Calendar />,      label: 'Agenda',     mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
-  { id: 'perfil',    icon: <User />,          label: 'Perfil',     mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
+  { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
+  { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
+  { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
 export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unreadCount = 0, onSimularRfid, onKioskMode }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, unreadCount?: number, onSimularRfid?: () => void, onKioskMode?: () => void }) => {
@@ -431,8 +434,14 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
   );
 };
 
+// No mobile, o staff já tem 'mapas' a ocupar espaço na barra — 'eventos' e 'mensagens' ficam só no menu desktop para não sobrecarregar a barra.
+const MOBILE_HIDDEN_BY_ROLE: Record<string, string[]> = {
+  staff: ['eventos', 'mensagens'],
+};
+
 export const MobileNav = ({ role, activeTab, setActiveTab, unreadCount = 0, isVisible = true }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, unreadCount?: number, isVisible?: boolean }) => {
-  const tabs = MENU_ITEMS(unreadCount).filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios' && tab.id !== 'mapas');
+  const hidden = MOBILE_HIDDEN_BY_ROLE[role] || [];
+  const tabs = MENU_ITEMS(unreadCount).filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios' && !hidden.includes(tab.id));
 
   return (
     <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-3 pb-safe flex justify-around items-center z-50 rounded-t-[2.5rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
