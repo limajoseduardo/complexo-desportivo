@@ -241,6 +241,7 @@ function UtenteSyncCard({
   onSync: (u: UserProfile) => void | Promise<void>;
   onReview: (u: UserProfile, data: PortalResult) => void;
   onSave: (u: UserProfile, data: PortalResult) => void;
+  key?: any;
 }) {
   const completeness = profileCompleteness(utente);
   const isIncomplete = isProfileIncomplete(utente);
