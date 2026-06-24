@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Home, Users, Dumbbell, MessageSquare, User, Calendar, LogOut,
+  Home, Users, Dumbbell, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw
@@ -172,7 +172,7 @@ function headerAqiLabel(aqi: number): { label: string; color: string } {
   return                 { label: 'Crítica',      color: 'text-purple-500' };
 }
 
-export function Header({ user, unreadCount = 0, logs = [], tempLogs = [] }: { user: UserProfile, unreadCount?: number, logs?: any[], tempLogs?: any[] }) {
+export function Header({ user, logs = [], tempLogs = [] }: { user: UserProfile, logs?: any[], tempLogs?: any[] }) {
   const [time, setTime] = React.useState(new Date());
   const { weather, aqi } = useWeather();
 
@@ -355,39 +355,29 @@ export function Header({ user, unreadCount = 0, logs = [], tempLogs = [] }: { us
           </span>
         </div>
 
-        {/* Notificações */}
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
-              <div className="relative bg-red-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full shadow-lg">{unreadCount}</div>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );
 }
 
-const MENU_ITEMS = (unreadCount: number) => [
+const MENU_ITEMS = () => [
   { id: 'inicio',     icon: <Home />,         label: 'Início',     mobileLabel: 'INÍCIO', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'utentes',   icon: <Users />,         label: 'Utentes',    mobileLabel: 'UTENTES', roles: ['admin', 'staff', 'chefia', 'professor'] },
   { id: 'acessos',   icon: <ClipboardList />, label: 'Acessos',    mobileLabel: 'ACESSOS', roles: ['admin', 'staff', 'chefia', 'professor'] },
-  { id: 'eventos',   icon: <Trophy />,        label: 'Eventos',    mobileLabel: 'PROVAS',  roles: ['admin', 'staff', 'chefia', 'professor'] },
+  { id: 'eventos',   icon: <Trophy />,        label: 'Eventos',    mobileLabel: 'PROVAS',  roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'alunos',    icon: <Waves />,          label: 'Portal',             mobileLabel: 'PORTAL',     roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
   { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor'] },
   { id: 'treino',    icon: <Dumbbell />,      label: 'Treino',     mobileLabel: 'TREINO', roles: [] },
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
-  { id: 'mensagens', icon: <MessageSquare />, label: 'Chat',       mobileLabel: 'CHAT', roles: ['admin', 'staff', 'professor'], badge: unreadCount },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
   { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
-export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unreadCount = 0, onSimularRfid, onKioskMode }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, unreadCount?: number, onSimularRfid?: () => void, onKioskMode?: () => void }) => {
-  const menu = MENU_ITEMS(unreadCount).filter(item => item.roles.includes(user.role));
+export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimularRfid, onKioskMode }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, onSimularRfid?: () => void, onKioskMode?: () => void }) => {
+  const menu = MENU_ITEMS().filter(item => item.roles.includes(user.role));
 
   return (
     <aside className="hidden lg:flex flex-col w-48 bg-[#004D71] p-3 text-white relative shrink-0">
@@ -398,12 +388,6 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
               {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
               <span className="uppercase text-[10px] tracking-widest">{item.label}</span>
             </div>
-            {item.badge ? (
-              <div className="relative">
-                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
-                <span className="relative bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg shadow-red-600/40">{item.badge}</span>
-              </div>
-            ) : null}
           </button>
         ))}
       </nav>
@@ -434,27 +418,19 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, unread
   );
 };
 
-// No mobile, o staff já tem 'mapas' a ocupar espaço na barra — 'eventos' e 'mensagens' ficam só no menu desktop para não sobrecarregar a barra.
+// No mobile, o staff já tem 'mapas' a ocupar espaço na barra — 'eventos' fica só no menu desktop para não sobrecarregar a barra.
 const MOBILE_HIDDEN_BY_ROLE: Record<string, string[]> = {
-  staff: ['eventos', 'mensagens'],
+  staff: ['eventos'],
 };
 
-export const MobileNav = ({ role, activeTab, setActiveTab, unreadCount = 0, isVisible = true }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, unreadCount?: number, isVisible?: boolean }) => {
+export const MobileNav = ({ role, activeTab, setActiveTab, isVisible = true }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, isVisible?: boolean }) => {
   const hidden = MOBILE_HIDDEN_BY_ROLE[role] || [];
-  const tabs = MENU_ITEMS(unreadCount).filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios' && !hidden.includes(tab.id));
+  const tabs = MENU_ITEMS().filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios' && !hidden.includes(tab.id));
 
   return (
     <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-3 pb-safe flex justify-around items-center z-50 rounded-t-[2.5rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
       {tabs.map(tab => (
         <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex flex-col items-center w-full py-2 relative">
-          {tab.badge ? (
-            <div className="absolute top-1 right-1/4 z-10">
-              <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
-              <div className="relative w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[8px] font-black text-white border-2 border-[#004D71] z-10">
-                {tab.badge}
-              </div>
-            </div>
-          ) : null}
           <div className={`${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white'}`}>
             {React.cloneElement(tab.icon as React.ReactElement, { size: 24 })}
           </div>

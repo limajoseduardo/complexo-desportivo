@@ -19,7 +19,6 @@ const ProfileViewModule = React.lazy(() => import('./components/Profile').then(m
 const MapsManager = React.lazy(() => import('./components/Maps').then(m => ({ default: m.MapsManager })));
 const SyncPortalMunicipal = React.lazy(() => import('./components/SyncPortalMunicipal').then(m => ({ default: m.SyncPortalMunicipal })));
 
-const ChatModule = React.lazy(() => import('./components/Chat').then(m => ({ default: m.ChatModule })));
 const UtenteTrainingModule = React.lazy(() => import('./components/UtenteTraining').then(m => ({ default: m.UtenteTrainingModule })));
 const TrainerTrainingModule = React.lazy(() => import('./components/TrainerTrainingPlans').then(m => ({ default: m.TrainerTrainingModule })));
 
@@ -71,11 +70,11 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'sincronizar', 'perfil'],
+  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'sincronizar', 'perfil'],
   chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'perfil'],
-  staff: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'mensagens', 'perfil'],
-  professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'mensagens', 'perfil'],
-  utente: ['inicio', 'agenda', 'perfil'],
+  staff: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'perfil'],
+  professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'perfil'],
+  utente: ['inicio', 'eventos', 'agenda', 'perfil'],
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug, currentRole }: {
@@ -138,7 +137,6 @@ export default function App() {
   const [equipLogs, setEquipLogs] = useState<any[]>([]);
   const [tratamentosLogs, setTratamentosLogs] = useState<any[]>([]);
   const [eletricidadeLogs, setEletricidadeLogs] = useState<any[]>([]);
-  const [totalUnread, setTotalUnread] = useState(0);
   const [rfidToast, setRfidToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [latestAviso, setLatestAviso] = useState<{ id: string; titulo: string; mensagem: string; nomeProfessor: string } | null>(null);
   const [avisoDismissed, setAvisoDismissed] = useState(false);
@@ -335,18 +333,6 @@ export default function App() {
     }
     lastScrollY.current = y;
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(
-      collectionGroup(db, 'messages'),
-      where('receiverEmail', '==', user.email),
-      where('read', '==', false)
-    );
-    return onSnapshot(q, (snap) => {
-      setTotalUnread(snap.size);
-    });
-  }, [user?.email]);
 
 
   useEffect(() => {
@@ -920,13 +906,12 @@ export default function App() {
           setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); }}
           onLogout={handleLogout}
           user={user}
-          unreadCount={totalUnread}
           onSimularRfid={() => setShowRfidSimulator(true)}
           onKioskMode={() => setShowKioskMode(true)}
         />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} unreadCount={totalUnread} logs={logs} tempLogs={tempLogs} />
+          <Header user={user} logs={logs} tempLogs={tempLogs} />
 
           <React.Suspense fallback={null}>
             <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />
@@ -1012,7 +997,6 @@ export default function App() {
 
                     {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} onUserClick={setViewingProfile} />}
                     {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
-                    {activeTab === 'mensagens' && <ChatModule user={user} users={utentes} />}
                     {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                     {activeTab === 'sincronizar' && user.role === 'admin' && <SyncPortalMunicipal utentes={utentes} />}
                     {activeTab === 'perfil' && (
@@ -1042,7 +1026,6 @@ export default function App() {
             role={user.role}
             activeTab={activeTab}
             setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); setIsNavVisible(true); }}
-            unreadCount={totalUnread}
             isVisible={isNavVisible}
           />
 

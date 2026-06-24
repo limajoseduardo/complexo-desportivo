@@ -6,7 +6,7 @@ import { AvatarImage } from './Common';
 import { jsPDF } from 'jspdf';
 import { 
   collection, onSnapshot, query, addDoc, updateDoc, 
-  deleteDoc, doc, orderBy, Timestamp, writeBatch 
+  deleteDoc, doc, orderBy, Timestamp
 } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import { normalizeSearchString } from '../lib/logic';
@@ -532,47 +532,6 @@ export function EventsModule({ user, utentes }: EventsModuleProps) {
     try {
       await updateDoc(doc(db, path, evento.id), { inscritos: newInscritos });
       alert(`Inscrição de "${utenteNome.toUpperCase()}" guardada com sucesso.`);
-      
-      // Notify swimming class users
-      if (!wasAlreadyInscrito) {
-        try {
-          const swimmingUtentes = utentes.filter(u => {
-            const mod = (u.modalidade || '').toLowerCase();
-            return mod.includes('nata') || mod.includes('swimming');
-          });
-
-          // Determine notification sender
-          const sender = utentes.find(u => ['admin', 'staff', 'chefia', 'professor'].includes(u.role)) || user;
-          const estilosStr = chosenStyles.join(', ');
-          
-          const smsText = `✨ PARABÉNS AO NOSSO ATLETA! ✨\n\nParabéns a ${utenteNome.toUpperCase()} que vai participar na prova "${evento.titulo}" no dia ${evento.data} no local "${evento.local}" onde vai competir nos estilos: ${estilosStr}.\n\nVamos todos apoiar os nossos atletas! 🏊‍♂️👏💪`;
-
-          const batch = writeBatch(db);
-          const conversasPath = `artifacts/${APP_ID}/public/data/conversas`;
-
-          swimmingUtentes.forEach(targetUtente => {
-            const participants = [sender.id, targetUtente.id].sort();
-            const chatId = participants.join('_');
-            const msgDocRef = doc(collection(db, conversasPath, chatId, 'messages'));
-
-            batch.set(msgDocRef, {
-              senderId: sender.id,
-              senderEmail: sender.email || '',
-              receiverId: targetUtente.id,
-              receiverEmail: targetUtente.email || '',
-              participants,
-              participantEmails: [sender.email || '', targetUtente.email || ''],
-              text: smsText,
-              createdAt: Timestamp.now(),
-              read: false
-            });
-          });
-
-          await batch.commit();
-        } catch (msgError) {
-          console.error("Erro ao enviar mensagens de notificação:", msgError);
-        }
-      }
 
       setSelectingStyles(null);
       setSearchUtente('');

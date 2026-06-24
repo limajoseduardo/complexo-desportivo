@@ -1034,10 +1034,22 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
       <div className="bg-gradient-to-br from-[#004D71] to-[#002f47] rounded-[2.5rem] overflow-hidden shadow-2xl">
 
         {/* topo do cartão */}
-        <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
+        <div className="px-6 pt-5 pb-4 flex items-center justify-between gap-3 border-b border-white/10">
           <div>
             <p className="text-[7px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo</p>
             <p className="text-sm font-black text-white uppercase leading-tight">Vila de Rei</p>
+          </div>
+          <div className="flex items-center gap-5 sm:gap-8">
+            <div className="text-center">
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">Hoje</p>
+              <p className="text-xl sm:text-2xl font-black text-[#F7B500] leading-none tabular-nums">{todayTotal}</p>
+              <p className="text-[7px] font-bold text-white/40 uppercase tracking-wide mt-0.5">Entradas</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">Agora</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-400 leading-none tabular-nums">{totalInside}</p>
+              <p className="text-[7px] font-bold text-white/40 uppercase tracking-wide mt-0.5">Dentro</p>
+            </div>
           </div>
           {termsOk ? (
             <div className="bg-[#F7B500] rounded-lg px-2.5 py-1">
@@ -1089,14 +1101,6 @@ export const UtenteDashboard = React.memo(({ user, utentes = [] }: { user: UserP
             <div className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between mb-2">
                 <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Para onde vou?</p>
-                <div className="flex items-center gap-3">
-                  <p className="text-[9px] font-black text-white/50 uppercase tracking-wide">
-                    Hoje: <span className="text-[#F7B500] font-black">{todayTotal}</span> entradas
-                  </p>
-                  <p className="text-[9px] font-black text-white/70 uppercase tracking-wide">
-                    Agora: <span className="text-[#F7B500] text-sm font-black">{totalInside}</span> dentro
-                  </p>
-                </div>
               </div>
               <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {MODALITIES.map(m => {

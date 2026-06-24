@@ -141,22 +141,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
     try {
       const diaNome = dias.find(d => d.id === aula.diaSemana)?.label || 'dia selecionado';
-      const actionText = `✨ COMUNICADO IMPORTANTE: CANCELAMENTO DE AULA ✨\n\nEstimado(a) utente, lamentamos informar que a aula de ${aula.modalidade} agendada para ${diaNome} às ${aula.horaInicio} foi cancelada por motivos de força maior / motivos superiores.\n\nPedimos as nossas sinceras desculpas pelo incómodo causado e agradecemos a sua compreensão. 🙏💙\n\nComplexo Desportivo Vila de Rei`;
-
-      // 1. Enviar mensagens para todos os inscritos
-      for (const inscrito of inscritos) {
-         const chatId = [user.id, inscrito.id].sort().join('_');
-         
-         await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
-           senderId: user.id, senderEmail: user.email || '',
-           receiverId: inscrito.id, receiverEmail: '', 
-           participants: [user.id, inscrito.id], participantEmails: [user.email || ''],
-           text: actionText,
-           createdAt: Timestamp.now(), read: false
-         });
-      }
-
-      // 2. Publicar no Mural de Avisos (avisos_globais)
+      // Publicar no Mural de Avisos (avisos_globais)
       const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
       const docId = `aviso_cancelamento_${aula.id}_${Date.now()}`;
       await setDoc(doc(db, avisosPath, docId), {
@@ -167,11 +152,11 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
         nomeProfessor: user.nome || user.n || 'Professor',
         dataCriacao: Timestamp.now()
       });
-      
-      // 3. Não elimina a aula do horário, apenas marca como cancelada no Firestore
+
+      // Não elimina a aula do horário, apenas marca como cancelada no Firestore
       await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, aula.id), { cancelada: true });
-      
-      alert(`Aula cancelada com sucesso. Foram notificados ${inscritos.length} utentes via chat privado e publicado um aviso no Mural de Avisos.`);
+
+      alert(`Aula cancelada com sucesso. Foi publicado um aviso no Mural de Avisos para os ${inscritos.length} inscritos.`);
     } catch (error) {
       console.error('Erro ao cancelar e notificar:', error);
       alert('Ocorreu um erro ao cancelar e notificar. Tente novamente.');
@@ -185,21 +170,8 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
 
     try {
       const diaNome = dias.find(d => d.id === aula.diaSemana)?.label || 'dia selecionado';
-      const actionText = `✨ EXCELENTE NOTÍCIA: AULA REATIVADA! ✨\n\nEstimado(a) utente, informamos que a aula de ${aula.modalidade} agendada para ${diaNome} às ${aula.horaInicio} afinal IRÁ REALIZAR-SE normalmente.\n\nPedimos desculpa por qualquer transtorno anterior e contamos com a sua presença! 🏊‍♂️💙\n\nComplexo Desportivo Vila de Rei`;
 
-      // 1. Enviar mensagens para todos os inscritos
-      for (const inscrito of inscritos) {
-         const chatId = [user.id, inscrito.id].sort().join('_');
-         await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
-           senderId: user.id, senderEmail: user.email || '',
-           receiverId: inscrito.id, receiverEmail: '', 
-           participants: [user.id, inscrito.id], participantEmails: [user.email || ''],
-           text: actionText,
-           createdAt: Timestamp.now(), read: false
-         });
-      }
-
-      // 2. Publicar no Mural de Avisos (avisos_globais)
+      // Publicar no Mural de Avisos (avisos_globais)
       const avisosPath = `artifacts/${APP_ID}/public/data/avisos_globais`;
       const docId = `aviso_reativacao_${aula.id}_${Date.now()}`;
       await setDoc(doc(db, avisosPath, docId), {
@@ -213,7 +185,7 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
       
       await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/agenda`, aula.id), { cancelada: false });
       
-      alert(`Aula reativada com sucesso. Foram notificados ${inscritos.length} utentes via chat privado e publicado um aviso no Mural de Avisos.`);
+      alert(`Aula reativada com sucesso. Foi publicado um aviso no Mural de Avisos para os ${inscritos.length} inscritos.`);
     } catch (error) {
       console.error('Erro ao reativar aula:', error);
       alert('Ocorreu um erro ao reativar a aula. Tente novamente.');
@@ -237,25 +209,6 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
         : [...inscritos, { id: user.id, nome: user.nome || user.n || 'Utente' }];
         
       await updateDoc(doc(db, path, aula.id), { inscritos: newInscritos });
-
-      // Notificar professor automaticamente no chat
-      if (aula.professor) {
-        const prof = professors.find(p => (p.n || p.nome) === aula.professor);
-        if (prof) {
-          const chatId = [user.id, prof.id].sort().join('_');
-          const actionText = !isEnrolled 
-            ? `✅ [NOVA INSCRIÇÃO]: Olá, inscrevi-me na sua aula de ${aula.modalidade} das ${aula.horaInicio}.`
-            : `❌ [CANCELAMENTO]: Olá, cancelei a minha inscrição na aula de ${aula.modalidade} das ${aula.horaInicio}.`;
-          
-          await addDoc(collection(db, `artifacts/${APP_ID}/public/data/conversas/${chatId}/messages`), {
-            senderId: user.id, senderEmail: user.email || '',
-            receiverId: prof.id, receiverEmail: prof.email || '',
-            participants: [user.id, prof.id], participantEmails: [user.email || '', prof.email || ''],
-            text: actionText,
-            createdAt: Timestamp.now(), read: false
-          }).catch(err => console.warn('Erro ao notificar prof:', err));
-        }
-      }
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'agenda');
     }
