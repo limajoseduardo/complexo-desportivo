@@ -1,0 +1,27 @@
+name: Auto Checkout 20h00
+
+on:
+  schedule:
+    # 19:00 e 20:00 UTC cobrem as 20h00 de Lisboa tanto em hora de verão (WEST, UTC+1)
+    # como em hora de inverno (WET, UTC+0) — o script só atua na corrida certa.
+    - cron: '0 19 * * *'
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Forçar checkout imediato (ignora verificação de hora)'
+        type: boolean
+        default: false
+
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npx tsx scripts/auto-checkout.ts
+        env:
+          FORCE_CHECKOUT: ${{ inputs.force }}
