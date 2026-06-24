@@ -37,6 +37,15 @@ export const PicotoIcon = React.memo(({ size = 24, className = "", pulsing = fal
   </svg>
 ));
 
+// Formata um valor ISO (YYYY-MM-DD) para pt-PT (DD/MM/AAAA). Devolve o valor
+// original se não conseguir interpretar como data.
+function formatDateDisplay(value: string): string {
+  if (!value) return '';
+  const d = new Date(`${value}T00:00:00`);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('pt-PT');
+}
+
 export const FormInput = React.memo(({ label, icon, value, onChange, type = "text", multiline = false, disabled = false, placeholder = "" }: { label: string, icon?: React.ReactNode, value: any, onChange: (v: string) => void, type?: string, multiline?: boolean, disabled?: boolean, placeholder?: string }) => {
   return (
     <div className="space-y-1.5 text-left w-full">
@@ -44,22 +53,29 @@ export const FormInput = React.memo(({ label, icon, value, onChange, type = "tex
         {icon} <label className="text-[10px] font-black uppercase tracking-widest">{label}</label>
       </div>
       {multiline ? (
-        <textarea 
-          value={String(value || '')} 
-          disabled={disabled} 
-          onChange={(e) => onChange(e.target.value)} 
+        <textarea
+          value={String(value || '')}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          rows={3} 
-          className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all" 
+          rows={3}
+          className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all"
         />
+      ) : type === 'date' && disabled ? (
+        // Em modo só-leitura evitamos o <input type="date"> nativo: no iOS/Safari
+        // o controlo de calendário do sistema desenha por cima mesmo desativado,
+        // ignora os cantos arredondados e sobrepõe elementos vizinhos.
+        <div className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base bg-slate-50 border-slate-200 text-slate-500">
+          {formatDateDisplay(String(value || '')) || '—'}
+        </div>
       ) : (
-        <input 
-          type={type} 
-          value={String(value || '')} 
-          disabled={disabled} 
-          onChange={(e) => onChange(e.target.value)} 
+        <input
+          type={type}
+          value={String(value || '')}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all" 
+          className="w-full border-2 rounded-2xl px-5 py-4 font-bold text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all"
         />
       )}
     </div>

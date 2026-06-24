@@ -406,8 +406,8 @@ export function ProfileViewModule({
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex p-2 bg-slate-200/50 backdrop-blur rounded-[2.5rem] gap-1 sticky top-0 z-20 overflow-x-auto hide-scrollbar">
+      {/* Tabs — grelha 2x2 no telemóvel (cabem sempre os 4, sem cortar nem precisar de arrastar), uma linha a partir de sm: */}
+      <div className="grid grid-cols-2 sm:flex p-2 bg-slate-200/50 backdrop-blur rounded-[2rem] sm:rounded-[2.5rem] gap-1 sticky top-0 z-20">
         {[
           { id: 'geral',      label: 'Dados',   icon: <User size={15}/> },
           { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
@@ -415,7 +415,7 @@ export function ProfileViewModule({
           ...(formData.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-            className={`shrink-0 flex items-center justify-center gap-1.5 py-3 px-3.5 rounded-[2rem] text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
+            className={`sm:flex-1 flex items-center justify-center gap-1.5 py-3 px-2 rounded-[1.5rem] sm:rounded-[2rem] text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
             {t.icon} <span>{t.label}</span>
           </button>
         ))}
