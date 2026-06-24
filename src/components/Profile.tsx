@@ -294,31 +294,31 @@ export function ProfileViewModule({
         </div>
 
         <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-0">
-          <div className="flex flex-col items-center justify-center px-8 py-6 sm:border-r border-white/10 shrink-0">
+          <div className="flex flex-col items-center justify-center px-6 py-4 sm:px-8 sm:py-6 sm:border-r border-white/10 shrink-0">
             <div className="relative">
-              <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-[2rem] overflow-hidden border-4 border-[#F7B500] shadow-2xl bg-white">
+              <div className="w-20 h-20 sm:w-36 sm:h-36 rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden border-4 border-[#F7B500] shadow-2xl bg-white">
                 <AvatarImage src={formData.img || ''} alt="Avatar" className="w-full h-full object-cover"/>
                 {isEditing && (
-                  <button onClick={() => fileRef.current?.click()} className="absolute inset-0 bg-black/50 flex items-center justify-center text-white backdrop-blur-sm rounded-[2rem]">
+                  <button onClick={() => fileRef.current?.click()} className="absolute inset-0 bg-black/50 flex items-center justify-center text-white backdrop-blur-sm rounded-[1.5rem] sm:rounded-[2rem]">
                     <Camera size={22}/>
                   </button>
                 )}
               </div>
               {user.isInside && (
-                <div className="absolute -bottom-2 -right-2 bg-emerald-400 text-white p-2 rounded-xl shadow-lg border-2 border-[#004D71]">
-                  <MapPin size={14}/>
+                <div className="absolute -bottom-2 -right-2 bg-emerald-400 text-white p-1.5 sm:p-2 rounded-xl shadow-lg border-2 border-[#004D71]">
+                  <MapPin size={12}/>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex-1 px-6 sm:px-8 py-6 flex flex-col justify-between">
+          <div className="flex-1 px-5 sm:px-8 py-4 sm:py-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <PicotoIcon size={18} className="text-[#F7B500] opacity-60 shrink-0"/>
                 <p className="text-[9px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo · Vila de Rei</p>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase leading-tight mt-1 mb-2">
+              <h2 className="text-lg sm:text-3xl font-black text-white uppercase leading-tight mt-1 mb-2">
                 {formData.nome || formData.n}
               </h2>
               <div className="flex flex-wrap gap-2 items-center">
@@ -345,10 +345,15 @@ export function ProfileViewModule({
                 <p className="text-[10px] text-white/40 font-bold mt-1">{age} anos {isMinor ? '· Encarregado de Educação obrigatório' : ''}</p>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10">
-              <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Nº Sócio</p><p className="text-base font-black text-white leading-none">{formData.nif || '—'}</p></div>
-              <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Presenças</p><p className="text-base font-black text-emerald-300 leading-none">{logs.length}<span className="text-[9px] opacity-40 ml-0.5">dias</span></p></div>
-              <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Membro</p><p className="text-base font-black text-[#F7B500] leading-none">{user.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}</p></div>
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+              <div className="min-w-0">
+                <p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Nº Sócio</p>
+                <p className="text-sm font-black text-white leading-none tracking-wide truncate">{formData.nif || '—'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="min-w-0"><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Presenças</p><p className="text-sm font-black text-emerald-300 leading-none truncate">{logs.length}<span className="text-[9px] opacity-40 ml-0.5">dias</span></p></div>
+                <div className="min-w-0"><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Membro</p><p className="text-sm font-black text-[#F7B500] leading-none truncate">{user.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}</p></div>
+              </div>
             </div>
           </div>
         </div>
@@ -428,9 +433,9 @@ export function ProfileViewModule({
 
 
           {/* Dados Pessoais */}
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
             <SectionTitle icon={<User size={16}/>} label="Dados Pessoais" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <FormInput label="Nome Completo" icon={<User size={14}/>}
                 value={formData.nome || formData.n || ''} disabled={!isEditing}
                 onChange={v => set('nome', v)} />
@@ -475,9 +480,9 @@ export function ProfileViewModule({
 
           {/* Cartão Municipal */}
           {formData.role === 'utente' && (
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+            <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
               <SectionTitle icon={<CreditCard size={16}/>} label="Cartão Municipal" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div className="space-y-1.5 text-left w-full">
                   <div className="flex items-center gap-2 ml-1 text-[#004D71]">
                     <CreditCard size={14}/> <label className="text-[10px] font-black uppercase tracking-widest">Tipo de Cartão</label>
@@ -523,7 +528,7 @@ export function ProfileViewModule({
 
           {/* Financeiro (Gestão de Entradas) */}
           {['admin', 'staff'].includes(currentRole) && formData.role === 'utente' && (
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+            <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
               <SectionTitle icon={<CreditCard size={16}/>} label="Gestão de Entradas (Carregamentos)" />
               
               <div className="flex flex-col md:flex-row items-center gap-6">
@@ -622,12 +627,12 @@ export function ProfileViewModule({
 
           {/* Encarregado de Educação (apenas menores) */}
           {(isMinor || formData.encarregado_email) && (
-            <div className="bg-orange-50 rounded-[3rem] p-8 border-2 border-orange-200 space-y-6">
+            <div className="bg-orange-50 rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 border-2 border-orange-200 space-y-4 sm:space-y-6">
               <SectionTitle icon={<Users size={16}/>} label="Encarregado de Educação" />
               <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest -mt-2">
                 Obrigatório para menores de 16 anos
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <FormInput label="Nome do Encarregado" icon={<User size={14}/>}
                   value={formData.encarregado_nome || ''} disabled={!isEditing}
                   onChange={v => set('encarregado_nome', v)} />
@@ -663,9 +668,9 @@ export function ProfileViewModule({
 
           {/* Segurança */}
           {(user.id === formData.id || currentRole === 'admin') && (
-            <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+            <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
               <SectionTitle icon={<Shield size={16}/>} label="Segurança da Conta" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <FormInput label="Palavra-passe (Login)" icon={<Shield size={14}/>}
                   value={formData.password || '123456'} disabled={!isEditing}
                   onChange={v => set('password', v)} type={isEditing ? 'text' : 'password'} />
@@ -679,9 +684,9 @@ export function ProfileViewModule({
       {/* TAB: Contactos */}
       {activeTab === 'contactos' && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
             <SectionTitle icon={<Phone size={16}/>} label="Contactos" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <FormInput label="Telefone Fixo" icon={<Phone size={14}/>}
                 value={formData.telefone || ''} disabled={!isEditing}
                 onChange={v => set('telefone', v)} />
@@ -691,9 +696,9 @@ export function ProfileViewModule({
             </div>
           </div>
 
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
             <SectionTitle icon={<MapPin size={16}/>} label="Morada" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="md:col-span-2">
                 <FormInput label="Morada Completa" icon={<MapPin size={14}/>}
                   value={formData.endereco || ''} disabled={!isEditing}
@@ -708,9 +713,9 @@ export function ProfileViewModule({
             </div>
           </div>
 
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
             <SectionTitle icon={<AlertCircle size={16}/>} label="Contacto de Emergência" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <FormInput label="Nome Completo" icon={<User size={14}/>}
                 value={formData.nome_emergencia || ''} disabled={!isEditing}
                 onChange={v => set('nome_emergencia', v)} />
@@ -725,7 +730,7 @@ export function ProfileViewModule({
       {/* TAB: Atividade */}
       {activeTab === 'atividade' && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50">
+          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50">
             <SectionTitle icon={<History size={16}/>} label="Histórico de Acessos" />
             <div className="space-y-3 mt-6">
               {logs.map(log => (
@@ -762,7 +767,7 @@ export function ProfileViewModule({
       {/* TAB: Termos */}
       {activeTab === 'termos' && formData.role === 'utente' && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white rounded-[3rem] p-8 shadow-sm border-2 border-slate-50 space-y-6">
+          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
             <SectionTitle icon={<FileText size={16}/>} label="Termos de Responsabilidade" />
             {!isEditing && !termsOk && (
               <div className="flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
