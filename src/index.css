@@ -122,7 +122,8 @@ button, a, input, select {
   background-image: url('https://live.staticflickr.com/7614/17029558812_4af83cce13_b.jpg');
   background-size: cover;
   background-position: center;
-  position: relative;
+  /* Sem position aqui — quem usa esta classe define o seu próprio posicionamento
+     (ex.: fixed, para o fundo cobrir o ecrã todo independentemente do scroll). */
 }
 
 .login-overlay {

@@ -102,8 +102,11 @@ export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPubli
   const [inviteCode, setInviteCode] = React.useState('');
 
   return (
-    <div className="h-screen w-full overflow-y-auto login-bg relative">
-       <div className="absolute inset-0 login-overlay"></div>
+    <div className="h-screen w-full overflow-y-auto relative">
+       {/* Fundo fixo ao ecrã — não acompanhar o scroll evita que a imagem "acabe" a meio do conteúdo */}
+       <div className="fixed inset-0 login-bg">
+         <div className="absolute inset-0 login-overlay"></div>
+       </div>
        <div className="relative min-h-full w-full flex flex-col items-center justify-center p-4 sm:p-6 py-8">
        <div className="relative w-full max-w-[460px]">
          <InstallPwaBanner />
