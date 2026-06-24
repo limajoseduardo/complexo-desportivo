@@ -3,7 +3,7 @@ import {
   Home, Users, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone, Clock,
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone, Clock, MoreHorizontal,
   Download, Share, X as XIcon, QrCode as QrCodeIcon
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
@@ -509,25 +509,66 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimu
   );
 };
 
-// No mobile, o staff já tem 'mapas' a ocupar espaço na barra — 'eventos' fica só no menu desktop para não sobrecarregar a barra.
-const MOBILE_HIDDEN_BY_ROLE: Record<string, string[]> = {
-  staff: ['eventos'],
+// Na barra de baixo só cabem confortavelmente 4-5 botões — para papéis com mais
+// separadores do que isso, mostramos só os mais usados no dia-a-dia e o resto
+// fica atrás de um botão "Mais" (em vez de simplesmente esconder e tornar
+// inacessível no telemóvel, como acontecia antes).
+const MOBILE_PRIMARY_BY_ROLE: Record<string, string[]> = {
+  admin: ['inicio', 'acessos', 'utentes', 'agenda'],
+  chefia: ['inicio', 'acessos', 'utentes', 'mapas'],
+  staff: ['inicio', 'acessos', 'utentes', 'agenda'],
+  professor: ['inicio', 'agenda', 'alunos', 'utentes'],
 };
 
 export const MobileNav = ({ role, activeTab, setActiveTab, isVisible = true }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, isVisible?: boolean }) => {
-  const hidden = MOBILE_HIDDEN_BY_ROLE[role] || [];
-  const tabs = MENU_ITEMS().filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios' && !hidden.includes(tab.id));
+  const [showMore, setShowMore] = React.useState(false);
+  const allTabs = MENU_ITEMS().filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios');
+
+  const primaryIds = MOBILE_PRIMARY_BY_ROLE[role];
+  const needsOverflow = !!primaryIds && allTabs.length > 5;
+  const primaryTabs = needsOverflow
+    ? primaryIds.map(id => allTabs.find(t => t.id === id)).filter(Boolean) as typeof allTabs
+    : allTabs;
+  const moreTabs = needsOverflow ? allTabs.filter(t => !primaryIds.includes(t.id)) : [];
+
+  const goTo = (id: string) => { setActiveTab(id); setShowMore(false); };
 
   return (
-    <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-3 pb-safe flex justify-around items-center z-50 rounded-t-[2.5rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
-      {tabs.map(tab => (
-        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="flex flex-col items-center w-full py-2 relative">
-          <div className={`${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white'}`}>
-            {React.cloneElement(tab.icon as React.ReactElement, { size: 24 })}
+    <>
+      <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-3 pb-safe flex justify-around items-center z-50 rounded-t-[2.5rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
+        {primaryTabs.map(tab => (
+          <button key={tab.id} onClick={() => goTo(tab.id)} className="flex flex-col items-center w-full py-2 relative">
+            <div className={`${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white'}`}>
+              {React.cloneElement(tab.icon as React.ReactElement, { size: 24 })}
+            </div>
+            <span className={`text-[8px] font-black mt-1 uppercase tracking-widest ${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white/60'}`}>{tab.mobileLabel}</span>
+          </button>
+        ))}
+        {needsOverflow && (
+          <button onClick={() => setShowMore(true)} className="flex flex-col items-center w-full py-2 relative">
+            <div className={moreTabs.some(t => t.id === activeTab) ? 'text-[#F7B500]' : 'text-white'}>
+              <MoreHorizontal size={24} />
+            </div>
+            <span className={`text-[8px] font-black mt-1 uppercase tracking-widest ${moreTabs.some(t => t.id === activeTab) ? 'text-[#F7B500]' : 'text-white/60'}`}>Mais</span>
+          </button>
+        )}
+      </nav>
+
+      {showMore && (
+        <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end" onClick={() => setShowMore(false)}>
+          <div className="w-full bg-white rounded-t-[2.5rem] p-4 pb-safe animate-in slide-in-from-bottom duration-200" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mb-4" />
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {moreTabs.map(tab => (
+                <button key={tab.id} onClick={() => goTo(tab.id)} className={`flex flex-col items-center gap-1.5 py-4 rounded-2xl transition-all ${activeTab === tab.id ? 'bg-[#004D71] text-[#F7B500]' : 'bg-slate-50 text-[#004D71]'}`}>
+                  {React.cloneElement(tab.icon as React.ReactElement, { size: 22 })}
+                  <span className="text-[9px] font-black uppercase tracking-widest">{tab.mobileLabel}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <span className={`text-[8px] font-black mt-1 uppercase tracking-widest ${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white/60'}`}>{tab.mobileLabel}</span>
-        </button>
-      ))}
-    </nav>
+        </div>
+      )}
+    </>
   );
 };
