@@ -34,6 +34,18 @@ export const MODALIDADES = [
   'Sauna'
 ];
 
+// Código curto e estável para mostrar no cartão de utente. Não usar slice() do
+// id diretamente: muitos ids são gerados a partir do email (ex.: "..._gmail_com")
+// e cortar só os últimos caracteres faz colidir todos os utentes do mesmo
+// provedor de email (toda a gente com Gmail mostrava "#MAIL_COM").
+function shortUserCode(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36).toUpperCase().padStart(7, '0').slice(-7);
+}
+
 function calcAge(dataNasc?: string): number | null {
   if (!dataNasc) return null;
   const birth = new Date(dataNasc);
@@ -312,7 +324,7 @@ export function ProfileViewModule({
             </div>
             <div className="mt-3 text-center">
               <p className="text-[8px] font-black text-[#F7B500]/60 uppercase tracking-widest">ID</p>
-              <p className="text-[11px] font-black text-[#F7B500] font-mono tracking-widest">#{user.id.slice(-8).toUpperCase()}</p>
+              <p className="text-[11px] font-black text-[#F7B500] font-mono tracking-widest">#{shortUserCode(user.id)}</p>
             </div>
           </div>
 
@@ -350,7 +362,7 @@ export function ProfileViewModule({
               )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-white/10">
-              <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">ID</p><p className="text-base font-black text-white leading-none font-mono">#{user.id.slice(-8).toUpperCase()}</p></div>
+              <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">ID</p><p className="text-base font-black text-white leading-none font-mono">#{shortUserCode(user.id)}</p></div>
               <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Contribuinte</p><p className="text-base font-black text-white leading-none">{formData.nif || '—'}</p></div>
               <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Presenças</p><p className="text-base font-black text-emerald-300 leading-none">{logs.length}<span className="text-[9px] opacity-40 ml-0.5">dias</span></p></div>
               <div><p className="text-[8px] font-black text-white/30 uppercase mb-0.5">Membro</p><p className="text-base font-black text-[#F7B500] leading-none">{user.createdAt ? new Date(user.createdAt).getFullYear() : '2024'}</p></div>
