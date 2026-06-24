@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO DO PROJETO PARA INTELIGÊNCIA ARTIFICIAL (AI BLUEPRINT)
-**Última atualização:** 16 de Junho de 2026
+**Última atualização:** 24 de Junho de 2026
 
 Este documento foi criado especificamente para servir de **prompt mestre** e mapa de arquitetura. Se necessitares de entregar este projeto a uma nova IA (Inteligência Artificial) para continuar o desenvolvimento, replicar a estrutura ou refatorar, deves fornecer-lhe o conteúdo deste ficheiro.
 
@@ -53,6 +53,12 @@ O `APP_ID` é definido em `src/lib/firebase.ts` como `'cpx-vila-rei-main'`.
 **`swimming_logs` (Registos de Aulas de Natação):** Presenças e distâncias por data e turma.
 
 **`operational_logs` (Diário de Operações):** Registo de temperatura da água, pH e cloro das piscinas.
+
+**`avisos_globais` (Mural de Avisos):** `titulo`, `mensagem`, `professorId`, `nomeProfessor`, `dataCriacao`. Geridos em `AvisosModule.tsx` (admin/staff), com opção de broadcast por email (BCC, lotes de 50) via `api/send-email.ts` — SMTP configurado por variáveis de ambiente no Vercel, nunca no repositório.
+
+**Removidas (2026-06-24):** `saude` (peso/glicemia/tensão) e `treinos`/`treinos_assigned` (planos de treino prescritos) — funcionalidade "Saúde & Metas" e "Treino" retirada do perfil do utente a pedido; histórico apagado da produção.
+
+**Pavilhão e Padel:** Têm agora o mesmo registo rápido de utilização anónima que a Piscina Exterior (sem distinção adulto/criança, sem preçário definido) — ver `modalities` em `AccessLogs.tsx` e `isUserInZone` em `lib/logic.ts`.
 
 ---
 
@@ -112,6 +118,12 @@ O `APP_ID` é definido em `src/lib/firebase.ts` como `'cpx-vila-rei-main'`.
 - Cria documentos com `userId = 'ext_entrada'` em `logs_acesso`.
 - Estes registos NÃO têm perfil associado, por isso não aparecem na coluna "Valor Pago" da tabela normal — devem ser calculados separadamente.
 
+### Saída Automática às 20h00:
+- `scripts/auto-checkout.ts` + `.github/workflows/auto-checkout.yml` — corre todos os dias (cron às 19h e 20h UTC, cobre DST) e fecha o `isInside` de **qualquer** utente ainda marcado "dentro" às 20h00 hora de Lisboa, seja o check-in de hoje ou de dias anteriores (esquecimentos do staff). O script só age na corrida cuja hora local bate certo com 20h.
+
+### Papel `chefia` (só-consulta):
+- `canAdd`/`canEdit` nunca incluem `'chefia'` em nenhum módulo (Utentes, Mapas, Acessos) — é o papel correto para dar a alguém visibilidade total (estatísticas de professores, demografia/idades, ranking de utentes mais frequentes, tudo em `AccessLogs.tsx` → Relatórios & Estatísticas) sem permitir editar/apagar dados.
+
 ---
 
 ## 5. Estrutura de Ficheiros e Componentes
@@ -126,6 +138,10 @@ O `APP_ID` é definido em `src/lib/firebase.ts` como `'cpx-vila-rei-main'`.
 - `src/lib/access.ts` — Motor lógico isolado para `handleCheckIn` e `handleCheckOut` (inclui regras de isenção por Cartão Universidade Sénior).
 - `src/lib/firebase.ts` — Configuração do Firebase (APP_ID e db).
 - `src/types.ts` — Interfaces TypeScript: `UserProfile`, `AccessLog` (inclui `valorPago?`, `isento?`), `Aula`, `Turma`, etc.
+- `src/components/AvisosModule.tsx` — Mural de Avisos + broadcast por email (admin/staff).
+- `api/send-email.ts` — Função serverless Vercel (nodemailer) para o broadcast de avisos.
+- `scripts/auto-checkout.ts` — Saída automática às 20h00 (ver Secção 4).
+- **Removidos (2026-06-24):** `Chat.tsx` (sistema de chat eliminado), `StudentWorkoutEditor.tsx`, `UtenteTraining.tsx`.
 - `AI_BLUEPRINT.md` — Este ficheiro de documentação.
 
 ---
@@ -167,6 +183,8 @@ Se uma IA receber este ficheiro e for instruída a continuar o projeto:
 
 ## 9. Estado Atual / Incidentes
 
-**2026-06-24:** A app em produção ficou sem acesso à base de dados — `request.auth != null` deveria chegar para todas as leituras/escritas (ver `firestore.rules`), mas uma sessão anónima nova era recusada com `permission-denied` mesmo assim, confirmado com `scripts/test-cloud-connection.ts` correndo diretamente contra `complexo-desportivo-vr` (fora da app). Isto indica que as regras realmente publicadas no Firestore desse projeto estão desatualizadas/diferentes do `firestore.rules` deste repositório. Ação pendente (requer login interativo do utilizador, uma IA não consegue fazer `firebase login` sem browser): `firebase login && firebase deploy --only firestore:rules --project complexo-desportivo-vr`.
+**2026-06-24 — RESOLVIDO:** A app em produção ficou sem acesso à base de dados (`permission-denied` mesmo com sessão anónima válida, devido a `.firebaserc` apontar para o projeto Firebase errado). Resolvido pelo utilizador com `firebase login && firebase deploy --only firestore:rules --project complexo-desportivo-vr`. Confirmado novamente operacional com `scripts/test-cloud-connection.ts`.
+
+**2026-06-24 — Lote de alterações** (depois da base de dados restaurada): chat eliminado do projeto; utentes passam a ver Eventos; "Saúde & Metas" e "Treino" removidos do perfil do utente (UI + dados); saída automática às 20h00; contas `chefia` (Carlos Luís, Sandra Carvalho) com password atualizada; sistema de Avisos com broadcast por email (SMTP próprio, ainda sem credenciais configuradas no Vercel); registo rápido de utilização para Pavilhão e Padel; banner de instalação da PWA no login.
 
 *Documento gerado para servir de memória persistente da arquitetura desenvolvida — Complexo Desportivo de Vila de Rei.*
