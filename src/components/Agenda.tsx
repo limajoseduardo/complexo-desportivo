@@ -23,7 +23,6 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay() || 7);
-  const [professors, setProfessors] = useState<UserProfile[]>([]);
   const [viewingInscritos, setViewingInscritos] = useState<any[] | null>(null);
   const [viewingAulaNome, setViewingAulaNome] = useState('');
   const [activeHorarioImg, setActiveHorarioImg] = useState<string | null>(null);
@@ -40,14 +39,6 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
     { id: 7, label: 'Domingo', short: 'DOM' },
   ];
 
-
-  useEffect(() => {
-    const path = `artifacts/${APP_ID}/public/data/users`;
-    const q = query(collection(db, path), where('role', '==', 'professor'));
-    return onSnapshot(q, snap => {
-      setProfessors(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
-    }, () => {});
-  }, []);
 
   useEffect(() => {
     const path = `artifacts/${APP_ID}/public/data/agenda`;
@@ -336,12 +327,8 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 sm:shrink-0 pl-[4.5rem] sm:pl-0">
-                  {/* Professor */}
-                  <div className="shrink-0 hidden sm:block min-w-[90px]">
-                    <p className="text-[7px] font-black text-slate-400 uppercase leading-none mb-0.5">Professor</p>
-                    <p className="text-[9px] font-black text-[#004D71] uppercase leading-tight">{aula.professor || 'A Atribuir'}</p>
-                    {aula.professor2 && <p className="text-[9px] font-black text-[#004D71]/60 uppercase leading-tight">{aula.professor2}</p>}
-                  </div>
+                  {/* Professor: não se mostra aqui de propósito — pode mudar de última hora;
+                      o professor real fica decidido em Turmas, ao marcar presenças. */}
 
                   {/* Ocupação */}
                   <div className="shrink-0 text-right min-w-[44px]">
@@ -539,53 +526,8 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 gap-3">
-                 <div className="space-y-2 text-left">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Professor 1</label>
-                   {professors.length > 0 ? (
-                     <select
-                       value={editingAula.professor || ''}
-                       onChange={e => setEditingAula({...editingAula, professor: e.target.value})}
-                       className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none appearance-none"
-                     >
-                       <option value="">— Selecionar —</option>
-                       {professors.map(p => (
-                         <option key={p.id} value={p.nome || p.n}>{p.nome || p.n}</option>
-                       ))}
-                       <option value="A Atribuir">A Atribuir</option>
-                     </select>
-                   ) : (
-                     <input
-                       value={editingAula.professor || ''}
-                       onChange={e => setEditingAula({...editingAula, professor: e.target.value})}
-                       className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none"
-                       placeholder="Nome do professor"
-                     />
-                   )}
-                 </div>
-                 <div className="space-y-2 text-left">
-                   <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Professor 2 <span className="text-slate-300">(opcional)</span></label>
-                   {professors.length > 0 ? (
-                     <select
-                       value={editingAula.professor2 || ''}
-                       onChange={e => setEditingAula({...editingAula, professor2: e.target.value})}
-                       className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none appearance-none"
-                     >
-                       <option value="">— Nenhum —</option>
-                       {professors.map(p => (
-                         <option key={p.id} value={p.nome || p.n}>{p.nome || p.n}</option>
-                       ))}
-                     </select>
-                   ) : (
-                     <input
-                       value={editingAula.professor2 || ''}
-                       onChange={e => setEditingAula({...editingAula, professor2: e.target.value})}
-                       className="w-full bg-slate-50 border-4 border-slate-50 rounded-2xl px-6 py-4 font-black text-[#004D71] outline-none"
-                       placeholder="Nome do 2º professor (opcional)"
-                     />
-                   )}
-                 </div>
-               </div>
+               {/* Sem campo de professor aqui de propósito: pode mudar de última hora,
+                   por isso só se decide em Turmas, ao marcar presenças de cada sessão. */}
 
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 text-left">

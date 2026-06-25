@@ -12,7 +12,7 @@ import {
   Timestamp, limit, getDocs, setDoc, updateDoc,
   doc, serverTimestamp, deleteDoc, orderBy, writeBatch, deleteField
 } from 'firebase/firestore';
-import { AccessLog, UserProfile, Aula } from '../types';
+import { AccessLog, UserProfile } from '../types';
 import { TurmasModule } from './TurmasModule';
 import { isUserInZone, normalizeSearchString } from '../lib/logic';
 import { jsPDF } from 'jspdf';
@@ -49,7 +49,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [monthlyLogs, setMonthlyLogs] = useState<AccessLog[]>([]);
-  const [agendaAulas, setAgendaAulas] = useState<Aula[]>([]);
+  const [profSessionLogs, setProfSessionLogs] = useState<any[]>([]);
   const [profStatsMode, setProfStatsMode] = useState<'mes' | 'custom'>('mes');
   const [profStatsFrom, setProfStatsFrom] = useState(() => {
     const now = new Date();
@@ -354,12 +354,20 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     }, () => { });
   }, []);
 
+  // Presenças marcadas em Turmas (cada registo tem turmaId/professorNome/modalidade
+  // por sessão dada) — fonte real da Estatística de Professores, em vez da Agenda
+  // (que é só um horário previsto e pode mudar de professor de última hora).
   useEffect(() => {
-    const path = `artifacts/${APP_ID}/public/data/agenda`;
-    return onSnapshot(collection(db, path), snap => {
-      setAgendaAulas(snap.docs.map(d => ({ id: d.id, ...d.data() } as Aula)));
+    const from = profStatsMode === 'mes'
+      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+      : profStatsFrom;
+    const to = profStatsMode === 'mes' ? new Date().toISOString().split('T')[0] : profStatsTo;
+    const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+    const q = query(collection(db, path), where('date', '>=', from), where('date', '<=', to));
+    return onSnapshot(q, snap => {
+      setProfSessionLogs(snap.docs.map(d => d.data()).filter(l => l.professorNome && l.turmaId));
     }, (err) => handleFirestoreError(err, OperationType.GET, path));
-  }, []);
+  }, [profStatsMode, profStatsFrom, profStatsTo]);
 
   useEffect(() => {
     setLoading(true);
@@ -854,54 +862,33 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   }, [monthlyLogs]);
 
   const professorStats = React.useMemo(() => {
-    const from = profStatsMode === 'mes'
-      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
-      : profStatsFrom;
-    const to = profStatsMode === 'mes' ? new Date().toISOString().split('T')[0] : profStatsTo;
-
-    const countOccurrences = (diaSemana: number) => {
-      const target = diaSemana === 7 ? 0 : diaSemana;
-      const start = new Date(`${from}T00:00:00`);
-      const end = new Date(`${to}T00:00:00`);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
-      let count = 0;
-      const cur = new Date(start);
-      while (cur <= end) {
-        if (cur.getDay() === target) count++;
-        cur.setDate(cur.getDate() + 1);
-      }
-      return count;
-    };
-
     type Stat = { professor: string; dadas: number; modalidades: Set<string> };
     const byProf: Record<string, Stat> = {};
+    // Uma sessão (turmaId+data) gera um registo de presença por aluno marcado —
+    // contar sessões únicas em vez de registos, senão uma aula com 10 alunos
+    // contava como 10 "aulas dadas".
+    const seenSessions = new Set<string>();
 
-    const addToProf = (nome: string, aula: Aula, oc: number) => {
-      const display = nome.trim();
+    profSessionLogs.forEach(l => {
+      const sessionKey = `${l.turmaId}__${l.date}`;
+      const display = (l.professorNome || '').trim();
       if (!display) return;
-      // Agrupar sem distinguir maiúsculas/minúsculas: a mesma pessoa fica gravada
-      // ora como "Cláudia Rechena" ora como "CLÁUDIA RECHENA" em aulas diferentes
-      // (inconsistência de quando a aula foi criada/editada), e sem isto aparecia
-      // duas vezes na tabela como se fossem dois professores.
+      // Agrupar sem distinguir maiúsculas/minúsculas: a mesma pessoa pode ter sido
+      // gravada ora como "Cláudia Rechena" ora como "CLÁUDIA RECHENA".
       const key = display.toUpperCase();
       if (!byProf[key]) byProf[key] = { professor: display, dadas: 0, modalidades: new Set() };
       const stat = byProf[key];
-      if (aula.cancelada) return;
-      stat.dadas += oc;
-      if (aula.modalidade) stat.modalidades.add(aula.modalidade.trim());
-    };
-
-    agendaAulas.forEach(a => {
-      const oc = countOccurrences(a.diaSemana);
-      if (oc === 0) return;
-      if (a.professor) addToProf(a.professor, a, oc);
-      if (a.professor2) addToProf(a.professor2, a, oc);
+      if (l.modalidade) stat.modalidades.add(String(l.modalidade).trim());
+      if (!seenSessions.has(sessionKey)) {
+        seenSessions.add(sessionKey);
+        stat.dadas += 1;
+      }
     });
 
     return Object.values(byProf)
       .map(s => ({ professor: s.professor, dadas: s.dadas, modalidades: Array.from(s.modalidades).sort() }))
       .sort((a, b) => b.dadas - a.dadas);
-  }, [agendaAulas, profStatsMode, profStatsFrom, profStatsTo]);
+  }, [profSessionLogs]);
 
   const demographicsStats = React.useMemo(() => {
     const ageGroups = { '< 18': 0, '18-35': 0, '36-55': 0, '> 55': 0 };
