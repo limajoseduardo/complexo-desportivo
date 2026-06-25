@@ -455,19 +455,19 @@ export const MobileNav = ({ role, activeTab, setActiveTab, isVisible = true }: {
     <>
       <nav className={`lg:hidden bg-[#004D71] fixed bottom-0 w-full px-2 pt-3 pb-safe flex justify-around items-center z-50 rounded-t-[2.5rem] border-t-2 border-white/10 shadow-[0_-15px_50px_rgba(0,0,0,0.4)] transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}>
         {primaryTabs.map(tab => (
-          <button key={tab.id} onClick={() => goTo(tab.id)} className="flex flex-col items-center w-full py-2 relative">
+          <button key={tab.id} onClick={() => goTo(tab.id)} className="flex flex-col items-center flex-1 min-w-0 py-2 px-0.5 relative">
             <div className={`${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white'}`}>
               {React.cloneElement(tab.icon as React.ReactElement, { size: 24 })}
             </div>
-            <span className={`text-[8px] font-black mt-1 uppercase tracking-widest ${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white/60'}`}>{tab.mobileLabel}</span>
+            <span className={`text-[8px] font-black mt-1 uppercase tracking-tight whitespace-nowrap truncate max-w-full ${activeTab === tab.id ? 'text-[#F7B500]' : 'text-white/60'}`}>{tab.mobileLabel}</span>
           </button>
         ))}
         {needsOverflow && (
-          <button onClick={() => setShowMore(true)} className="flex flex-col items-center w-full py-2 relative">
+          <button onClick={() => setShowMore(true)} className="flex flex-col items-center flex-1 min-w-0 py-2 px-0.5 relative">
             <div className={moreTabs.some(t => t.id === activeTab) ? 'text-[#F7B500]' : 'text-white'}>
               <MoreHorizontal size={24} />
             </div>
-            <span className={`text-[8px] font-black mt-1 uppercase tracking-widest ${moreTabs.some(t => t.id === activeTab) ? 'text-[#F7B500]' : 'text-white/60'}`}>Mais</span>
+            <span className={`text-[8px] font-black mt-1 uppercase tracking-tight whitespace-nowrap truncate max-w-full ${moreTabs.some(t => t.id === activeTab) ? 'text-[#F7B500]' : 'text-white/60'}`}>Mais</span>
           </button>
         )}
       </nav>
