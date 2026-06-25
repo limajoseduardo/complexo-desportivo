@@ -71,7 +71,7 @@ export function UtenteQRCard({ user, onEditProfile }: {
   const hasEntries = (user.entradas_disponiveis ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col animate-in fade-in pb-24 font-sans">
+    <div className="min-h-dvh bg-slate-50 flex flex-col animate-in fade-in pb-24 font-sans">
 
       {/* ── Header ── */}
       <div className="bg-[#004D71] px-5 pt-6 pb-8">

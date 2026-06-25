@@ -102,7 +102,7 @@ export const LoginScreen = ({ onLogin, onRegister, onGoogleLogin, error, onPubli
   const [inviteCode, setInviteCode] = React.useState('');
 
   return (
-    <div className="h-screen w-full overflow-y-auto relative">
+    <div className="h-dvh w-full overflow-y-auto relative">
        {/* Fundo fixo ao ecrã — não acompanhar o scroll evita que a imagem "acabe" a meio do conteúdo */}
        <div className="fixed inset-0 login-bg">
          <div className="absolute inset-0 login-overlay"></div>
@@ -200,7 +200,7 @@ export const ModePicker = ({ onSelect }: { onSelect: (role: string) => void }) =
     { role: 'utente',    label: 'Utente',    desc: 'Vista do utente / sócio',         icon: <User size={28}/>,     color: 'bg-blue-500 text-white' },
   ];
   return (
-    <div className="min-h-screen w-full login-bg flex items-center justify-center p-4 sm:p-6">
+    <div className="min-h-dvh w-full login-bg flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 login-overlay" />
       <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] md:rounded-[4rem] p-6 md:p-8 lg:p-12 shadow-2xl relative w-full max-w-lg border-4 border-white/20">
         <div className="text-center mb-6 md:mb-8">
