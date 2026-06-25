@@ -2005,27 +2005,6 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
               </div>
             </div>
           )}
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                  <Activity className="text-[#F7B500]" size={14} /> Totais do Mês por Modalidade
-                </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                  Número de entradas no mês corrente
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-              {[...statsByModality].sort((a, b) => b.count - a.count).map(s => (
-                <div key={s.label} className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col justify-center items-center gap-0.5">
-                  <p className="text-2xl font-black text-[#004D71] tabular-nums leading-none">{s.count}</p>
-                  <p className="text-[8px] font-black uppercase tracking-wider text-slate-400 text-center leading-tight">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">
