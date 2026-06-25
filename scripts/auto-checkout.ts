@@ -9,10 +9,12 @@ import firebaseConfig from '../firebase-applet-config.json';
 const APP_ID = 'cpx-vila-rei-main';
 
 // Corre via cron a duas horas UTC candidatas (para sobreviver à mudança de hora
-// de verão/inverno) — só executa o checkout quando a hora local de Lisboa for 20h.
+// de verão/inverno). O GitHub Actions atrasa frequentemente os crons (15-60min+),
+// por isso não exigimos a hora local EXATA — basta já serem 20h ou mais tarde
+// (e ainda não passou da meia-noite). Quem já tiver saído não volta a ser tocado.
 function isCheckoutHourInLisbon(): boolean {
-  const hour = new Date().toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false });
-  return hour.trim() === '20';
+  const hour = Number(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', hour: '2-digit', hour12: false }).trim());
+  return hour >= 20 && hour <= 23;
 }
 
 async function main() {
