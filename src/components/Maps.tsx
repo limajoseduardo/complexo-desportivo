@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ClipboardList, Plus, X, Save, FileText, Edit2, Trash2, Download, Calendar } from 'lucide-react';
+import { ClipboardList, Plus, X, Save, FileText, Edit2, Trash2, Download, Calendar, Waves, Sun, Thermometer } from 'lucide-react';
 import { Timestamp, addDoc, updateDoc, deleteDoc, collection, doc } from 'firebase/firestore';
 import { db, APP_ID } from '../lib/firebase';
 import { UserProfile } from '../types';
@@ -274,6 +274,15 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
   const canAdd  = ['staff', 'admin', 'professor'].includes(user?.role);
   const canEdit = ['staff', 'admin'].includes(user?.role);
 
+  // Leituras mais recentes — vieram do cabeçalho para aqui, e a Piscina Exterior
+  // passa a separar Adultos de Crianças (são tanques diferentes).
+  const latestCoberta = logs.find(l => l.tipo === 'coberta');
+  const latestDescobertaAdulto = logs.find(l => l.tipo === 'descoberta' && (l.zona || 'adulto') === 'adulto');
+  const latestDescobertaInfantil = logs.find(l => l.tipo === 'descoberta' && l.zona === 'infantil');
+  const latestTempInterior = tempLogs.find(l => l.scope === 'interior');
+  const latestTempExteriorAdulto = tempLogs.find(l => l.scope === 'exterior' && (l.zona || 'adulto') === 'adulto');
+  const latestTempExteriorInfantil = tempLogs.find(l => l.scope === 'exterior' && l.zona === 'infantil');
+
   const openNew = () => {
     setEditingId(null);
     if (activeSection === 'analises') setAnaliseForm(emptyAnaliseForm(user));
@@ -519,6 +528,54 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
 
   return (
     <div className="space-y-6 animate-in fade-in pb-24 px-2 text-left">
+
+      {/* Leituras atuais — Coberta / Exterior Adultos / Exterior Crianças */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
+          <Waves size={20} className="text-[#004D71] shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[9px] font-black text-[#004D71] uppercase tracking-wider">Piscina Coberta</p>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
+                <Thermometer size={12} className="text-blue-500" /> {latestTempInterior?.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}°C` : '—'}
+              </span>
+              <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestCoberta?.ph || '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
+          <Sun size={20} className="text-[#F7B500] shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[9px] font-black text-amber-800 uppercase tracking-wider">Piscina Exterior · Adultos</p>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
+                <Thermometer size={12} className="text-blue-500" /> {latestTempExteriorAdulto?.temp ? `${latestTempExteriorAdulto.temp}°C` : '—'}
+              </span>
+              <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescobertaAdulto?.ph || '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 bg-cyan-50 border border-cyan-100 rounded-2xl px-4 py-3">
+          <Sun size={20} className="text-cyan-500 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[9px] font-black text-cyan-800 uppercase tracking-wider">Piscina Exterior · Crianças</p>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
+                <Thermometer size={12} className="text-blue-500" /> {latestTempExteriorInfantil?.temp ? `${latestTempExteriorInfantil.temp}°C` : '—'}
+              </span>
+              <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescobertaInfantil?.ph || '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* PDF modal */}
       {showPdfModal && (

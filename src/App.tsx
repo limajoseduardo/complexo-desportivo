@@ -912,7 +912,7 @@ export default function App() {
         />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header user={user} logs={logs} tempLogs={tempLogs} />
+          <Header user={user} />
 
           <React.Suspense fallback={null}>
             <BugReportModule user={user} isOpen={showBugReport} onClose={() => setShowBugReport(false)} showButton={false} />

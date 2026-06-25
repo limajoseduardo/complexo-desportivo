@@ -265,7 +265,7 @@ function headerAqiLabel(aqi: number): { label: string; color: string } {
   return                 { label: 'Crítica',      color: 'text-purple-500' };
 }
 
-export function Header({ user, logs = [], tempLogs = [] }: { user: UserProfile, logs?: any[], tempLogs?: any[] }) {
+export function Header({ user }: { user: UserProfile }) {
   const [time, setTime] = React.useState(new Date());
   const { weather, aqi } = useWeather();
 
@@ -284,11 +284,6 @@ export function Header({ user, logs = [], tempLogs = [] }: { user: UserProfile, 
   })() : null;
 
   const aqiInfo = aqi !== null ? headerAqiLabel(aqi) : null;
-
-  const latestCoberta = logs.find(l => l.tipo === 'coberta');
-  const latestDescoberta = logs.find(l => l.tipo === 'descoberta');
-  const latestTempInterior = tempLogs.find(l => l.scope === 'interior');
-  const latestTempExterior = tempLogs.find(l => l.scope === 'exterior' && (l.zona || 'adulto') === 'adulto');
 
   return (
     <header className="bg-white px-5 pt-safe flex justify-between items-center sticky top-0 z-40 py-2 border-b-4 border-slate-100">
@@ -314,85 +309,6 @@ export function Header({ user, logs = [], tempLogs = [] }: { user: UserProfile, 
 
       {/* Centro + Direita: Meteorologia completa + Relógio */}
       <div className="flex items-center gap-4 justify-end shrink-0">
-
-        {/* Bloco Piscina Coberta — 2xl+ */}
-        {latestCoberta && (
-          <div className="hidden 2xl:flex items-center gap-3 p-2 border-l-2 border-slate-100 pl-4 text-left">
-            <div className="text-[#004D71] drop-shadow-sm">
-              <Waves size={24} className="text-[#004D71]" />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-[#004D71] bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                  Piscina Coberta
-                </span>
-                {latestCoberta.hora && (
-                  <span className="text-[8px] font-bold text-slate-400 uppercase">
-                    {latestCoberta.hora}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 mt-0.5">
-                <span className="flex items-center gap-1 text-xs font-black text-[#004D71]" title="Temperatura da Água">
-                  <Thermometer size={13} className="text-blue-500" /> {latestTempInterior?.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}°C` : '—'}
-                </span>
-                <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="pH da Água">
-                  <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestCoberta.ph || '—'}
-                </span>
-                <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="Humidade Nave">
-                  <Droplets size={13} className="text-sky-400" /> {latestTempInterior?.naveHumidade ? `${latestTempInterior.naveHumidade}%` : '—'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Bloco Piscina Exterior — 2xl+ */}
-        {latestDescoberta && (
-          <div className="hidden 2xl:flex items-center gap-3 p-2 border-l-2 border-slate-100 pl-4 text-left">
-            <div className="text-amber-500 drop-shadow-sm">
-              <Sun size={24} className="text-[#F7B500]" />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-amber-800 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                  Piscina Exterior
-                </span>
-                {latestDescoberta.hora && (
-                  <span className="text-[8px] font-bold text-slate-400 uppercase">
-                    {latestDescoberta.hora}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 mt-0.5">
-                <span className="flex items-center gap-1 text-xs font-black text-[#004D71]" title="Temperatura da Água">
-                  <Thermometer size={13} className="text-blue-500" /> {latestTempExterior?.temp ? `${latestTempExterior.temp}°C` : '—'}
-                </span>
-                <span className="flex items-center gap-1 text-xs font-bold text-slate-500" title="pH da Água">
-                  <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescoberta.ph || '—'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Piscinas compactas — md to 2xl */}
-        <div className="hidden md:flex 2xl:hidden items-center gap-4 border-l-2 border-slate-100 pl-4">
-          {latestCoberta && (
-            <div className="flex items-center gap-1.5 text-[#004D71]">
-              <Waves size={16} className="text-sky-500" />
-              <span className="text-xs font-black tabular-nums">{latestTempInterior?.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}°C` : '—'}</span>
-              <span className="text-[10px] font-bold text-orange-600">pH {latestCoberta.ph || '—'}</span>
-            </div>
-          )}
-          {latestDescoberta && (
-            <div className="flex items-center gap-1.5 text-amber-700">
-              <Sun size={16} className="text-amber-500" />
-              <span className="text-xs font-black tabular-nums">{latestTempExterior?.temp ? `${latestTempExterior.temp}°C` : '—'}</span>
-              <span className="text-[10px] font-bold text-orange-600">pH {latestDescoberta.ph || '—'}</span>
-            </div>
-          )}
-        </div>
 
         {/* Bloco meteorologia — 2xl+ */}
         {weather && (
