@@ -101,6 +101,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [isSubmittingSimple, setIsSubmittingSimple] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas' | 'caixa'>('diario');
   const [nadadoresBase, setNadadoresBase] = useState<string[]>([]);
+  const [nadadorHoje, setNadadorHoje] = useState<{ manha?: string; tarde?: string }>({});
   const [nadadorLogs, setNadadorLogs] = useState<{ date: string; periodo: 'manha' | 'tarde'; nome: string }[]>([]);
   const [nadadorDate, setNadadorDate] = useState(todayStr);
   const [nadadorPeriodo, setNadadorPeriodo] = useState<'manha' | 'tarde'>('manha');
@@ -383,6 +384,21 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       setNadadoresBase((snap.data()?.nomes as string[]) || []);
     }, () => {});
   }, []);
+
+  // Quem está em serviço hoje (manhã/tarde) — visível a todos, incluindo chefia read-only
+  useEffect(() => {
+    const path = `artifacts/${APP_ID}/public/data/nadadores_salvadores_registos`;
+    const q = query(collection(db, path), where('date', '==', todayStr));
+    return onSnapshot(q, snap => {
+      const obj: { manha?: string; tarde?: string } = {};
+      snap.docs.forEach(d => {
+        const data = d.data() as any;
+        if (data.periodo === 'manha') obj.manha = data.nome;
+        if (data.periodo === 'tarde') obj.tarde = data.nome;
+      });
+      setNadadorHoje(obj);
+    }, () => {});
+  }, [todayStr]);
 
   // Registos diários de nadador-salvador (manhã/tarde) — mesmo período da Estatística de Professores
   useEffect(() => {
@@ -930,6 +946,10 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       .map(([nome, dias]) => ({ nome, dias: dias.size }))
       .sort((a, b) => b.dias - a.dias);
   }, [nadadorLogs]);
+
+  // Antes das 14h conta como período da manhã, depois como tarde.
+  const periodoAtual: 'manha' | 'tarde' = currentTime.getHours() < 14 ? 'manha' : 'tarde';
+  const nadadorAtivo = nadadorHoje[periodoAtual];
 
   const handleAddNadadorNome = async () => {
     const nome = novoNadadorNome.trim();
@@ -1567,6 +1587,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
         <div className="flex items-center gap-2 shrink-0">
           <Shield size={15} className="text-cyan-600 shrink-0" />
           <span className="font-black text-[#004D71] text-[11px] uppercase">Nadador-Salvador</span>
+        </div>
+
+        {/* Estado atual — visível a todos, incluindo contas read-only (chefia) */}
+        <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${nadadorAtivo ? 'bg-emerald-500 animate-pulse' : 'bg-red-400'}`} />
+          <span className="text-[8px] font-black uppercase text-slate-400 whitespace-nowrap">{periodoAtual === 'manha' ? 'Manhã' : 'Tarde'} agora:</span>
+          <span className={`text-[10px] font-black uppercase truncate ${nadadorAtivo ? 'text-[#004D71]' : 'text-red-500'}`}>{nadadorAtivo || 'Sem nadador-salvador'}</span>
         </div>
 
         {!readOnly && (
