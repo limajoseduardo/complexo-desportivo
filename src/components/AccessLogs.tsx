@@ -3,7 +3,7 @@ import {
   Users, LogIn, LogOut, Calendar, Search,
   Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
-  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target, Shield
 } from 'lucide-react';
 import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -100,6 +100,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [padelEntradas, setPadelEntradas] = useState(0);
   const [isSubmittingSimple, setIsSubmittingSimple] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'diario' | 'estatisticas' | 'caixa'>('diario');
+  const [nadadoresBase, setNadadoresBase] = useState<string[]>([]);
+  const [nadadorLogs, setNadadorLogs] = useState<{ date: string; periodo: 'manha' | 'tarde'; nome: string }[]>([]);
+  const [nadadorDate, setNadadorDate] = useState(todayStr);
+  const [nadadorPeriodo, setNadadorPeriodo] = useState<'manha' | 'tarde'>('manha');
+  const [nadadorNomeSel, setNadadorNomeSel] = useState('');
+  const [novoNadadorNome, setNovoNadadorNome] = useState('');
+  const [savingNadador, setSavingNadador] = useState(false);
 
   // CORREÇÃO E AUTO-CHECKOUT (19h)
   useEffect(() => {
@@ -366,6 +373,27 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     const q = query(collection(db, path), where('date', '>=', from), where('date', '<=', to));
     return onSnapshot(q, snap => {
       setProfSessionLogs(snap.docs.map(d => d.data()).filter(l => l.professorNome && l.turmaId));
+    }, (err) => handleFirestoreError(err, OperationType.GET, path));
+  }, [profStatsMode, profStatsFrom, profStatsTo]);
+
+  // Base de nomes de nadadores-salvadores (gerida pelo staff)
+  useEffect(() => {
+    const path = `artifacts/${APP_ID}/public/data/config`;
+    return onSnapshot(doc(db, path, 'nadadores_salvadores'), snap => {
+      setNadadoresBase((snap.data()?.nomes as string[]) || []);
+    }, () => {});
+  }, []);
+
+  // Registos diários de nadador-salvador (manhã/tarde) — mesmo período da Estatística de Professores
+  useEffect(() => {
+    const from = profStatsMode === 'mes'
+      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+      : profStatsFrom;
+    const to = profStatsMode === 'mes' ? new Date().toISOString().split('T')[0] : profStatsTo;
+    const path = `artifacts/${APP_ID}/public/data/nadadores_salvadores_registos`;
+    const q = query(collection(db, path), where('date', '>=', from), where('date', '<=', to));
+    return onSnapshot(q, snap => {
+      setNadadorLogs(snap.docs.map(d => d.data() as any));
     }, (err) => handleFirestoreError(err, OperationType.GET, path));
   }, [profStatsMode, profStatsFrom, profStatsTo]);
 
@@ -889,6 +917,51 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       .map(s => ({ professor: s.professor, dadas: s.dadas, modalidades: Array.from(s.modalidades).sort() }))
       .sort((a, b) => b.dadas - a.dadas);
   }, [profSessionLogs]);
+
+  const nadadorStats = React.useMemo(() => {
+    const byNome: Record<string, Set<string>> = {};
+    nadadorLogs.forEach(l => {
+      const nome = (l.nome || '').trim();
+      if (!nome) return;
+      if (!byNome[nome]) byNome[nome] = new Set();
+      if (l.date) byNome[nome].add(l.date);
+    });
+    return Object.entries(byNome)
+      .map(([nome, dias]) => ({ nome, dias: dias.size }))
+      .sort((a, b) => b.dias - a.dias);
+  }, [nadadorLogs]);
+
+  const handleAddNadadorNome = async () => {
+    const nome = novoNadadorNome.trim();
+    if (!nome) return;
+    if (nadadoresBase.some(n => n.toLowerCase() === nome.toLowerCase())) {
+      setNadadorNomeSel(nome);
+      setNovoNadadorNome('');
+      return;
+    }
+    try {
+      const path = `artifacts/${APP_ID}/public/data/config`;
+      await setDoc(doc(db, path, 'nadadores_salvadores'), { nomes: [...nadadoresBase, nome] }, { merge: true });
+      setNadadorNomeSel(nome);
+      setNovoNadadorNome('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'nadadores_salvadores');
+    }
+  };
+
+  const handleRegistarNadador = async () => {
+    if (!nadadorNomeSel || !nadadorDate || savingNadador) return;
+    setSavingNadador(true);
+    try {
+      const path = `artifacts/${APP_ID}/public/data/nadadores_salvadores_registos`;
+      const id = `${nadadorDate}__${nadadorPeriodo}`;
+      await setDoc(doc(db, path, id), { date: nadadorDate, periodo: nadadorPeriodo, nome: nadadorNomeSel });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'nadadores_salvadores_registos');
+    } finally {
+      setSavingNadador(false);
+    }
+  };
 
   const demographicsStats = React.useMemo(() => {
     const ageGroups = { '< 18': 0, '18-35': 0, '36-55': 0, '> 55': 0 };
@@ -1489,6 +1562,71 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
         ))}
       </div>
 
+      {/* NADADOR-SALVADOR — obrigatório na Piscina Exterior, registo diário por período */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-3 mb-2 flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <Shield size={15} className="text-cyan-600 shrink-0" />
+          <span className="font-black text-[#004D71] text-[11px] uppercase">Nadador-Salvador</span>
+        </div>
+
+        {!readOnly && (
+          <>
+            <input
+              type="date"
+              value={nadadorDate}
+              onChange={e => setNadadorDate(e.target.value)}
+              className="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-[#004D71] outline-none"
+            />
+            <div className="flex gap-0.5 p-0.5 bg-slate-50 rounded-lg border border-slate-100 shrink-0">
+              {(['manha', 'tarde'] as const).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setNadadorPeriodo(p)}
+                  className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase transition-all ${nadadorPeriodo === p ? 'bg-[#004D71] text-[#F7B500]' : 'text-slate-400'}`}
+                >
+                  {p === 'manha' ? 'Manhã' : 'Tarde'}
+                </button>
+              ))}
+            </div>
+            <select
+              value={nadadorNomeSel}
+              onChange={e => setNadadorNomeSel(e.target.value)}
+              className="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-[#004D71] outline-none flex-1 min-w-[110px]"
+            >
+              <option value="">Selecionar nome...</option>
+              {nadadoresBase.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <button
+              type="button"
+              disabled={!nadadorNomeSel || savingNadador}
+              onClick={handleRegistarNadador}
+              className="px-3 py-1.5 rounded-lg font-black uppercase text-[9px] bg-[#004D71] text-[#F7B500] active:scale-95 transition-all disabled:opacity-40 shrink-0"
+            >
+              {savingNadador ? '...' : 'Registar'}
+            </button>
+
+            <div className="flex items-center gap-1.5 w-full pt-2 mt-1 border-t border-slate-50">
+              <input
+                type="text"
+                value={novoNadadorNome}
+                onChange={e => setNovoNadadorNome(e.target.value)}
+                placeholder="Novo nome para a base..."
+                className="flex-1 px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-[#004D71] outline-none placeholder:text-slate-300"
+              />
+              <button
+                type="button"
+                disabled={!novoNadadorNome.trim()}
+                onClick={handleAddNadadorNome}
+                className="p-1.5 bg-slate-50 text-slate-400 hover:text-[#004D71] rounded-lg transition-colors disabled:opacity-40"
+              >
+                <Plus size={13} />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* TABS */}
       <div className="flex bg-slate-200/50 p-1 rounded-xl w-full sm:w-fit overflow-hidden border border-slate-100 mb-4">
         <button
@@ -2040,6 +2178,34 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
 
             <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-3 leading-relaxed">
               Aulas dadas no período selecionado, por modalidade. Aulas canceladas não são contadas.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+            <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5 mb-3">
+              <Shield className="text-cyan-500" size={14} /> Estatística de Nadadores-Salvadores
+            </h3>
+
+            {nadadorStats.length > 0 ? (
+              <div className="space-y-2">
+                {nadadorStats.map(n => (
+                  <div key={n.nome} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate">{n.nome}</span>
+                    <div className="flex flex-col items-center shrink-0">
+                      <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dias</span>
+                      <span className="text-sm font-black text-[#004D71] tabular-nums">{n.dias}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-16 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                Sem registos no período
+              </div>
+            )}
+
+            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-3 leading-relaxed">
+              Dias trabalhados no período selecionado (manhã + tarde no mesmo dia conta como 1 dia).
             </p>
           </div>
         </div>
