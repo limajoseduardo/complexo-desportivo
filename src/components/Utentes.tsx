@@ -246,32 +246,30 @@ export function UtentesList({
       </div>
 
       {/* ── PAINEL INFORMATIVO ── */}
-      <div className="flex flex-wrap gap-3 px-1">
+      <div className="flex flex-col gap-1.5 px-1">
         {([
           { key: 'all',        value: stats.total,       label: 'Total',       icon: <UserIcon size={16}/> },
           { key: 'incomplete', value: stats.incomplete,  label: 'Incompletos', icon: <FileText size={16}/> },
           { key: 'atestado',   value: stats.atestado,    label: 'Atestado',    icon: <Shield size={16}/> },
-          { key: 'c_jovem',    value: stats.c_jovem,     label: 'Cartão Jovem Municipal',       icon: <CreditCard size={16}/> },
-          { key: 'c_ativa',    value: stats.c_ativa,     label: 'Cartão Municipal Idade-Ativa', icon: <CreditCard size={16}/> },
-          { key: 'c_idoso',    value: stats.c_idoso,     label: 'Cartão do Idoso',              icon: <CreditCard size={16}/> },
-          { key: 'c_univ',     value: stats.c_univ,      label: 'Universidade Sénior',          icon: <CreditCard size={16}/> },
+          { key: 'c_jovem',    value: stats.c_jovem,     label: 'Cartão Jovem',       icon: <CreditCard size={16}/> },
+          { key: 'c_ativa',    value: stats.c_ativa,     label: 'Cartão Idade-Ativa', icon: <CreditCard size={16}/> },
+          { key: 'c_idoso',    value: stats.c_idoso,     label: 'Cartão Idoso',       icon: <CreditCard size={16}/> },
+          { key: 'c_univ',     value: stats.c_univ,      label: 'Univ. Sénior',       icon: <CreditCard size={16}/> },
         ] as const).map(({ key, value, label, icon }) => (
           <button
             key={key}
             onClick={() => setActiveFilter(key === 'all' ? 'all' : (activeFilter === key ? 'all' : key))}
-            className={`flex-1 min-w-[120px] flex items-center gap-3 px-4 py-3 rounded-[1.5rem] border-2 transition-all ${
+            className={`flex items-center gap-3 px-3 py-2 rounded-xl border-2 transition-all text-left active:scale-[0.99] ${
               activeFilter === key
-                ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-xl scale-[1.02]'
+                ? 'bg-[#004D71] text-[#F7B500] border-[#004D71] shadow-md'
                 : 'bg-white text-slate-500 border-slate-100 hover:border-[#004D71]/30 hover:shadow-md shadow-sm'
             }`}
           >
-            <div className={`p-2 rounded-xl shrink-0 ${activeFilter === key ? 'bg-white/10 text-[#F7B500]' : 'bg-slate-50 text-slate-400'}`}>
+            <div className={`p-1.5 rounded-lg shrink-0 ${activeFilter === key ? 'bg-white/10 text-[#F7B500]' : 'bg-slate-50 text-slate-400'}`}>
               {icon}
             </div>
-            <div className="flex flex-col items-start text-left">
-              <span className="text-2xl font-black leading-none tabular-nums tracking-tighter">{value}</span>
-              <span className="text-[9px] font-black uppercase tracking-widest opacity-80 mt-1">{label}</span>
-            </div>
+            <p className="flex-1 min-w-0 text-[10px] font-black uppercase tracking-wide truncate">{label}</p>
+            <span className="text-base font-black leading-none tabular-nums shrink-0">{value}</span>
           </button>
         ))}
       </div>
