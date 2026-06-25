@@ -945,6 +945,7 @@ export default function App() {
                     onLogout={() => setViewingProfile(null)}
                     isExternalView={true}
                     currentRole={user.role}
+                    staffUser={user}
                   />
                 ) : (
                   <>

@@ -80,7 +80,7 @@ function TermoCheckbox({ checked, disabled, onChange, label, text }: {
 }
 
 export function ProfileViewModule({
-  user, onLogout, setUser, isExternalView = false, currentRole = 'utente', onReportBug
+  user, onLogout, setUser, isExternalView = false, currentRole = 'utente', onReportBug, staffUser
 }: {
   user: UserProfile;
   onLogout: () => void;
@@ -88,6 +88,7 @@ export function ProfileViewModule({
   isExternalView?: boolean;
   currentRole?: string;
   onReportBug?: () => void;
+  staffUser?: UserProfile;
 }) {
   const LOCAL_USERS_KEY = 'cpx_local_users_overrides_v1';
   const [isEditing, setIsEditing] = useState(false);
@@ -101,6 +102,7 @@ export function ProfileViewModule({
   const [calcEntries, setCalcEntries] = useState<number>(15);
   const [calcType, setCalcType] = useState<'ginasio' | 'piscina_adulto' | 'piscina_crianca'>('ginasio');
   const [logs, setLogs] = useState<any[]>([]);
+  const [recibos, setRecibos] = useState<any[]>([]);
   const [durationText, setDurationText] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -172,6 +174,17 @@ export function ProfileViewModule({
   }, [user.id, user.role]);
 
   useEffect(() => {
+    if (!user.id || !['admin', 'staff'].includes(currentRole) || user.role !== 'utente') return;
+    const path = `artifacts/${APP_ID}/public/data/recibos_carregamento`;
+    const unsub = onSnapshot(
+      query(collection(db, path), where('utenteId', '==', user.id), orderBy('data', 'desc'), limit(10)),
+      snap => setRecibos(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      () => {}
+    );
+    return () => unsub();
+  }, [user.id, user.role, currentRole]);
+
+  useEffect(() => {
     if (!user.isInside || !user.updatedAt) { setDurationText(''); return; }
     const update = () => {
       const diff = Math.floor((Date.now() - new Date(user.updatedAt!).getTime()) / 60000);
@@ -199,6 +212,15 @@ export function ProfileViewModule({
       alert('É obrigatório aceitar os dois termos de responsabilidade para continuar.');
       return;
     }
+    // Carregamento de entradas: vendido em pacotes de 5 em 5 (mínimo 5), nunca avulso,
+    // para reduzir o número de recibos emitidos por utente.
+    const saldoAnterior = user.entradas_disponiveis || 0;
+    const saldoNovo = formData.entradas_disponiveis || 0;
+    const carregamento = saldoNovo - saldoAnterior;
+    if (['admin', 'staff'].includes(currentRole) && formData.role === 'utente' && carregamento > 0 && (carregamento < 5 || carregamento % 5 !== 0)) {
+      alert('O carregamento de entradas tem de ser feito em pacotes de 5 em 5 (mínimo 5: 5, 10, 15, 20...).');
+      return;
+    }
     setSaving(true);
     try {
       const { id, role, email, ...rest } = formData;
@@ -218,6 +240,19 @@ export function ProfileViewModule({
       writeLocalOverride(saved);
       try {
         await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, id), updateData);
+        if (carregamento > 0 && carregamento % 5 === 0) {
+          await addDoc(collection(db, `artifacts/${APP_ID}/public/data/recibos_carregamento`), {
+            utenteId: id,
+            utenteNome: formData.nome || formData.n || '',
+            quantidade: carregamento,
+            saldoAnterior,
+            saldoNovo,
+            tipoAcesso: formData.tipoAcesso || '',
+            staffId: staffUser?.id || '',
+            staffNome: staffUser?.nome || staffUser?.n || 'Staff',
+            data: serverTimestamp(),
+          });
+        }
       } catch (cloudError) {
         handleFirestoreError(cloudError, OperationType.UPDATE, `users/${formData.id}`);
       }
@@ -543,9 +578,9 @@ export function ProfileViewModule({
                 </div>
 
                 <div className="w-full md:w-2/3 space-y-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregamento Rápido</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[1, 5, 15, 30].map(amount => (
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregamento Rápido (pacotes de 5)</p>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    {[5, 10, 15, 20, 25, 30].map(amount => (
                       <button
                         key={amount}
                         type="button"
@@ -620,8 +655,27 @@ export function ProfileViewModule({
               </div>
 
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                Nota: A cada entrada no Quiosque será deduzida 1 entrada. Se o saldo for Zero, o acesso será bloqueado.
+                Nota: a cada entrada no Quiosque é deduzida 1 entrada do saldo. Por agora, saldo a 0 não bloqueia o acesso — só mostra um aviso na receção. (A partir de outubro passa a ser obrigatório ter saldo.)
               </p>
+
+              {recibos.length > 0 && (
+                <div className="pt-4 border-t border-slate-100">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Histórico de Recibos</h4>
+                  <div className="space-y-2">
+                    {recibos.map(r => (
+                      <div key={r.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-black text-[#004D71]">
+                            {r.data?.toDate ? r.data.toDate().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                          </p>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase">Por {r.staffNome || 'Staff'}</p>
+                        </div>
+                        <span className="text-sm font-black text-emerald-600 shrink-0">+{r.quantidade}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
