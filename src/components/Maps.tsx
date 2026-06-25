@@ -252,6 +252,31 @@ const ELETRICIDADE_FIELDS: FieldDef[] = [
   { key: 'cheio', label: 'Cheio KWh' }, { key: 'superVazio', label: 'Super Vazio KWh' },
 ];
 
+// Parâmetros de referência para águas de piscinas de uso público (pH e cloro
+// livre) — usados só para dar um indicador visual rápido de "dentro/fora dos
+// parâmetros" nos cartões de leituras, não substituem o registo oficial.
+const PH_RANGE = { min: 7.0, max: 7.6 };
+const CL_LIVRE_RANGE = { min: 1.0, max: 3.0 };
+
+function avaliarParametros(ph?: string | number, clLivre?: string | number): 'bom' | 'mau' | 'sem-dados' {
+  const phNum = ph !== undefined && ph !== '' ? Number(ph) : NaN;
+  const clNum = clLivre !== undefined && clLivre !== '' ? Number(clLivre) : NaN;
+  if (Number.isNaN(phNum) && Number.isNaN(clNum)) return 'sem-dados';
+  const phOk = Number.isNaN(phNum) || (phNum >= PH_RANGE.min && phNum <= PH_RANGE.max);
+  const clOk = Number.isNaN(clNum) || (clNum >= CL_LIVRE_RANGE.min && clNum <= CL_LIVRE_RANGE.max);
+  return phOk && clOk ? 'bom' : 'mau';
+}
+
+function ParametrosBadge({ estado }: { estado: 'bom' | 'mau' | 'sem-dados' }) {
+  if (estado === 'sem-dados') {
+    return <span className="text-[8px] font-black text-slate-400 uppercase bg-slate-100 px-1.5 py-0.5 rounded-full">Sem dados</span>;
+  }
+  if (estado === 'bom') {
+    return <span className="text-[8px] font-black text-emerald-700 uppercase bg-emerald-100 px-1.5 py-0.5 rounded-full">Dentro dos parâmetros</span>;
+  }
+  return <span className="text-[8px] font-black text-red-700 uppercase bg-red-100 px-1.5 py-0.5 rounded-full animate-pulse">Fora dos parâmetros</span>;
+}
+
 export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs = [], tratamentosLogs = [], eletricidadeLogs = [] }: {
   user: UserProfile, logs: any[], tempLogs: any[], sondasLogs?: any[], equipLogs?: any[], tratamentosLogs?: any[], eletricidadeLogs?: any[]
 }) {
@@ -543,6 +568,9 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
                 <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestCoberta?.ph || '—'}
               </span>
             </div>
+            <div className="mt-1.5">
+              <ParametrosBadge estado={avaliarParametros(latestCoberta?.ph, latestCoberta?.clLivre)} />
+            </div>
           </div>
         </div>
 
@@ -558,6 +586,9 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
                 <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescobertaAdulto?.ph || '—'}
               </span>
             </div>
+            <div className="mt-1.5">
+              <ParametrosBadge estado={avaliarParametros(latestDescobertaAdulto?.ph, latestDescobertaAdulto?.clLivre)} />
+            </div>
           </div>
         </div>
 
@@ -572,6 +603,9 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
               <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
                 <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescobertaInfantil?.ph || '—'}
               </span>
+            </div>
+            <div className="mt-1.5">
+              <ParametrosBadge estado={avaliarParametros(latestDescobertaInfantil?.ph, latestDescobertaInfantil?.clLivre)} />
             </div>
           </div>
         </div>
