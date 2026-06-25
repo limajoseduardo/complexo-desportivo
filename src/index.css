@@ -15,30 +15,37 @@
 html {
   background-color: var(--vr-blue);
   height: 100%;
+  min-height: 100dvh;
 }
 
 body {
   margin: 0;
   padding: 0;
   height: 100%;
+  min-height: 100dvh;
   width: 100%;
-  background-color: var(--vr-bg);
+  /* Azul (não o cinza claro do conteúdo): qualquer pixel residual atrás da
+     bottom nav em iOS standalone fica invisível em vez de uma risca branca. */
+  background-color: var(--vr-blue);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
 #root {
   height: 100%;
+  min-height: 100dvh;
   width: 100%;
   overflow: hidden;
 }
 
 .app-shell {
   height: 100%;
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-color: var(--vr-bg);
 }
 
 .content-area {
@@ -62,13 +69,6 @@ body {
 .px-safe { 
   padding-left: env(safe-area-inset-left) !important; 
   padding-right: env(safe-area-inset-right) !important; 
-}
-
-/* Em PWA, o bottom do iOS já sobe acima do Home Indicator. Evitar queixo duplo. */
-@media (display-mode: standalone) {
-  .pb-safe {
-    padding-bottom: 0.5rem !important;
-  }
 }
 
 /* Kiosk Mode QR Reader Video Fixes */
