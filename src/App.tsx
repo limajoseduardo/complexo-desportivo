@@ -949,7 +949,7 @@ export default function App() {
                 ) : (
                   <>
                     {user.role === 'utente' && activeTab === 'inicio' && <UtenteDashboard user={user} utentes={utentes} />}
-                    {activeTab === 'inicio' && user.role === 'staff' && (
+                    {activeTab === 'inicio' && ['staff', 'chefia'].includes(user.role) && (
                       <StaffDashboard
                         user={user}
                         utentes={utentes}
@@ -966,7 +966,7 @@ export default function App() {
                         tempLogs={tempLogs}
                       />
                     )}
-                    {activeTab === 'inicio' && ['admin', 'chefia'].includes(user.role) && (
+                    {activeTab === 'inicio' && user.role === 'admin' && (
                       <GlobalDashboard utentes={utentes} logs={logs} />
                     )}
                     {activeTab === 'inicio' && !['utente', 'staff', 'professor', 'admin', 'chefia'].includes(user.role) && (

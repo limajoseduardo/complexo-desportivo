@@ -1709,14 +1709,19 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                                 </span>
                               ) : (
                                 (() => {
-                                  let checkInDate: Date;
+                                  let checkInDate: Date | null = null;
                                   if (log.checkIn instanceof Timestamp) {
                                     checkInDate = log.checkIn.toDate();
                                   } else if (log.checkIn && typeof (log.checkIn as any).seconds === 'number') {
                                     checkInDate = new Date((log.checkIn as any).seconds * 1000);
                                   } else if (log.checkIn) {
-                                    checkInDate = new Date(log.checkIn as string | number);
-                                  } else {
+                                    // Registos de presença marcados em Turmas guardam "checkIn" como
+                                    // hora em texto (ex.: "10:02"), não uma data/hora completa — não há
+                                    // como calcular uma duração real a partir disso.
+                                    const parsed = new Date(log.checkIn as string | number);
+                                    checkInDate = Number.isNaN(parsed.getTime()) ? null : parsed;
+                                  }
+                                  if (!checkInDate) {
                                     return <span className="text-[10px] font-bold text-slate-300">---</span>;
                                   }
                                   const liveMins = Math.max(0, Math.floor((currentTime.getTime() - checkInDate.getTime()) / 60000));

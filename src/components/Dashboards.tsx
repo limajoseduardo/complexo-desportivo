@@ -592,23 +592,21 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
             })).sort((a, b) => b.monthCount - a.monthCount);
 
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+              <div className="flex flex-col gap-1.5">
                 {modList.map(m => (
                   <button key={m.id} onClick={() => setSelectedMod(m)}
-                    className="bg-white rounded-2xl p-4 text-left active:scale-95 transition-all shadow-sm hover:shadow-md flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div className="p-2 bg-[#004D71]/8 text-[#004D71] rounded-xl">{m.icon}</div>
-                      {m.liveCount > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse block"/>
-                          <span className="text-[9px] font-black text-green-600">{m.liveCount}</span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wide leading-tight line-clamp-2">{m.label}</p>
-                    <div>
-                      <p className="text-2xl font-black text-[#004D71] leading-none tabular-nums">{m.monthCount}</p>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">entradas este mês</p>
+                    className="bg-white rounded-xl px-3 py-2 text-left active:scale-[0.99] transition-all shadow-sm hover:shadow-md flex items-center gap-3">
+                    <div className="p-1.5 bg-[#004D71]/8 text-[#004D71] rounded-lg shrink-0">{m.icon}</div>
+                    <p className="flex-1 min-w-0 text-[10px] font-black text-slate-500 uppercase tracking-wide truncate">{m.label}</p>
+                    {m.liveCount > 0 && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse block"/>
+                        <span className="text-[9px] font-black text-green-600">{m.liveCount}</span>
+                      </div>
+                    )}
+                    <div className="flex items-baseline gap-1 shrink-0">
+                      <p className="text-base font-black text-[#004D71] leading-none tabular-nums">{m.monthCount}</p>
+                      <p className="text-[7px] font-bold text-slate-400 uppercase">entradas/mês</p>
                     </div>
                   </button>
                 ))}
