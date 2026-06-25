@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, Target, Building2, Download, FileText, LogOut
+  Activity, Plus, Check, Star, Shield, Download, FileText, LogOut
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -296,8 +296,6 @@ const MODALITIES = [
   { id: 'bebes',    label: 'Bebés / AMA',           icon: <Users2 size={18}/>,   dest: 'Bebés/AMA'            },
   { id: 'fit',      label: 'Aula Fitness',          icon: <Activity size={18}/>, dest: 'Aulas Fitness'        },
   { id: 'gym',      label: 'Ginásio',               icon: <Dumbbell size={18}/>, dest: 'Ginásio'              },
-  { id: 'padel',    label: 'Padel',                 icon: <Target size={18}/>,   dest: 'Padel'                },
-  { id: 'pavilhao', label: 'Pavilhão',              icon: <Building2 size={18}/>, dest: 'Pavilhão'             },
   { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
 ];
 
