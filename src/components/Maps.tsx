@@ -252,19 +252,30 @@ const ELETRICIDADE_FIELDS: FieldDef[] = [
   { key: 'cheio', label: 'Cheio KWh' }, { key: 'superVazio', label: 'Super Vazio KWh' },
 ];
 
-// Parâmetros de referência para águas de piscinas de uso público (pH e cloro
-// livre) — usados só para dar um indicador visual rápido de "dentro/fora dos
-// parâmetros" nos cartões de leituras, não substituem o registo oficial.
+// Parâmetros de referência para águas de piscinas de uso público — usados só
+// para dar um indicador visual rápido nos cartões de leituras, não substituem
+// o registo oficial. CYA fica de fora: o intervalo ideal varia muito por
+// instalação (UV, exterior vs interior) e não há um valor único confiável.
 const PH_RANGE = { min: 7.0, max: 7.6 };
 const CL_LIVRE_RANGE = { min: 1.0, max: 3.0 };
+const CL_TOTAL_RANGE = { min: 1.0, max: 4.0 };
 
-function avaliarParametros(ph?: string | number, clLivre?: string | number): 'bom' | 'mau' | 'sem-dados' {
-  const phNum = ph !== undefined && ph !== '' ? Number(ph) : NaN;
-  const clNum = clLivre !== undefined && clLivre !== '' ? Number(clLivre) : NaN;
-  if (Number.isNaN(phNum) && Number.isNaN(clNum)) return 'sem-dados';
-  const phOk = Number.isNaN(phNum) || (phNum >= PH_RANGE.min && phNum <= PH_RANGE.max);
-  const clOk = Number.isNaN(clNum) || (clNum >= CL_LIVRE_RANGE.min && clNum <= CL_LIVRE_RANGE.max);
-  return phOk && clOk ? 'bom' : 'mau';
+function dentroDoIntervalo(valor: string | number | undefined, range: { min: number; max: number }): 'bom' | 'mau' | 'sem-dados' {
+  const num = valor !== undefined && valor !== '' ? Number(valor) : NaN;
+  if (Number.isNaN(num)) return 'sem-dados';
+  return num >= range.min && num <= range.max ? 'bom' : 'mau';
+}
+
+function avaliarParametros(ph?: string | number, clLivre?: string | number, clTotal?: string | number): 'bom' | 'mau' | 'sem-dados' {
+  const estados = [dentroDoIntervalo(ph, PH_RANGE), dentroDoIntervalo(clLivre, CL_LIVRE_RANGE), dentroDoIntervalo(clTotal, CL_TOTAL_RANGE)];
+  if (estados.every(e => e === 'sem-dados')) return 'sem-dados';
+  return estados.some(e => e === 'mau') ? 'mau' : 'bom';
+}
+
+function valorClass(estado: 'bom' | 'mau' | 'sem-dados'): string {
+  if (estado === 'bom') return 'text-emerald-700';
+  if (estado === 'mau') return 'text-red-600';
+  return 'text-[#004D71]';
 }
 
 function ParametrosBadge({ estado }: { estado: 'bom' | 'mau' | 'sem-dados' }) {
@@ -291,8 +302,9 @@ function LeituraCard({ titulo, icon, wrapClass, iconClass, titleClass, temp, ana
             <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
               <Thermometer size={12} className="text-blue-500" /> {temp ? `${temp}°C` : '—'}
             </span>
-            <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-              <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {analise?.ph || '—'}
+            <span className="flex items-center gap-1 text-xs font-bold">
+              <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span>
+              <span className={valorClass(dentroDoIntervalo(analise?.ph, PH_RANGE))}>{analise?.ph || '—'}</span>
             </span>
           </div>
         </div>
@@ -300,11 +312,11 @@ function LeituraCard({ titulo, icon, wrapClass, iconClass, titleClass, temp, ana
       <div className="grid grid-cols-3 gap-1.5 mt-2.5">
         <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
           <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">Cl. Livre</p>
-          <p className="text-[11px] font-black text-[#004D71] leading-none">{analise?.clLivre || '—'}</p>
+          <p className={`text-[11px] font-black leading-none ${valorClass(dentroDoIntervalo(analise?.clLivre, CL_LIVRE_RANGE))}`}>{analise?.clLivre || '—'}</p>
         </div>
         <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
           <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">Cl. Total</p>
-          <p className="text-[11px] font-black text-[#004D71] leading-none">{analise?.clTotal || '—'}</p>
+          <p className={`text-[11px] font-black leading-none ${valorClass(dentroDoIntervalo(analise?.clTotal, CL_TOTAL_RANGE))}`}>{analise?.clTotal || '—'}</p>
         </div>
         <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
           <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">CYA</p>
@@ -312,7 +324,7 @@ function LeituraCard({ titulo, icon, wrapClass, iconClass, titleClass, temp, ana
         </div>
       </div>
       <div className="mt-2">
-        <ParametrosBadge estado={avaliarParametros(analise?.ph, analise?.clLivre)} />
+        <ParametrosBadge estado={avaliarParametros(analise?.ph, analise?.clLivre, analise?.clTotal)} />
       </div>
     </div>
   );
