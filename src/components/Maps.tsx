@@ -279,52 +279,52 @@ function valorClass(estado: 'bom' | 'mau' | 'sem-dados'): string {
 }
 
 function ParametrosBadge({ estado }: { estado: 'bom' | 'mau' | 'sem-dados' }) {
-  if (estado === 'sem-dados') {
-    return <span className="text-[8px] font-black text-slate-400 uppercase bg-slate-100 px-1.5 py-0.5 rounded-full">Sem dados</span>;
-  }
-  if (estado === 'bom') {
-    return <span className="text-[8px] font-black text-emerald-700 uppercase bg-emerald-100 px-1.5 py-0.5 rounded-full">Dentro dos parâmetros</span>;
-  }
-  return <span className="text-[8px] font-black text-red-700 uppercase bg-red-100 px-1.5 py-0.5 rounded-full animate-pulse">Fora dos parâmetros</span>;
+  const cfg = estado === 'sem-dados'
+    ? { wrap: 'bg-slate-100 text-slate-400', dot: 'bg-slate-400', short: 'S/dados', full: 'Sem dados' }
+    : estado === 'bom'
+    ? { wrap: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', short: 'OK', full: 'Dentro dos parâmetros' }
+    : { wrap: 'bg-red-100 text-red-700 animate-pulse', dot: 'bg-red-500', short: 'Alerta', full: 'Fora dos parâmetros' };
+  return (
+    <span className={`flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full whitespace-nowrap ${cfg.wrap}`}>
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} />
+      <span className="sm:hidden">{cfg.short}</span>
+      <span className="hidden sm:inline">{cfg.full}</span>
+    </span>
+  );
 }
 
 function LeituraCard({ titulo, icon, wrapClass, iconClass, titleClass, temp, analise }: {
   titulo: string; icon: React.ReactNode; wrapClass: string; iconClass: string; titleClass: string;
   temp?: string | number; analise?: { ph?: string; clLivre?: string; clTotal?: string; acidoCianurico?: string };
 }) {
+  const estado = avaliarParametros(analise?.ph, analise?.clLivre, analise?.clTotal);
   return (
-    <div className={`${wrapClass} rounded-2xl px-4 py-3`}>
-      <div className="flex items-center gap-3">
-        <span className={`${iconClass} shrink-0`}>{icon}</span>
-        <div className="min-w-0 flex-1">
-          <p className={`text-[9px] font-black uppercase tracking-wider ${titleClass}`}>{titulo}</p>
-          <div className="flex items-center gap-3 mt-0.5">
-            <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
-              <Thermometer size={12} className="text-blue-500" /> {temp ? `${temp}°C` : '—'}
-            </span>
-            <span className="flex items-center gap-1 text-xs font-bold">
-              <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span>
-              <span className={valorClass(dentroDoIntervalo(analise?.ph, PH_RANGE))}>{analise?.ph || '—'}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-1.5 mt-2.5">
-        <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
-          <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">Cl. Livre</p>
-          <p className={`text-[11px] font-black leading-none ${valorClass(dentroDoIntervalo(analise?.clLivre, CL_LIVRE_RANGE))}`}>{analise?.clLivre || '—'}</p>
-        </div>
-        <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
-          <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">Cl. Total</p>
-          <p className={`text-[11px] font-black leading-none ${valorClass(dentroDoIntervalo(analise?.clTotal, CL_TOTAL_RANGE))}`}>{analise?.clTotal || '—'}</p>
-        </div>
-        <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
-          <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">CYA</p>
-          <p className="text-[11px] font-black text-[#004D71] leading-none">{analise?.acidoCianurico || '—'}</p>
-        </div>
-      </div>
-      <div className="mt-2">
-        <ParametrosBadge estado={avaliarParametros(analise?.ph, analise?.clLivre, analise?.clTotal)} />
+    <div className={`${wrapClass} rounded-xl pl-2.5 pr-2.5 py-2 flex items-center gap-1.5 sm:gap-3`}>
+      <span className={`${iconClass} shrink-0`}>{icon}</span>
+      <p className={`text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-tight leading-tight shrink-0 w-12 sm:w-28 ${titleClass}`}>{titulo}</p>
+
+      <span className="flex items-center gap-0.5 text-[10px] sm:text-[11px] font-black text-[#004D71] shrink-0">
+        <Thermometer size={10} className="text-blue-500" /> {temp ? `${temp}°` : '—'}
+      </span>
+      <span className="flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold shrink-0">
+        <span className="text-[6px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span>
+        <span className={valorClass(dentroDoIntervalo(analise?.ph, PH_RANGE))}>{analise?.ph || '—'}</span>
+      </span>
+      <span className="flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold shrink-0">
+        <span className="text-[6px] font-black text-slate-400 uppercase">CL</span>
+        <span className={valorClass(dentroDoIntervalo(analise?.clLivre, CL_LIVRE_RANGE))}>{analise?.clLivre || '—'}</span>
+      </span>
+      <span className="hidden sm:flex items-center gap-0.5 text-[11px] font-bold shrink-0">
+        <span className="text-[6px] font-black text-slate-400 uppercase">CT</span>
+        <span className={valorClass(dentroDoIntervalo(analise?.clTotal, CL_TOTAL_RANGE))}>{analise?.clTotal || '—'}</span>
+      </span>
+      <span className="hidden sm:flex items-center gap-0.5 text-[11px] font-bold shrink-0">
+        <span className="text-[6px] font-black text-slate-400 uppercase">CYA</span>
+        <span className="text-[#004D71]">{analise?.acidoCianurico || '—'}</span>
+      </span>
+
+      <div className="shrink-0 ml-auto">
+        <ParametrosBadge estado={estado} />
       </div>
     </div>
   );
@@ -608,10 +608,10 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
     <div className="space-y-6 animate-in fade-in pb-24 px-2 text-left">
 
       {/* Leituras atuais — Coberta / Exterior Adultos / Exterior Crianças */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="flex flex-col gap-2">
         <LeituraCard
-          titulo="Piscina Coberta"
-          icon={<Waves size={20} />}
+          titulo="Coberta"
+          icon={<Waves size={18} />}
           wrapClass="bg-blue-50 border border-blue-100"
           iconClass="text-[#004D71]"
           titleClass="text-[#004D71]"
@@ -619,8 +619,8 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
           analise={latestCoberta}
         />
         <LeituraCard
-          titulo="Piscina Exterior · Adultos"
-          icon={<Sun size={20} />}
+          titulo="Ext. Adultos"
+          icon={<Sun size={18} />}
           wrapClass="bg-amber-50 border border-amber-100"
           iconClass="text-[#F7B500]"
           titleClass="text-amber-800"
@@ -628,8 +628,8 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
           analise={latestDescobertaAdulto}
         />
         <LeituraCard
-          titulo="Piscina Exterior · Crianças"
-          icon={<Sun size={20} />}
+          titulo="Ext. Crianças"
+          icon={<Sun size={18} />}
           wrapClass="bg-cyan-50 border border-cyan-100"
           iconClass="text-cyan-500"
           titleClass="text-cyan-800"
