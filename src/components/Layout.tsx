@@ -3,7 +3,7 @@ import {
   Home, Users, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
   ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
-  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, Apple, QrCode, RefreshCw, Megaphone, Clock, MoreHorizontal,
+  Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, QrCode, RefreshCw, Megaphone, Clock, MoreHorizontal,
   Download, Share, X as XIcon, QrCode as QrCodeIcon
 } from 'lucide-react';
 import { UserRole, UserProfile } from '../types';
@@ -460,7 +460,6 @@ const MENU_ITEMS = () => [
   { id: 'eventos',   icon: <Trophy />,        label: 'Eventos',    mobileLabel: 'PROVAS',  roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
   { id: 'alunos',    icon: <Waves />,          label: 'Portal',             mobileLabel: 'PORTAL',     roles: ['professor', 'admin'] },
   { id: 'planos',    icon: <BookOpen />,      label: 'Planos',     mobileLabel: 'PLANOS', roles: ['professor', 'admin'] },
-  { id: 'nutricao',  icon: <Apple />,         label: 'Nutrição',   mobileLabel: 'NUTRIÇÃO', roles: ['admin', 'professor', 'staff', 'chefia'] },
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },

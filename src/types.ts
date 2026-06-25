@@ -118,17 +118,6 @@ export interface Exercicio {
   createdBy?: string;
 }
 
-export interface Refeicao {
-  id: string;
-  userId: string;
-  timestamp: any;
-  nome: string;
-  alimentos: string;
-  feedback?: string;
-  feedbackBy?: string;
-  feedbackAt?: any;
-}
-
 export interface TreinoPlano {
   id: string;
   userId: string;

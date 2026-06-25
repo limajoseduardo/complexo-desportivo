@@ -28,7 +28,6 @@ const AccessLogsModule = React.lazy(() => import('./components/AccessLogs').then
 const AgendaModule = React.lazy(() => import('./components/Agenda').then(m => ({ default: m.AgendaModule })));
 const KioskMode = React.lazy(() => import('./components/KioskMode').then(m => ({ default: m.KioskMode })));
 const SwimmingTeacherPortal = React.lazy(() => import('./components/SwimmingModule').then(m => ({ default: m.SwimmingTeacherPortal })));
-const DietModule = React.lazy(() => import('./components/DietModule').then(m => ({ default: m.DietModule })));
 const EventsModule = React.lazy(() => import('./components/Events').then(m => ({ default: m.EventsModule })));
 const UtenteQRCard = React.lazy(() => import('./components/UtenteQRCard').then(m => ({ default: m.UtenteQRCard })));
 import { seedUtentesTestData } from './lib/seedUtentes';
@@ -72,10 +71,10 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'sincronizar', 'perfil'],
-  chefia: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
-  staff: ['inicio', 'utentes', 'acessos', 'nutricao', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
-  professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'nutricao', 'eventos', 'agenda', 'perfil'],
+  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'sincronizar', 'perfil'],
+  chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
+  staff: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
+  professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'eventos', 'agenda', 'perfil'],
   utente: ['inicio', 'eventos', 'agenda', 'perfil'],
 };
 
@@ -987,7 +986,6 @@ export default function App() {
                       )
                     )}
                     {activeTab === 'planos' && ['professor', 'admin'].includes(user.role) && <TrainerTrainingModule user={user} />}
-                    {activeTab === 'nutricao' && <DietModule user={user} utentes={utentes} />}
                     {activeTab === 'mapas' && <MapsManager user={user} logs={logs} tempLogs={tempLogs} sondasLogs={sondasLogs} equipLogs={equipLogs} tratamentosLogs={tratamentosLogs} eletricidadeLogs={eletricidadeLogs} />}
                     {activeTab === 'qr' && user.role === 'utente' && (
                       <UtenteQRCard
