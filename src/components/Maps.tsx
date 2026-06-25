@@ -277,6 +277,47 @@ function ParametrosBadge({ estado }: { estado: 'bom' | 'mau' | 'sem-dados' }) {
   return <span className="text-[8px] font-black text-red-700 uppercase bg-red-100 px-1.5 py-0.5 rounded-full animate-pulse">Fora dos parâmetros</span>;
 }
 
+function LeituraCard({ titulo, icon, wrapClass, iconClass, titleClass, temp, analise }: {
+  titulo: string; icon: React.ReactNode; wrapClass: string; iconClass: string; titleClass: string;
+  temp?: string | number; analise?: { ph?: string; clLivre?: string; clTotal?: string; acidoCianurico?: string };
+}) {
+  return (
+    <div className={`${wrapClass} rounded-2xl px-4 py-3`}>
+      <div className="flex items-center gap-3">
+        <span className={`${iconClass} shrink-0`}>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[9px] font-black uppercase tracking-wider ${titleClass}`}>{titulo}</p>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
+              <Thermometer size={12} className="text-blue-500" /> {temp ? `${temp}°C` : '—'}
+            </span>
+            <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
+              <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {analise?.ph || '—'}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+        <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
+          <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">Cl. Livre</p>
+          <p className="text-[11px] font-black text-[#004D71] leading-none">{analise?.clLivre || '—'}</p>
+        </div>
+        <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
+          <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">Cl. Total</p>
+          <p className="text-[11px] font-black text-[#004D71] leading-none">{analise?.clTotal || '—'}</p>
+        </div>
+        <div className="bg-white/60 rounded-lg px-1.5 py-1 text-center">
+          <p className="text-[6px] font-black text-slate-400 uppercase leading-none mb-0.5">CYA</p>
+          <p className="text-[11px] font-black text-[#004D71] leading-none">{analise?.acidoCianurico || '—'}</p>
+        </div>
+      </div>
+      <div className="mt-2">
+        <ParametrosBadge estado={avaliarParametros(analise?.ph, analise?.clLivre)} />
+      </div>
+    </div>
+  );
+}
+
 export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs = [], tratamentosLogs = [], eletricidadeLogs = [] }: {
   user: UserProfile, logs: any[], tempLogs: any[], sondasLogs?: any[], equipLogs?: any[], tratamentosLogs?: any[], eletricidadeLogs?: any[]
 }) {
@@ -556,59 +597,33 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
 
       {/* Leituras atuais — Coberta / Exterior Adultos / Exterior Crianças */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
-          <Waves size={20} className="text-[#004D71] shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[9px] font-black text-[#004D71] uppercase tracking-wider">Piscina Coberta</p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
-                <Thermometer size={12} className="text-blue-500" /> {latestTempInterior?.aguaPiscinaTemp ? `${latestTempInterior.aguaPiscinaTemp}°C` : '—'}
-              </span>
-              <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestCoberta?.ph || '—'}
-              </span>
-            </div>
-            <div className="mt-1.5">
-              <ParametrosBadge estado={avaliarParametros(latestCoberta?.ph, latestCoberta?.clLivre)} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
-          <Sun size={20} className="text-[#F7B500] shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[9px] font-black text-amber-800 uppercase tracking-wider">Piscina Exterior · Adultos</p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
-                <Thermometer size={12} className="text-blue-500" /> {latestTempExteriorAdulto?.temp ? `${latestTempExteriorAdulto.temp}°C` : '—'}
-              </span>
-              <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescobertaAdulto?.ph || '—'}
-              </span>
-            </div>
-            <div className="mt-1.5">
-              <ParametrosBadge estado={avaliarParametros(latestDescobertaAdulto?.ph, latestDescobertaAdulto?.clLivre)} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 bg-cyan-50 border border-cyan-100 rounded-2xl px-4 py-3">
-          <Sun size={20} className="text-cyan-500 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[9px] font-black text-cyan-800 uppercase tracking-wider">Piscina Exterior · Crianças</p>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="flex items-center gap-1 text-xs font-black text-[#004D71]">
-                <Thermometer size={12} className="text-blue-500" /> {latestTempExteriorInfantil?.temp ? `${latestTempExteriorInfantil.temp}°C` : '—'}
-              </span>
-              <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                <span className="text-[7px] font-black text-orange-600 bg-orange-50 px-1 rounded border border-orange-100 leading-none py-0.5">pH</span> {latestDescobertaInfantil?.ph || '—'}
-              </span>
-            </div>
-            <div className="mt-1.5">
-              <ParametrosBadge estado={avaliarParametros(latestDescobertaInfantil?.ph, latestDescobertaInfantil?.clLivre)} />
-            </div>
-          </div>
-        </div>
+        <LeituraCard
+          titulo="Piscina Coberta"
+          icon={<Waves size={20} />}
+          wrapClass="bg-blue-50 border border-blue-100"
+          iconClass="text-[#004D71]"
+          titleClass="text-[#004D71]"
+          temp={latestTempInterior?.aguaPiscinaTemp}
+          analise={latestCoberta}
+        />
+        <LeituraCard
+          titulo="Piscina Exterior · Adultos"
+          icon={<Sun size={20} />}
+          wrapClass="bg-amber-50 border border-amber-100"
+          iconClass="text-[#F7B500]"
+          titleClass="text-amber-800"
+          temp={latestTempExteriorAdulto?.temp}
+          analise={latestDescobertaAdulto}
+        />
+        <LeituraCard
+          titulo="Piscina Exterior · Crianças"
+          icon={<Sun size={20} />}
+          wrapClass="bg-cyan-50 border border-cyan-100"
+          iconClass="text-cyan-500"
+          titleClass="text-cyan-800"
+          temp={latestTempExteriorInfantil?.temp}
+          analise={latestDescobertaInfantil}
+        />
       </div>
 
       {/* PDF modal */}
