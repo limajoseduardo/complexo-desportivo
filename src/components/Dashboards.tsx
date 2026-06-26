@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom';
 import {
   Dumbbell, Waves, Sun, Flame, Users2,
   Droplets, ChevronRight, X, ArrowLeft,
-  Activity, Plus, Check, Star, Shield, Download, FileText, LogOut
+  Activity, Plus, Check, Star, Shield, Download, FileText, LogOut,
+  Calendar, ClipboardList
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -299,14 +300,14 @@ const MODALITIES = [
   { id: 'sauna',    label: 'Sauna',                 icon: <Flame size={18}/>,    dest: 'Sauna'                },
 ];
 
-export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onLogout }: {
-  user: UserProfile;
+// Card de afluência mensal do complexo (total de entradas por modalidade, com
+// detalhe e PDF) — partilhado entre o Início de staff/chefia/admin e o de
+// professores, para todos terem a mesma visão geral da casa.
+export const MonthlyAffluenceCard = React.memo(({ utentes = [], onUserClick }: {
   utentes?: UserProfile[];
   onUserClick: (u: UserProfile) => void;
-  onLogout?: () => void;
 }) => {
   const [selectedMod, setSelectedMod] = useState<{ id: string; label: string; icon: React.ReactNode; dest: string } | null>(null);
-  const [leaderboard, setLeaderboard] = useState<{user: UserProfile, count: number}[]>([]);
   const [modalData, setModalData] = useState<{ totalMonth: number; weeklyData: { week: string; count: number }[]; top5: { user: UserProfile; count: number }[] } | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [monthlyStats, setMonthlyStats] = useState<{
@@ -317,41 +318,6 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   } | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const totalInside = utentes.filter(u => u.isInside).length;
-
-  useEffect(() => {
-    if (utentes.length === 0 || leaderboard.length > 0) return;
-    const fetchTop = async () => {
-      try {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const q = query(
-          collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
-          where('date', '>=', thirtyDaysAgo.toISOString().split('T')[0])
-        );
-        const snap = await getDocs(q);
-        const counts: Record<string, number> = {};
-        snap.forEach(d => {
-          const userId = d.data().userId;
-          if (userId) counts[userId] = (counts[userId] || 0) + 1;
-        });
-        
-        const top = Object.entries(counts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 3)
-          .map(([id, count]) => {
-            const u = utentes.find(u => u.id === id);
-            return u ? { user: u, count } : null;
-          })
-          .filter(Boolean) as {user: UserProfile, count: number}[];
-          
-        setLeaderboard(top);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchTop();
-  }, [utentes.length]);
 
   // Real-time monthly totals — auto-resets when month changes
   useEffect(() => {
@@ -554,8 +520,7 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
   }, [selectedMod?.id]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
-
+    <>
       <div className="bg-[#004D71] rounded-[2.5rem] overflow-hidden shadow-2xl">
 
         {/* ── Cabeçalho ── */}
@@ -736,60 +701,103 @@ export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onL
           </div>
         );
       })()}
+    </>
+  );
+});
+
+export const StaffDashboard = React.memo(({ user, utentes = [], onUserClick, onLogout }: {
+  user: UserProfile;
+  utentes?: UserProfile[];
+  onUserClick: (u: UserProfile) => void;
+  onLogout?: () => void;
+}) => {
+  const [leaderboard, setLeaderboard] = useState<{user: UserProfile, count: number}[]>([]);
+
+  useEffect(() => {
+    if (utentes.length === 0 || leaderboard.length > 0) return;
+    const fetchTop = async () => {
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const q = query(
+          collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
+          where('date', '>=', thirtyDaysAgo.toISOString().split('T')[0])
+        );
+        const snap = await getDocs(q);
+        const counts: Record<string, number> = {};
+        snap.forEach(d => {
+          const userId = d.data().userId;
+          if (userId) counts[userId] = (counts[userId] || 0) + 1;
+        });
+
+        const top = Object.entries(counts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([id, count]) => {
+            const u = utentes.find(u => u.id === id);
+            return u ? { user: u, count } : null;
+          })
+          .filter(Boolean) as {user: UserProfile, count: number}[];
+
+        setLeaderboard(top);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchTop();
+  }, [utentes.length]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 text-left px-1 mb-8 pt-2">
+      <MonthlyAffluenceCard utentes={utentes} onUserClick={onUserClick} />
     </div>
   );
 });
 
-export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick, logs, tempLogs = [] }: {
+export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick, setActiveTab }: {
   user: UserProfile;
   utentes?: UserProfile[];
   onUserClick: (u: UserProfile) => void;
-  logs: OperationalLog[];
-  tempLogs?: any[];
+  setActiveTab?: (tab: string) => void;
 }) => {
-  const latestCoberta = logs.find(l => l.tipo === 'coberta') || {} as OperationalLog;
-  const latestDescoberta = logs.find(l => l.tipo === 'descoberta') || {} as OperationalLog;
-  const latestTempInterior = tempLogs.find(l => l.scope === 'interior') || ({} as any);
-  const latestTempExteriorAdulto = tempLogs.find(l => l.scope === 'exterior' && (l.zona || 'adulto') === 'adulto') || ({} as any);
-
   const todayDow = new Date().getDay() || 7;
   const todayStr = new Date().toISOString().split('T')[0];
   const nowMin = (() => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
 
-  const [todayAulas, setTodayAulas] = useState<Aula[]>([]);
+  const [weekAulas, setWeekAulas] = useState<Aula[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<Record<string, number>>({});
-  const [selected, setSelected] = useState<{ label: string; id: string } | null>(null);
+  const [afluencia, setAfluencia] = useState<{ aulas: number; mediaUtentes: number }>({ aulas: 0, mediaUtentes: 0 });
 
-  const zones = React.useMemo(() => [
-    { id: 'gym',      label: 'Ginásio',          icon: <Dumbbell size={14}/> },
-    { id: 'pool_in',  label: 'Piscina Coberta',   icon: <Waves size={14}/>   },
-    { id: 'pool_out', label: 'Piscina Exterior',  icon: <Sun size={14}/>     },
-    { id: 'sauna',    label: 'Sauna',             icon: <Flame size={14}/>   },
-    { id: 'fit',      label: 'Aulas Grupo',        icon: <Users2 size={14}/> },
-  ], []);
-
-  const zonesUsers = React.useMemo(() =>
-    zones.map(z => ({ ...z, count: utentes.filter(u => isUserInZone(u, z.id)).length }))
-  , [utentes, zones]);
-
-  // Today's classes for this professor
+  // Todas as aulas do professor, qualquer dia da semana — alimenta "Hoje" e "Esta Semana".
   useEffect(() => {
     const profNorm = normStr(user.n || user.nome || '');
-    const q = query(collection(db, `artifacts/${APP_ID}/public/data/agenda`), where('diaSemana', '==', todayDow));
+    const q = query(collection(db, `artifacts/${APP_ID}/public/data/agenda`));
     return onSnapshot(q, snap => {
       const aulas = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Aula))
         .filter(a => {
           if (a.cancelada) return false;
-          const ap = normStr(a.professor || '');
-          const ap2 = normStr(a.professor2 || '');
+          // Comparar por palavra inteira, não por substring — "Ana" não deve
+          // corresponder a "Mariana" só porque está contida nela.
+          const apWords = normStr(a.professor || '').split(' ');
+          const ap2Words = normStr(a.professor2 || '').split(' ');
           const parts = profNorm.split(' ').filter(p => p.length > 2);
-          return parts.some(p => ap.includes(p) || ap2.includes(p));
+          return parts.some(p => apWords.includes(p) || ap2Words.includes(p));
         })
         .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
-      setTodayAulas(aulas);
+      setWeekAulas(aulas);
     }, () => {});
-  }, [user.id, todayDow]);
+  }, [user.id]);
+
+  const todayAulas = React.useMemo(() => weekAulas.filter(a => a.diaSemana === todayDow), [weekAulas, todayDow]);
+
+  // Próximas aulas desta semana (excluindo hoje), por ordem cronológica.
+  const restWeekAulas = React.useMemo(() => {
+    const order: number[] = [];
+    for (let i = 1; i <= 6; i++) order.push(((todayDow - 1 + i) % 7) + 1);
+    return order.flatMap(dow => weekAulas.filter(a => a.diaSemana === dow));
+  }, [weekAulas, todayDow]);
 
   // Today's attendance per modality from access logs
   useEffect(() => {
@@ -806,6 +814,28 @@ export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick,
     }).catch(() => {});
   }, [todayStr]);
 
+  // A minha afluência este mês — aulas dadas e média de utentes por aula
+  // (mesma lógica da Estatística de Professores em Acessos, aplicada só a este professor).
+  useEffect(() => {
+    const monthStart = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`;
+    const profNorm = normStr(user.n || user.nome || '');
+    const q = query(collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`), where('date', '>=', monthStart));
+    return onSnapshot(q, snap => {
+      const bySession: Record<string, number> = {};
+      snap.docs.forEach(d => {
+        const l = d.data() as any;
+        if (!l.professorNome || !l.turmaId) return;
+        if (normStr(l.professorNome) !== profNorm) return;
+        const key = `${l.turmaId}__${l.date}`;
+        bySession[key] = (bySession[key] || 0) + 1;
+      });
+      const sessions = Object.values(bySession);
+      const aulas = sessions.length;
+      const mediaUtentes = aulas > 0 ? sessions.reduce((a, b) => a + b, 0) / aulas : 0;
+      setAfluencia({ aulas, mediaUtentes });
+    }, () => {});
+  }, [user.id]);
+
   const getAulaStatus = (aula: Aula) => {
     const s = timeToMin(aula.horaInicio);
     const e = timeToMin(aula.horaFim);
@@ -814,11 +844,6 @@ export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick,
     if (nowMin < s) return 'futura';
     return 'passada';
   };
-
-  const selectedUtentes = React.useMemo(() => {
-    if (!selected) return [];
-    return utentes.filter(u => isUserInZone(u, selected.id));
-  }, [utentes, selected]);
 
   const dayNames = ['', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -894,89 +919,65 @@ export const ProfessorDashboard = React.memo(({ user, utentes = [], onUserClick,
         </div>
       </div>
 
-      {/* ── ZONE OCCUPANCY ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {zonesUsers.map(m => (
-          <button key={m.id} onClick={() => setSelected({ label: m.label, id: m.id })}
-            className="bg-white rounded-3xl p-5 border-2 border-[#004D71]/5 shadow-sm relative text-left active:scale-95 transition-all outline-none">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2.5 bg-[#004D71]/5 text-[#004D71] rounded-xl">{m.icon}</div>
-              <div className={`w-2 h-2 rounded-full ${m.count > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-200'}`}/>
-            </div>
-            <h4 className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-1 line-clamp-1">{m.label}</h4>
-            <p className="text-xl font-black text-[#004D71]">{m.count} <span className="text-[10px] opacity-40 uppercase">Presentes</span></p>
-          </button>
-        ))}
-      </div>
-
-      {/* ── POOL MONITORING (read-only) ── */}
-      <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-[#004D71]/5 p-6">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-          <Droplets size={14} className="text-[#F7B500]"/> Monitorização Piscinas
-        </h3>
-        <div className="space-y-6">
-          {[
-            { label: 'Piscina Coberta', color: 'bg-blue-500', data: latestCoberta, temp: latestTempInterior.aguaPiscinaTemp },
-            { label: 'Piscina Exterior', color: 'bg-amber-500', data: latestDescoberta, temp: latestTempExteriorAdulto.temp },
-          ].map(({ label, color, data, temp }) => (
-            <div key={label} className="space-y-2">
-              <div className="flex items-center gap-2 px-1">
-                <div className={`w-1.5 h-1.5 rounded-full ${color}`}/>
-                <p className="text-[9px] font-black text-[#004D71] uppercase tracking-widest">{label}</p>
-                {data.hora && <span className="text-[8px] font-bold text-slate-400 uppercase ml-auto">{data.hora}</span>}
-              </div>
-              <div className="grid grid-cols-3 gap-2 font-mono text-center">
-                {[
-                  { key: 'Água', val: temp ? `${temp}ºC` : '---', cls: 'text-[#004D71]' },
-                  { key: 'pH',   val: data.ph || '---',      cls: 'text-orange-600' },
-                  { key: 'Cloro', val: data.clLivre || '---', cls: 'text-blue-600'   },
-                ].map(({ key, val, cls }) => (
-                  <div key={key} className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col items-center">
-                    <span className="text-[7px] font-black text-slate-400 uppercase mb-0.5">{key}</span>
-                    <span className={`text-[12px] font-black ${cls}`}>{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── ZONE USERS MODAL ── */}
-      {selected && (
-        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10">
-            <div className="flex justify-between items-center mb-6 border-b pb-4 border-slate-100">
-              <div>
-                <h3 className="text-xl font-black text-[#004D71] uppercase">{selected.label}</h3>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Utentes Presentes Agora</p>
-              </div>
-              <button onClick={() => setSelected(null)} className="p-3 bg-slate-100 rounded-2xl active:scale-90 text-slate-400"><X size={20}/></button>
-            </div>
-            <div className="space-y-3 max-h-[50dvh] overflow-y-auto pr-2 hide-scrollbar">
-              {selectedUtentes.map(u => (
-                <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-4">
-                    <AvatarImage src={u.img} alt={u.n || u.nome} className="w-12 h-12 rounded-xl border-2 border-green-400 shadow-sm"/>
-                    <div>
-                      <p className="font-black text-[#004D71] text-sm uppercase">{u.n || u.nome}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{u.location || selected.label}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => { onUserClick(u); setSelected(null); }} className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 text-[#F7B500]">
-                    <ChevronRight size={16}/>
-                  </button>
+      {/* ── ESTA SEMANA + A MINHA AFLUÊNCIA ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="bg-white rounded-[2rem] shadow-sm border-2 border-[#004D71]/5 p-5">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3">
+            <Calendar size={14} className="text-[#F7B500]"/> Esta Semana
+          </h3>
+          {restWeekAulas.length === 0 ? (
+            <p className="text-[10px] font-black text-slate-300 uppercase text-center py-6">Sem mais aulas agendadas esta semana</p>
+          ) : (
+            <div className="space-y-2">
+              {restWeekAulas.slice(0, 4).map(aula => (
+                <div key={aula.id} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+                  <span className="text-[9px] font-black text-[#004D71] uppercase w-20 shrink-0">{dayNames[aula.diaSemana]?.slice(0, 3)} {aula.horaInicio}</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase truncate flex-1">{aula.modalidade}</span>
                 </div>
               ))}
-              {selectedUtentes.length === 0 && (
-                <div className="py-20 text-center text-slate-300">
-                  <PicotoIcon className="mx-auto mb-4 opacity-10" size={60}/>
-                  <p className="uppercase font-black text-[10px] tracking-widest">Vazio de momento</p>
-                </div>
+              {restWeekAulas.length > 4 && (
+                <p className="text-[8px] font-bold text-slate-300 uppercase text-center pt-1">+{restWeekAulas.length - 4} aulas</p>
               )}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-[2rem] shadow-sm border-2 border-[#004D71]/5 p-5">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3">
+            <Activity size={14} className="text-[#F7B500]"/> A Minha Afluência (mês)
+          </h3>
+          <div className="flex items-center gap-4 h-[calc(100%-1.75rem)]">
+            <div className="text-center leading-none flex-1">
+              <p className="text-2xl font-black text-[#004D71]">{afluencia.aulas}</p>
+              <p className="text-[7px] font-bold text-slate-400 uppercase mt-1">Aulas dadas</p>
+            </div>
+            <div className="w-px h-10 bg-slate-100 shrink-0"/>
+            <div className="text-center leading-none flex-1">
+              <p className="text-2xl font-black text-[#004D71]">{afluencia.mediaUtentes.toFixed(1)}</p>
+              <p className="text-[7px] font-bold text-slate-400 uppercase mt-1">Média/aula</p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── AFLUÊNCIA DO COMPLEXO (mesmo card do staff) ── */}
+      <MonthlyAffluenceCard utentes={utentes} onUserClick={onUserClick} />
+
+      {/* ── ATALHO ACESSOS ── */}
+      {setActiveTab && (
+        <button
+          onClick={() => setActiveTab('acessos')}
+          className="w-full flex items-center justify-between gap-3 bg-[#004D71] rounded-[2rem] px-6 py-5 shadow-sm active:scale-[0.99] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-white/10 rounded-xl text-[#F7B500]"><ClipboardList size={18}/></div>
+            <div className="text-left">
+              <p className="font-black text-white text-sm uppercase leading-tight">Acessos</p>
+              <p className="text-[8px] font-bold text-white/40 uppercase mt-0.5">Registar entradas/saídas, cobrir a receção</p>
+            </div>
+          </div>
+          <ChevronRight size={18} className="text-[#F7B500] shrink-0"/>
+        </button>
       )}
     </div>
   );

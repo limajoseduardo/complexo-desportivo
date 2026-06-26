@@ -724,11 +724,11 @@ function TemplateEditor({ template, onBack }: { template: WorkoutTemplate, onBac
                                        <span className="w-5 text-[9px] font-black text-slate-300 text-center">#{setIdx + 1}</span>
                                        <div className="flex-1 flex gap-2">
                                           <div className="flex-1 flex items-center bg-slate-50 rounded-lg px-3">
-                                             <input type="number" value={set.reps || 0} onChange={e => updateSet(sIdx, eIdx, setIdx, 'reps', parseInt(e.target.value))} className="w-full bg-transparent text-center font-black text-[#004D71] text-xs py-2 outline-none" />
+                                             <input type="number" value={set.reps || 0} onChange={e => updateSet(sIdx, eIdx, setIdx, 'reps', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center font-black text-[#004D71] text-xs py-2 outline-none" />
                                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Reps</span>
                                           </div>
                                           <div className="flex-1 flex items-center bg-slate-50 rounded-lg px-3">
-                                             <input type="number" value={set.weight || 0} onChange={e => updateSet(sIdx, eIdx, setIdx, 'weight', parseInt(e.target.value))} className="w-full bg-transparent text-center font-black text-[#004D71] text-xs py-2 outline-none" />
+                                             <input type="number" value={set.weight || 0} onChange={e => updateSet(sIdx, eIdx, setIdx, 'weight', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center font-black text-[#004D71] text-xs py-2 outline-none" />
                                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kg</span>
                                           </div>
                                        </div>

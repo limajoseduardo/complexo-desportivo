@@ -471,7 +471,7 @@ export function SwimmingTeacherPortal({ user, utentes }: { user: UserProfile; ut
 
   // Real-time synchronization
   useEffect(() => {
-    const professorIds = Array.from(new Set([user.id, 'eduardo_oliveira']));
+    const professorIds = [user.id];
 
     // 1. Turmas
     const qClasses = query(collection(db, classesPath), where('professorId', 'in', professorIds));

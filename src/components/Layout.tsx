@@ -379,14 +379,14 @@ const MENU_ITEMS = () => [
   { id: 'qr',        icon: <QrCode />,        label: 'QR Code',    mobileLabel: 'QR', roles: [] },
   { id: 'mapas',     icon: <ClipboardList />, label: 'Mapas',      mobileLabel: 'MAPAS', roles: ['admin', 'staff', 'chefia'] },
   { id: 'agenda',       icon: <Calendar />,      label: 'Agenda',       mobileLabel: 'AGENDA', roles: ['utente', 'staff', 'admin', 'chefia', 'professor'] },
-  { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff', 'chefia'] },
-  { id: 'horarios',     icon: <Clock />,         label: 'Horários',     mobileLabel: 'HORAS', roles: ['admin', 'staff', 'chefia'] },
+  { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff', 'chefia'], coverageRoles: ['professor'] },
+  { id: 'horarios',     icon: <Clock />,         label: 'Horários',     mobileLabel: 'HORAS', roles: ['admin', 'staff', 'chefia'], coverageRoles: ['professor'] },
   { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
-export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimularRfid, onKioskMode }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, onSimularRfid?: () => void, onKioskMode?: () => void }) => {
-  const menu = MENU_ITEMS().filter(item => item.roles.includes(user.role));
+export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimularRfid, onKioskMode, coberturaAtiva }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, onSimularRfid?: () => void, onKioskMode?: () => void, coberturaAtiva?: boolean }) => {
+  const menu = MENU_ITEMS().filter(item => item.roles.includes(user.role) || (coberturaAtiva && item.coverageRoles?.includes(user.role)));
 
   return (
     <aside className="hidden lg:flex flex-col w-48 bg-[#004D71] p-3 text-white relative shrink-0">
@@ -402,22 +402,25 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimu
       </nav>
 
       <div className="mb-6 space-y-2 border-t border-white/10 pt-6">
-        {(onSimularRfid || onKioskMode) && ['admin', 'chefia', 'staff'].includes(user.role) && (
+        {/* Quiosque Ecrã também fica disponível a professores: em caso de ausência da
+            receção (doença, baixa, greve), são eles que cobrem o registo de entradas. */}
+        {((onKioskMode && ['admin', 'chefia', 'staff', 'professor'].includes(user.role)) ||
+          (onSimularRfid && ['admin', 'chefia', 'staff'].includes(user.role))) && (
           <>
             <p className="text-[9px] font-black uppercase tracking-widest text-white/40 px-3 mb-3">Receção</p>
-            {onKioskMode && (
+            {onKioskMode && ['admin', 'chefia', 'staff', 'professor'].includes(user.role) && (
               <button onClick={onKioskMode} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-sky-200 hover:bg-sky-500/20 hover:text-white uppercase text-[9px] tracking-widest">
                 <Monitor size={14}/> Quiosque Ecrã
               </button>
             )}
-            {onSimularRfid && (
+            {onSimularRfid && ['admin', 'chefia', 'staff'].includes(user.role) && (
               <button onClick={onSimularRfid} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-yellow-200 hover:bg-yellow-500/20 hover:text-white uppercase text-[9px] tracking-widest">
                 <Radio size={14}/> Teste RFID
               </button>
             )}
           </>
         )}
-        
+
       </div>
 
       <button onClick={onLogout} className="mt-auto flex items-center gap-3 px-3 py-3 rounded-2xl font-black text-blue-300 hover:bg-white/5 hover:text-red-400 transition-all uppercase text-[10px] tracking-widest">
@@ -435,12 +438,14 @@ const MOBILE_PRIMARY_BY_ROLE: Record<string, string[]> = {
   admin: ['inicio', 'acessos', 'utentes', 'agenda'],
   chefia: ['inicio', 'acessos', 'utentes', 'agenda'],
   staff: ['inicio', 'acessos', 'utentes', 'agenda'],
-  professor: ['inicio', 'agenda', 'alunos', 'utentes'],
+  // "Acessos" entra nos principais do professor: em caso de ausência da receção
+  // (doença, baixa, greve) é a esse separador que vão para registar entradas.
+  professor: ['inicio', 'acessos', 'agenda', 'alunos'],
 };
 
-export const MobileNav = ({ role, activeTab, setActiveTab, isVisible = true }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, isVisible?: boolean }) => {
+export const MobileNav = ({ role, activeTab, setActiveTab, isVisible = true, coberturaAtiva }: { role: UserRole, activeTab: string, setActiveTab: (t: string) => void, isVisible?: boolean, coberturaAtiva?: boolean }) => {
   const [showMore, setShowMore] = React.useState(false);
-  const allTabs = MENU_ITEMS().filter(tab => tab.roles.includes(role) && tab.id !== 'exercicios');
+  const allTabs = MENU_ITEMS().filter(tab => (tab.roles.includes(role) || (coberturaAtiva && tab.coverageRoles?.includes(role))) && tab.id !== 'exercicios');
 
   const primaryIds = MOBILE_PRIMARY_BY_ROLE[role];
   const needsOverflow = !!primaryIds && allTabs.length > 5;

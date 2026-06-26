@@ -45,9 +45,9 @@ import { onAuthStateChanged, signInAnonymously, signInWithPopup, GoogleAuthProvi
 import { useRfidScanner, playBeep } from './lib/accessListener';
 import { handleCheckIn, handleCheckOut } from './lib/access';
 import {
-  doc, setDoc, onSnapshot, collection, query,
+  doc, setDoc, updateDoc, onSnapshot, collection, query,
   where, limit, orderBy, getDocs, writeBatch,
-  collectionGroup, getDoc
+  collectionGroup, getDoc, serverTimestamp
 } from 'firebase/firestore';
 
 export { APP_ID };
@@ -76,6 +76,15 @@ const TABS_BY_ROLE: Record<string, string[]> = {
   staff: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
   professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'eventos', 'agenda', 'perfil'],
   utente: ['inicio', 'eventos', 'agenda', 'perfil'],
+};
+
+// Quando um professor liga o Modo Cobertura (substitui a receção ausente), ganha
+// acesso de leitura a "Avisos" e "Horários" — só o suficiente para se orientar,
+// sem lhe dar gestão total destes separadores.
+const COVERAGE_EXTRA_TABS = ['avisos', 'horarios'];
+const getAllowedTabs = (role: string, coberturaAtiva: boolean) => {
+  const base = TABS_BY_ROLE[role] || ['inicio'];
+  return role === 'professor' && coberturaAtiva ? [...base, ...COVERAGE_EXTRA_TABS] : base;
 };
 
 export const ProfileViewModuleCustom = React.memo(({ user, setActiveTab, onLogout, setUser, onReportBug, currentRole }: {
@@ -121,8 +130,63 @@ export default function App() {
     } catch (e) { }
     return 'inicio';
   });
+  // Modo Cobertura: professor assume temporariamente tarefas de receção quando
+  // a equipa está ausente (doença, baixa, greve). Um único documento por dia
+  // guarda quem está a cobrir, para staff/chefia verem e para o próprio
+  // professor recuperar o estado ao recarregar a página.
+  const [coberturaInfo, setCoberturaInfo] = useState<{ ativa: boolean; professorId?: string; professorNome?: string; ativadoEm?: any } | null>(null);
+  const coberturaAtiva = !!(coberturaInfo?.ativa && user && coberturaInfo.professorId === user.id);
+
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const ref = doc(db, `artifacts/${APP_ID}/public/data/cobertura_recepcao`, todayStr);
+    return onSnapshot(ref, snap => setCoberturaInfo(snap.exists() ? (snap.data() as any) : null), () => {});
+  }, []);
+
+  const checkComplexOpenNow = async (): Promise<boolean> => {
+    try {
+      const snap = await getDoc(doc(db, `artifacts/${APP_ID}/public/data/config`, 'horarios'));
+      const data = snap.data() as any;
+      if (!data) return true;
+      const temporada = data.temporadaAtiva === 'inverno' ? 'inverno' : 'verao';
+      const now = new Date();
+      const dayKey = now.getDay() === 0 ? '7' : String(now.getDay());
+      const dayConfig = data[temporada]?.[dayKey];
+      if (!dayConfig || dayConfig.fechado) return false;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      return (dayConfig.periodos || []).some((p: any) => {
+        const [oh, om] = (p.abertura || '00:00').split(':').map(Number);
+        const [ch, cm] = (p.fecho || '23:59').split(':').map(Number);
+        return nowMinutes >= oh * 60 + om && nowMinutes <= ch * 60 + cm;
+      });
+    } catch {
+      return true; // falha a ler config não deve bloquear uma cobertura legítima
+    }
+  };
+
+  const toggleCobertura = async (ativar: boolean) => {
+    if (!user) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const ref = doc(db, `artifacts/${APP_ID}/public/data/cobertura_recepcao`, todayStr);
+    if (ativar) {
+      const open = await checkComplexOpenNow();
+      if (!open) {
+        alert('O complexo está fechado neste horário, segundo a configuração em Horários. O Modo Cobertura só faz sentido durante o horário de funcionamento.');
+        return;
+      }
+      await setDoc(ref, {
+        ativa: true,
+        professorId: user.id,
+        professorNome: user.nome || user.n,
+        ativadoEm: serverTimestamp(),
+      });
+    } else {
+      await updateDoc(ref, { ativa: false, desativadoEm: serverTimestamp() });
+    }
+  };
+
   const activeTab = user
-    ? (TABS_BY_ROLE[user.role]?.includes(activeTabState) ? activeTabState : 'inicio')
+    ? (getAllowedTabs(user.role, coberturaAtiva).includes(activeTabState) ? activeTabState : 'inicio')
     : activeTabState;
   const setActiveTab = (tab: string) => { setActiveTabState(tab); localStorage.setItem('cpx_active_tab', tab); };
   const [authError, setAuthError] = useState('');
@@ -907,8 +971,12 @@ export default function App() {
           setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); }}
           onLogout={handleLogout}
           user={user}
+          coberturaAtiva={coberturaAtiva}
           onSimularRfid={() => setShowRfidSimulator(true)}
-          onKioskMode={() => setShowKioskMode(true)}
+          onKioskMode={() => {
+            if (user.role === 'professor' && !window.confirm('Vais entrar no Modo Quiosque da receção. Confirmas que queres continuar?')) return;
+            setShowKioskMode(true);
+          }}
         />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -963,8 +1031,7 @@ export default function App() {
                         user={user}
                         utentes={utentes}
                         onUserClick={setViewingProfile}
-                        logs={logs}
-                        tempLogs={tempLogs}
+                        setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); }}
                       />
                     )}
                     {activeTab === 'inicio' && user.role === 'admin' && (
@@ -995,12 +1062,12 @@ export default function App() {
                       />
                     )}
 
-                    {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} onUserClick={setViewingProfile} />}
+                    {activeTab === 'acessos' && <AccessLogsModule onScan={() => setShowScanner(true)} currentUser={user} utentes={utentes} onUserClick={setViewingProfile} coberturaInfo={coberturaInfo} onToggleCobertura={toggleCobertura} />}
                     {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                     {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                     {activeTab === 'sincronizar' && user.role === 'admin' && <SyncPortalMunicipal utentes={utentes} />}
-                    {activeTab === 'avisos' && ['admin', 'staff', 'chefia'].includes(user.role) && <AvisosModule user={user} utentes={utentes} readOnly={user.role === 'chefia'} />}
-                    {activeTab === 'horarios' && ['admin', 'staff', 'chefia'].includes(user.role) && (user.role === 'chefia' ? <HorariosCard /> : <HorariosManager />)}
+                    {activeTab === 'avisos' && getAllowedTabs(user.role, coberturaAtiva).includes('avisos') && <AvisosModule user={user} utentes={utentes} readOnly={user.role === 'chefia' || (user.role === 'professor' && coberturaAtiva)} />}
+                    {activeTab === 'horarios' && getAllowedTabs(user.role, coberturaAtiva).includes('horarios') && ((user.role === 'chefia' || (user.role === 'professor' && coberturaAtiva)) ? <HorariosCard /> : <HorariosManager />)}
                     {activeTab === 'perfil' && (
                       <ProfileViewModuleCustom
                         user={user}
@@ -1029,6 +1096,7 @@ export default function App() {
             activeTab={activeTab}
             setActiveTab={(t) => { setActiveTab(t); setViewingProfile(null); setIsNavVisible(true); }}
             isVisible={isNavVisible}
+            coberturaAtiva={coberturaAtiva}
           />
 
           {user.role !== 'utente' && (

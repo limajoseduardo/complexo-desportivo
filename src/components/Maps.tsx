@@ -26,22 +26,32 @@ const SECTIONS_EXTERIOR: { id: Section; label: string }[] = [
   { id: 'tratamentos', label: 'Tratamentos' },
 ];
 
+// new Date().toISOString() converte para UTC — perto da meia-noite em horário de
+// verão (UTC+1) isso devolvia a data de ontem. Construímos a data a partir dos
+// componentes locais para corresponder sempre ao dia em que o técnico está.
+const localDateStr = (d: Date = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const emptyAnaliseForm = (user: UserProfile) => ({
-  data: new Date().toISOString().split('T')[0],
+  data: localDateStr(),
   hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   tecnico: user?.nome || user?.n || '',
   ph: '', clLivre: '', clTotal: '', clComb: '', acidoCianurico: '', banhistas: '', obs: ''
 });
 
 const emptyTempInteriorForm = (user: UserProfile) => ({
-  data: new Date().toISOString().split('T')[0],
+  data: localDateStr(),
   hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   tecnico: user?.nome || user?.n || '',
   naveTemp: '', naveHumidade: '', balneariosTemp: '', aguaPiscinaTemp: '', aqsTemp: '', quadroTemp: '', depositoTemp: ''
 });
 
 const emptyTempExteriorForm = (user: UserProfile) => ({
-  data: new Date().toISOString().split('T')[0],
+  data: localDateStr(),
   hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   tecnico: user?.nome || user?.n || '',
   temp: ''
@@ -76,7 +86,7 @@ function SimpleLogSection({ user, path, records, fields, listFields, canAdd, can
 
   const emptyForm = () => {
     const base: any = {
-      data: new Date().toISOString().split('T')[0],
+      data: localDateStr(),
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     fields.forEach(f => { base[f.key] = ''; });
@@ -238,6 +248,7 @@ const EQUIP_EXTERIOR_LIST: FieldDef[] = [
 const TRATAMENTOS_FIELDS: FieldDef[] = [
   { key: 'g60', label: '60G (gr)' }, { key: 'g90', label: '90G (gr)' },
   { key: 'alg', label: 'ALG (lt)' }, { key: 'floc', label: 'FLOC (lt)' },
+  { key: 'ppm', label: 'Tratamento (ppm)', type: 'number' },
   { key: 'tanqueCompensacao', label: 'Tanque Compensação', type: 'datetime-local' },
   { key: 'preFiltros', label: 'Pré-Filtros', type: 'datetime-local' },
   { key: 'transbordo', label: 'Transbordo', type: 'datetime-local' },
@@ -245,6 +256,7 @@ const TRATAMENTOS_FIELDS: FieldDef[] = [
 ];
 const TRATAMENTOS_LIST: FieldDef[] = [
   { key: 'g60', label: '60G' }, { key: 'g90', label: '90G' }, { key: 'alg', label: 'ALG' }, { key: 'floc', label: 'FLOC' },
+  { key: 'ppm', label: 'PPM' },
 ];
 
 const ELETRICIDADE_FIELDS: FieldDef[] = [
@@ -344,9 +356,9 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfFrom, setPdfFrom] = useState(() => {
     const d = new Date(); d.setDate(1);
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   });
-  const [pdfTo, setPdfTo] = useState(new Date().toISOString().split('T')[0]);
+  const [pdfTo, setPdfTo] = useState(localDateStr());
 
   const activePool: Pool = activeArea === 'exterior' ? 'descoberta' : 'coberta';
   const canAdd  = ['staff', 'admin', 'professor'].includes(user?.role);
@@ -584,10 +596,10 @@ export function MapsManager({ user, logs, tempLogs, sondasLogs = [], equipLogs =
         `${l.vigCloro || '—'}/${l.vigPh || '—'}`, l.uvHorasTot || '—', l.aguaPiscina || '—', l.aguaGeralCais || '—', l.aguaPolidesportivo || '—'];
     }));
 
-    const tratHead = ['Data', 'Hora', 'Técnico', '60G', '90G', 'ALG', 'FLOC', 'Tanque Comp.', 'Pré-Filtros', 'Transbordo', 'Germicida'];
+    const tratHead = ['Data', 'Hora', 'Técnico', '60G', '90G', 'ALG', 'FLOC', 'PPM', 'Tanque Comp.', 'Pré-Filtros', 'Transbordo', 'Germicida'];
     const tratRows = (rows: any[]) => rows.map(l => {
       const { data, hora } = fmtDateTime(l.timestamp, l.data, l.hora);
-      return [data, hora, l.tecnico || '—', l.g60 || '—', l.g90 || '—', l.alg || '—', l.floc || '—',
+      return [data, hora, l.tecnico || '—', l.g60 || '—', l.g90 || '—', l.alg || '—', l.floc || '—', l.ppm || '—',
         l.tanqueCompensacao || '—', l.preFiltros || '—', l.transbordo || '—', l.germicida || '—'];
     });
     addSection('Piscina Interior — Tratamentos', tratHead, tratRows(tratInterior));

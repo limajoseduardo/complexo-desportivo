@@ -41,7 +41,16 @@ const MOD_COLORS: Record<string, string> = {
 };
 const modColor = (m: string) => MOD_COLORS[m] || 'bg-slate-500';
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+// new Date().toISOString() converte para UTC — perto da meia-noite em horário de
+// verão (UTC+1) isso dava a data de amanhã. Construímos a partir dos
+// componentes locais para corresponder sempre ao dia local.
+const localDateStr = (d: Date = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const todayStr = () => localDateStr();
 const todayDow = () => { const d = new Date().getDay(); return d === 0 ? 7 : d; };
 const makeId   = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -230,7 +239,7 @@ export function TurmasModule({ onClose, markerUserId, markerUserName }:
 
                     {/* days pills */}
                     <div className="flex gap-1 mb-4 flex-wrap">
-                      {[1,2,3,4,5,6].map(d => (
+                      {[1,2,3,4,5,6,7].map(d => (
                         <span key={d} className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase ${
                           t.diasSemana?.includes(d)
                             ? `${modColor(t.modalidade)} text-white`
@@ -302,6 +311,7 @@ function CreateTurma({ onBack }: { onBack: () => void }) {
     if (!form.nome.trim()) { setError('O nome é obrigatório'); return; }
     if (form.diasSemana.length === 0) { setError('Seleciona pelo menos um dia'); return; }
     if (!form.horaInicio || !form.horaFim) { setError('Hora início e fim são obrigatórias'); return; }
+    if (form.horaInicio >= form.horaFim) { setError('A hora de início tem de ser antes da hora de fim'); return; }
     setSaving(true);
     try {
       const id = makeId(form.nome) + '_' + Date.now();
@@ -455,7 +465,7 @@ function ProfessorPicker({ turma, turmas, onSelect, onBack }:
     // 2. Calculate attendance stats (last 30 days)
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 30);
-    const limitDateStr = limitDate.toISOString().split('T')[0];
+    const limitDateStr = localDateStr(limitDate);
 
     getDocs(query(collection(db, LOGS_PATH), where('date', '>=', limitDateStr)))
       .then(snap => {
@@ -566,6 +576,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   const [marked, setMarked]       = useState<Set<string>>(new Set());
   const [logIds, setLogIds]       = useState<Record<string, string>>({});
   const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState('');
   const [search, setSearch]       = useState('');
   const [done, setDone]           = useState(false);
   const [showPrint, setShowPrint] = useState(false);
@@ -605,7 +616,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   useEffect(() => {
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 60);
-    const limitDateStr = limitDate.toISOString().split('T')[0];
+    const limitDateStr = localDateStr(limitDate);
 
     getDocs(query(collection(db, LOGS_PATH),
       where('turmaId', '==', turma.id),
@@ -727,6 +738,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
 
   const confirm = async () => {
     setSaving(true);
+    setError('');
     try {
       const batch = writeBatch(db);
       const checkInTime = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
@@ -766,7 +778,10 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
 
       await batch.commit();
       setDone(true);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setError('Não foi possível guardar a presença. Verifica a ligação e tenta novamente.');
+    }
     finally { setSaving(false); }
   };
 
@@ -889,7 +904,10 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
             {[
               { l: 'Total', v: localAlunos.length },
               { l: 'Marcados', v: marked.size },
-              { l: 'Presentes', v: Object.keys(logIds).length },
+              // "Guardadas" (não "Presentes"): reflete o que já está na base de
+              // dados antes desta edição, não a seleção atual em ecrã — só fica
+              // igual a "Marcados" depois de confirmar.
+              { l: 'Guardadas', v: Object.keys(logIds).length },
             ].map(s => (
               <div key={s.l} className="bg-white/15 rounded-xl p-2 text-center">
                 <p className="text-lg font-black">{s.v}</p>
@@ -1063,6 +1081,9 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
 
         {/* confirm */}
         <div className="px-5 pb-6 pt-3 border-t border-slate-100 shrink-0">
+          {error && (
+            <p className="text-[9px] font-black text-red-500 uppercase text-center mb-2">{error}</p>
+          )}
           {(newlyMarked > 0 || newlyUnmarked > 0) && (
             <p className="text-[9px] font-black text-slate-400 uppercase text-center mb-2">
               {newlyMarked > 0 && `+${newlyMarked} a adicionar`}
@@ -1111,6 +1132,7 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
   const [novoNome, setNovoNome] = useState('');
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [assiduidade, setAssiduidade] = useState<Record<string, number>>({});
   const [totalClasses, setTotalClasses] = useState(1);
 
@@ -1118,7 +1140,7 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
     // Carregar logs dos últimos 30 dias para calcular % de assiduidade
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 30);
-    const limitDateStr = limitDate.toISOString().split('T')[0];
+    const limitDateStr = localDateStr(limitDate);
 
     getDocs(query(collection(db, LOGS_PATH),
       where('turmaId', '==', turma.id),
@@ -1147,11 +1169,16 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
 
   const save = async () => {
     setSaving(true);
+    setSaveError(false);
     try {
       await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setSaveError(true);
+      setTimeout(() => setSaveError(false), 3000);
+    }
     finally { setSaving(false); }
   };
 
@@ -1169,9 +1196,9 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
             </div>
             <button onClick={save} disabled={saving}
               className={`px-4 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest active:scale-95 transition-all disabled:opacity-50 ${
-                saved ? 'bg-green-500 text-white' : 'bg-[#F7B500] text-[#004D71]'
+                saveError ? 'bg-red-500 text-white' : saved ? 'bg-green-500 text-white' : 'bg-[#F7B500] text-[#004D71]'
               }`}>
-              {saving ? '...' : saved ? '✓ Guardado' : 'Guardar'}
+              {saving ? '...' : saveError ? '✕ Erro ao guardar' : saved ? '✓ Guardado' : 'Guardar'}
             </button>
           </div>
 

@@ -104,6 +104,9 @@ export interface AccessLog {
   timestamp?: any;
   valorPago?: number;    // Valor cobrado confirmado pelo staff
   isento?: boolean;      // Isento de pagamento (atestado, univ. sénior, etc.)
+  registadoPorNome?: string; // Quem fez o registo manual (staff, ou professor a cobrir a receção)
+  registadoPorRole?: string;
+  motivo?: string; // Motivo do registo manual (ex.: "Receção indisponível")
 }
 
 export interface Exercicio {

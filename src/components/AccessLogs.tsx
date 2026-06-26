@@ -3,7 +3,7 @@ import {
   Users, LogIn, LogOut, Calendar, Search,
   Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
-  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target, Shield
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target, Shield, Printer, Info, ShieldAlert
 } from 'lucide-react';
 import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -39,7 +39,7 @@ export const getBasePrice = (age: number | null, modality: string, isWeekend: bo
   return basePrice;
 };
 
-function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[]; onUserClick?: (u: UserProfile) => void } = {}) {
+function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick, coberturaInfo, onToggleCobertura }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[]; onUserClick?: (u: UserProfile) => void; coberturaInfo?: { ativa: boolean; professorId?: string; professorNome?: string; ativadoEm?: any } | null; onToggleCobertura?: (ativar: boolean) => Promise<void> } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +56,14 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   });
   const [profStatsTo, setProfStatsTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedProfessorDetail, setSelectedProfessorDetail] = useState<string | null>(null);
+  const [selectedNadadorDetail, setSelectedNadadorDetail] = useState<string | null>(null);
+  const [selectedCoberturaDetail, setSelectedCoberturaDetail] = useState<string | null>(null);
+  const [togglingCobertura, setTogglingCobertura] = useState(false);
+  const [showProfOnboarding, setShowProfOnboarding] = useState(() =>
+    currentUser?.role === 'professor' && localStorage.getItem('cpx_prof_onboarding_seen_v1') !== 'true'
+  );
+  const coberturaAtivaForMe = !!(coberturaInfo?.ativa && coberturaInfo.professorId === currentUser?.id);
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -78,6 +86,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [foundUsers, setFoundUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedModality, setSelectedModality] = useState('Piscina Regime Livre');
+  const [selectedMotivo, setSelectedMotivo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [isRegisteringNewUser, setIsRegisteringNewUser] = useState(false);
@@ -103,6 +112,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   const [nadadoresBase, setNadadoresBase] = useState<string[]>([]);
   const [nadadorHoje, setNadadorHoje] = useState<{ manha?: string; tarde?: string }>({});
   const [nadadorLogs, setNadadorLogs] = useState<{ date: string; periodo: 'manha' | 'tarde'; nome: string }[]>([]);
+  const [coberturaLogs, setCoberturaLogs] = useState<any[]>([]);
   const [nadadorDate, setNadadorDate] = useState(todayStr);
   const [nadadorPeriodo, setNadadorPeriodo] = useState<'manha' | 'tarde'>('manha');
   const [nadadorNomeSel, setNadadorNomeSel] = useState('');
@@ -207,7 +217,9 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
               zone: 'Piscina Exterior',
               modalidade: 'Piscina Exterior',
               timestamp: serverTimestamp(),
-              valorPago: vPago
+              valorPago: vPago,
+              registadoPorNome: currentUser?.n || currentUser?.nome || null,
+              registadoPorRole: currentUser?.role || null,
             });
           }
         };
@@ -283,6 +295,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
               zone: modalidade,
               modalidade,
               timestamp: serverTimestamp(),
+              registadoPorNome: currentUser?.n || currentUser?.nome || null,
+              registadoPorRole: currentUser?.role || null,
             });
           }
         } else {
@@ -336,6 +350,15 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     'Sauna',
     'Pavilhão',
     'Padel'
+  ];
+
+  // Motivos pré-definidos para o registo manual — facilita perceber "porquê" mais
+  // tarde, sobretudo quando quem registou foi um professor a cobrir a receção.
+  const motivosRegisto = [
+    'Receção indisponível (doença/baixa/greve)',
+    'Erro ou falha no QR/código',
+    'Pedido do utente',
+    'Outro',
   ];
 
   const normalizeModality = (m: string) => {
@@ -410,6 +433,21 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     const q = query(collection(db, path), where('date', '>=', from), where('date', '<=', to));
     return onSnapshot(q, snap => {
       setNadadorLogs(snap.docs.map(d => d.data() as any));
+    }, (err) => handleFirestoreError(err, OperationType.GET, path));
+  }, [profStatsMode, profStatsFrom, profStatsTo]);
+
+  // Registos manuais com auditoria (registadoPorNome) — mesmo período da Estatística
+  // de Professores. Serve a Estatística de Cobertura: quanto staff/professores
+  // registaram entradas "à mão" (contingência), em vez de check-in por QR.
+  useEffect(() => {
+    const from = profStatsMode === 'mes'
+      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+      : profStatsFrom;
+    const to = profStatsMode === 'mes' ? new Date().toISOString().split('T')[0] : profStatsTo;
+    const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+    const q = query(collection(db, path), where('date', '>=', from), where('date', '<=', to));
+    return onSnapshot(q, snap => {
+      setCoberturaLogs(snap.docs.map(d => d.data() as any).filter(l => l.registadoPorNome));
     }, (err) => handleFirestoreError(err, OperationType.GET, path));
   }, [profStatsMode, profStatsFrom, profStatsTo]);
 
@@ -502,7 +540,10 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
           checkIn: Timestamp.fromDate(checkInDate),
           checkOut: checkOutDate ? Timestamp.fromDate(checkOutDate) : null,
           date: editDate,
-          durationMinutes: durationMinutes || null
+          durationMinutes: durationMinutes || null,
+          registadoPorNome: currentUser?.n || currentUser?.nome || null,
+          registadoPorRole: currentUser?.role || null,
+          motivo: selectedMotivo || null,
         });
 
         // Update UserProfile status if it's today's log
@@ -524,7 +565,10 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
           date: today,
           zone: 'Entrada Manual',
           modalidade: selectedModality || 'Outra',
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
+          registadoPorNome: currentUser?.n || currentUser?.nome || null,
+          registadoPorRole: currentUser?.role || null,
+          motivo: selectedMotivo || null,
         });
 
         const currentEntries = selectedUser.entradas_disponiveis || 0;
@@ -564,6 +608,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     setModalMode('single');
     setAdultEntradas(0);
     setChildEntradas(0);
+    setSelectedMotivo('');
   };
 
   const handleRegisterAndCheckIn = async () => {
@@ -628,7 +673,9 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
         date: today,
         zone: 'Entrada Manual',
         modalidade: selectedModality,
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
+        registadoPorNome: currentUser?.n || currentUser?.nome || null,
+        registadoPorRole: currentUser?.role || null,
       });
 
       alert(`Utente "${nameUpper}" registado e entrada validada com sucesso!`);
@@ -934,6 +981,42 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       .sort((a, b) => b.dadas - a.dadas);
   }, [profSessionLogs]);
 
+  // Detalhe por aula (data/turma/modalidade/hora) para a página de registo de cada professor.
+  const professorSessionDetails = React.useMemo(() => {
+    // Uma aula gera um registo de presença por aluno marcado — agregamos por sessão
+    // (turmaId+data) para também sabermos quantos utentes estiveram em cada aula
+    // (afluência), em vez de descartar os registos extra como antes.
+    type Session = { date: string; turmaNome: string; modalidade: string; checkIn: string; professor: string; utentes: number };
+    const bySession: Record<string, Session> = {};
+
+    profSessionLogs.forEach(l => {
+      const display = (l.professorNome || '').trim();
+      if (!display) return;
+      const sessionKey = `${l.turmaId}__${l.date}`;
+      if (!bySession[sessionKey]) {
+        bySession[sessionKey] = {
+          date: l.date,
+          turmaNome: l.turmaNome || '---',
+          modalidade: l.modalidade || '---',
+          checkIn: typeof l.checkIn === 'string' ? l.checkIn : '',
+          professor: display,
+          utentes: 0,
+        };
+      }
+      bySession[sessionKey].utentes += 1;
+    });
+
+    const byProf: Record<string, { date: string; turmaNome: string; modalidade: string; checkIn: string; utentes: number }[]> = {};
+    Object.values(bySession).forEach(({ professor, ...rest }) => {
+      const key = professor.toUpperCase();
+      if (!byProf[key]) byProf[key] = [];
+      byProf[key].push(rest);
+    });
+
+    Object.values(byProf).forEach(arr => arr.sort((a, b) => b.date.localeCompare(a.date)));
+    return byProf;
+  }, [profSessionLogs]);
+
   const nadadorStats = React.useMemo(() => {
     const byNome: Record<string, Set<string>> = {};
     nadadorLogs.forEach(l => {
@@ -946,6 +1029,60 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       .map(([nome, dias]) => ({ nome, dias: dias.size }))
       .sort((a, b) => b.dias - a.dias);
   }, [nadadorLogs]);
+
+  // Detalhe por dia/período para a página de registo de cada nadador-salvador.
+  const nadadorSessionDetails = React.useMemo(() => {
+    const byNome: Record<string, { date: string; periodo: 'manha' | 'tarde' }[]> = {};
+    nadadorLogs.forEach(l => {
+      const nome = (l.nome || '').trim();
+      if (!nome || !l.date) return;
+      if (!byNome[nome]) byNome[nome] = [];
+      byNome[nome].push({ date: l.date, periodo: l.periodo });
+    });
+    Object.values(byNome).forEach(arr => arr.sort((a, b) => b.date.localeCompare(a.date) || a.periodo.localeCompare(b.periodo)));
+    return byNome;
+  }, [nadadorLogs]);
+
+  // Estatística de Cobertura: quantos registos manuais (contingência) foram feitos
+  // por staff vs. por professores a substituir a receção, no período selecionado.
+  const coberturaStats = React.useMemo(() => {
+    const staffCount = coberturaLogs.filter(l => l.registadoPorRole !== 'professor').length;
+    const profCount = coberturaLogs.filter(l => l.registadoPorRole === 'professor').length;
+
+    const byProf: Record<string, { nome: string; total: number }> = {};
+    coberturaLogs.filter(l => l.registadoPorRole === 'professor').forEach(l => {
+      const nome = (l.registadoPorNome || '').trim();
+      if (!nome) return;
+      const key = nome.toUpperCase();
+      if (!byProf[key]) byProf[key] = { nome, total: 0 };
+      byProf[key].total += 1;
+    });
+
+    return {
+      staffCount,
+      profCount,
+      porProfessor: Object.values(byProf).sort((a, b) => b.total - a.total),
+    };
+  }, [coberturaLogs]);
+
+  const coberturaSessionDetails = React.useMemo(() => {
+    const byProf: Record<string, { date: string; checkIn: string; modalidade: string; userName: string; motivo: string }[]> = {};
+    coberturaLogs.filter(l => l.registadoPorRole === 'professor').forEach(l => {
+      const nome = (l.registadoPorNome || '').trim();
+      if (!nome) return;
+      const key = nome.toUpperCase();
+      if (!byProf[key]) byProf[key] = [];
+      byProf[key].push({
+        date: l.date,
+        checkIn: typeof l.checkIn === 'string' ? l.checkIn : (l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+        modalidade: l.modalidade || '---',
+        userName: l.userName || '---',
+        motivo: l.motivo || '',
+      });
+    });
+    Object.values(byProf).forEach(arr => arr.sort((a, b) => b.date.localeCompare(a.date)));
+    return byProf;
+  }, [coberturaLogs]);
 
   // Antes das 14h conta como período da manhã, depois como tarde.
   const periodoAtual: 'manha' | 'tarde' = currentTime.getHours() < 14 ? 'manha' : 'tarde';
@@ -975,7 +1112,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
     try {
       const path = `artifacts/${APP_ID}/public/data/nadadores_salvadores_registos`;
       const id = `${nadadorDate}__${nadadorPeriodo}`;
-      await setDoc(doc(db, path, id), { date: nadadorDate, periodo: nadadorPeriodo, nome: nadadorNomeSel });
+      await setDoc(doc(db, path, id), {
+        date: nadadorDate,
+        periodo: nadadorPeriodo,
+        nome: nadadorNomeSel,
+        registadoPorNome: currentUser?.n || currentUser?.nome || null,
+        registadoPorRole: currentUser?.role || null,
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'nadadores_salvadores_registos');
     } finally {
@@ -1053,9 +1196,9 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
   }, [monthlyLogs]);
 
   const downloadCSV = () => {
-    let csv = "Data,Utente,Modalidade,Entrada,Saída,Duração\n";
+    let csv = "Data,Utente,Modalidade,Entrada,Saída,Duração,Registado Por,Motivo\n";
     allDateLogs.forEach(l => {
-      csv += `"${l.date}","${l.userName}","${l.modalidade}","${l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn}","${l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro'}","${l.durationMinutes || ''}"\n`;
+      csv += `"${l.date}","${l.userName}","${l.modalidade}","${l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn}","${l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro'}","${l.durationMinutes || ''}","${l.registadoPorNome || ''}","${l.motivo || ''}"\n`;
     });
 
     csv += "\nResumo por Modalidade\nModalidade,Total\n";
@@ -1100,11 +1243,12 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
           l.checkIn instanceof Timestamp ? l.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkIn,
           l.checkOut ? (l.checkOut instanceof Timestamp ? l.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : l.checkOut) : 'Dentro',
           l.durationMinutes ? `${l.durationMinutes} min` : '---',
+          l.registadoPorNome || '---',
         ]);
 
         autoTable(doc, {
           startY: 45,
-          head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração']],
+          head: [['Data', 'Utente', 'Modalidade', 'Entrada', 'Saída', 'Duração', 'Registado Por']],
           body: tableData,
           headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] }, // #004D71 and #F7B500
           alternateRowStyles: { fillColor: [245, 247, 250] },
@@ -1131,6 +1275,123 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
       });
 
       doc.save(`relatorio_acessos_${startDate}_a_${endDate}.pdf`);
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
+    }
+  };
+
+  const periodLabel = profStatsMode === 'mes' ? 'Mês atual' : `${profStatsFrom} a ${profStatsTo}`;
+
+  const MONTH_NAMES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const monthLabel = (ym: string) => {
+    const [y, m] = ym.split('-');
+    return `${MONTH_NAMES_PT[parseInt(m, 10) - 1]} ${y}`;
+  };
+  // Lookup fixo em vez de toLocaleDateString({weekday:'short'}): em alguns motores
+  // de browser o pt-PT "short" devolve o nome completo do dia (ex.: "Domingo"), o
+  // que rebentava o layout compacto da lista.
+  const WEEKDAYS_PT_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const formatDayLabel = (dateStr: string) => {
+    const weekday = WEEKDAYS_PT_SHORT[new Date(`${dateStr}T00:00:00`).getDay()];
+    return `${weekday} ${dateStr.slice(8, 10)}`;
+  };
+  function groupByMonth<T extends { date: string }>(items: T[]) {
+    const groups: { key: string; items: T[] }[] = [];
+    items.forEach(item => {
+      const key = item.date.slice(0, 7);
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.items.push(item);
+      else groups.push({ key, items: [item] });
+    });
+    return groups;
+  }
+
+  const downloadProfessorPDF = (professorName: string) => {
+    try {
+      const sessions = professorSessionDetails[professorName.toUpperCase()] || [];
+      const avgUtentes = sessions.length > 0 ? sessions.reduce((sum, s) => sum + s.utentes, 0) / sessions.length : 0;
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.setTextColor(0, 77, 113);
+      doc.text(`Registo de Aulas - ${professorName}`, 14, 20);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Período: ${periodLabel}`, 14, 28);
+      doc.text(`Total de aulas dadas: ${sessions.length} · Média de utentes por aula: ${avgUtentes.toFixed(1)}`, 14, 34);
+
+      autoTable(doc, {
+        startY: 42,
+        head: [['Data', 'Turma', 'Modalidade', 'Hora', 'Utentes']],
+        body: sessions.map(s => [s.date, s.turmaNome, s.modalidade, s.checkIn || '---', String(s.utentes)]),
+        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        styles: { fontSize: 9, font: 'helvetica' }
+      });
+
+      doc.save(`aulas_${professorName.replace(/\s+/g, '_')}.pdf`);
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
+    }
+  };
+
+  const downloadNadadorPDF = (nadadorName: string) => {
+    try {
+      const dias = nadadorSessionDetails[nadadorName] || [];
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.setTextColor(0, 77, 113);
+      doc.text(`Registo de Serviço - ${nadadorName}`, 14, 20);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Período: ${periodLabel}`, 14, 28);
+      doc.text(`Total de dias trabalhados: ${new Set(dias.map(d => d.date)).size}`, 14, 34);
+
+      autoTable(doc, {
+        startY: 42,
+        head: [['Data', 'Período']],
+        body: dias.map(d => [d.date, d.periodo === 'manha' ? 'Manhã' : 'Tarde']),
+        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        styles: { fontSize: 9, font: 'helvetica' }
+      });
+
+      doc.save(`servico_${nadadorName.replace(/\s+/g, '_')}.pdf`);
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
+    }
+  };
+
+  const downloadCoberturaPDF = (professorName: string) => {
+    try {
+      const registos = coberturaSessionDetails[professorName.toUpperCase()] || [];
+      const doc = new jsPDF();
+
+      doc.setFontSize(18);
+      doc.setTextColor(0, 77, 113);
+      doc.text(`Registo de Cobertura de Receção - ${professorName}`, 14, 20);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Período: ${periodLabel}`, 14, 28);
+      doc.text(`Total de registos manuais: ${registos.length}`, 14, 34);
+
+      autoTable(doc, {
+        startY: 42,
+        head: [['Data', 'Hora', 'Utente', 'Modalidade', 'Motivo']],
+        body: registos.map(r => [r.date, r.checkIn || '---', r.userName, r.modalidade, r.motivo || '---']),
+        headStyles: { fillColor: [0, 77, 113], textColor: [247, 181, 0] },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        styles: { fontSize: 8, font: 'helvetica' }
+      });
+
+      doc.save(`cobertura_${professorName.replace(/\s+/g, '_')}.pdf`);
     } catch (error: any) {
       console.error('Erro ao gerar PDF:', error);
       alert('Erro ao gerar PDF: ' + error.message);
@@ -1221,6 +1482,44 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
           </div>
         </div>
       </div>
+
+      {currentUser?.role === 'professor' && (() => {
+        const coveredByOther = coberturaInfo?.ativa && coberturaInfo.professorId !== currentUser.id;
+        return (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-sky-50 border-2 border-sky-100 rounded-2xl">
+            <div className="flex items-start gap-2.5 flex-1">
+              <Info size={15} className="text-sky-500 shrink-0 mt-0.5" />
+              <p className="text-[10px] font-bold text-sky-700 leading-relaxed">
+                Como professor, podes registar entradas e saídas aqui caso a receção esteja indisponível (doença, baixa ou greve da equipa). Cada registo manual fica associado ao teu nome para auditoria.
+                {coveredByOther && (
+                  <span className="block mt-1 text-amber-700">{coberturaInfo?.professorNome} já ativou o Modo Cobertura hoje.</span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!onToggleCobertura) return;
+                setTogglingCobertura(true);
+                try { await onToggleCobertura(!coberturaAtivaForMe); } finally { setTogglingCobertura(false); }
+              }}
+              disabled={!!coveredByOther || togglingCobertura}
+              className={`shrink-0 px-4 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5 ${coberturaAtivaForMe ? 'bg-amber-500 text-white' : 'bg-[#004D71] text-[#F7B500]'}`}
+            >
+              <ShieldAlert size={13} />
+              {coberturaAtivaForMe ? 'Desligar Modo Cobertura' : 'Ligar Modo Cobertura'}
+            </button>
+          </div>
+        );
+      })()}
+
+      {currentUser?.role !== 'professor' && coberturaInfo?.ativa && (
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-amber-50 border-2 border-amber-200 rounded-2xl">
+          <ShieldAlert size={15} className="text-amber-600 shrink-0" />
+          <p className="text-[10px] font-bold text-amber-700 leading-relaxed">
+            {coberturaInfo.professorNome} está em Modo Cobertura — a substituir a receção desde {coberturaInfo.ativadoEm instanceof Timestamp ? coberturaInfo.ativadoEm.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'hoje'}.
+          </p>
+        </div>
+      )}
 
       {confirmDeleteLog && (
         <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
@@ -1461,6 +1760,17 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Motivo do Registo Manual (opcional)</label>
+                    <select
+                      value={selectedMotivo}
+                      onChange={e => setSelectedMotivo(e.target.value)}
+                      className="w-full px-4 py-3.5 bg-slate-50 border-4 border-slate-50 rounded-2xl text-[11px] font-black text-[#004D71] outline-none focus:border-[#F7B500]/20"
+                    >
+                      <option value="">Sem motivo especificado</option>
+                      {motivosRegisto.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
 
 
                   {editingLogId && (
@@ -1820,7 +2130,15 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                               <span className="text-[10px] font-bold text-slate-500">{log.date}</span>
                             </td>
                             <td className="px-3 py-1.5">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">{log.modalidade || '---'}</span>
+                              <span className="text-[10px] font-bold text-slate-500 uppercase block">{log.modalidade || '---'}</span>
+                              {log.registadoPorNome && (
+                                <span
+                                  className="text-[8px] font-bold text-slate-300 uppercase tracking-wide block mt-0.5"
+                                  title={`Registo manual feito por ${log.registadoPorNome}${log.registadoPorRole ? ` (${log.registadoPorRole})` : ''}${log.motivo ? ` — Motivo: ${log.motivo}` : ''}`}
+                                >
+                                  via {log.registadoPorNome}{log.registadoPorRole === 'professor' ? ' · prof.' : ''}{log.motivo ? ` · ${log.motivo}` : ''}
+                                </span>
+                              )}
                             </td>
                             <td className="px-3 py-1.5 text-center">
                               <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg font-black text-[10px]">
@@ -2158,9 +2476,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
             {professorStats.length > 0 ? (
               <div className="space-y-2">
                 {professorStats.map(p => (
-                  <div key={p.professor} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                  <button
+                    key={p.professor}
+                    onClick={() => setSelectedProfessorDetail(p.professor)}
+                    className="w-full flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
+                  >
                     <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-black text-[#004D71] uppercase truncate block">{p.professor}</span>
+                      <span className="text-[11px] font-black text-[#004D71] uppercase truncate block underline decoration-dotted decoration-[#004D71]/40">{p.professor}</span>
                       <div className="flex items-center gap-1 flex-wrap mt-1">
                         {p.modalidades.length > 0 ? p.modalidades.map(m => (
                           <span key={m} className="text-[8px] font-bold text-slate-500 uppercase bg-white px-1.5 py-0.5 rounded-full border border-slate-200">{m}</span>
@@ -2173,7 +2495,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
                       <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dadas</span>
                       <span className="text-sm font-black text-[#004D71] tabular-nums">{p.dadas}</span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : (
@@ -2195,13 +2517,17 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
             {nadadorStats.length > 0 ? (
               <div className="space-y-2">
                 {nadadorStats.map(n => (
-                  <div key={n.nome} className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
-                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate">{n.nome}</span>
+                  <button
+                    key={n.nome}
+                    onClick={() => setSelectedNadadorDetail(n.nome)}
+                    className="w-full flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
+                  >
+                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate underline decoration-dotted decoration-[#004D71]/40">{n.nome}</span>
                     <div className="flex flex-col items-center shrink-0">
                       <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dias</span>
                       <span className="text-sm font-black text-[#004D71] tabular-nums">{n.dias}</span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : (
@@ -2213,6 +2539,325 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick 
             <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-3 leading-relaxed">
               Dias trabalhados no período selecionado (manhã + tarde no mesmo dia conta como 1 dia).
             </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+            <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5 mb-1">
+              <ShieldAlert className="text-amber-500" size={14} /> Estatística de Cobertura
+            </h3>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+              Registos manuais (contingência) por quem os fez
+            </p>
+
+            <div className="flex items-center gap-4 bg-slate-50 rounded-xl px-3 py-3 border border-slate-100 mb-3">
+              <div className="text-center leading-none shrink-0">
+                <span className="text-xl font-black text-[#004D71] tabular-nums">{coberturaStats.staffCount}</span>
+                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Equipa</p>
+              </div>
+              <div className="w-px h-8 bg-slate-200 shrink-0" />
+              <div className="text-center leading-none shrink-0">
+                <span className="text-xl font-black text-amber-600 tabular-nums">{coberturaStats.profCount}</span>
+                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Professores</p>
+              </div>
+              <p className="text-[8px] font-bold text-slate-400 leading-relaxed flex-1">
+                Total de entradas/saídas registadas manualmente neste período, em vez de check-in por QR.
+              </p>
+            </div>
+
+            {coberturaStats.porProfessor.length > 0 ? (
+              <div className="space-y-2">
+                {coberturaStats.porProfessor.map(p => (
+                  <button
+                    key={p.nome}
+                    onClick={() => setSelectedCoberturaDetail(p.nome)}
+                    className="w-full flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
+                  >
+                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate underline decoration-dotted decoration-[#004D71]/40">{p.nome}</span>
+                    <div className="flex flex-col items-center shrink-0">
+                      <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Registos</span>
+                      <span className="text-sm font-black text-[#004D71] tabular-nums">{p.total}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="h-16 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                Nenhum professor cobriu a receção neste período
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {selectedProfessorDetail && (() => {
+        const sessions: { date: string; turmaNome: string; modalidade: string; checkIn: string; utentes: number }[] = professorSessionDetails[selectedProfessorDetail.toUpperCase()] || [];
+        const modalidadeCounts: Record<string, number> = {};
+        sessions.forEach(s => { modalidadeCounts[s.modalidade] = (modalidadeCounts[s.modalidade] || 0) + 1; });
+        const breakdown = Object.entries(modalidadeCounts).sort((a, b) => b[1] - a[1]);
+        const groups = groupByMonth(sessions);
+        const avgUtentes = sessions.length > 0 ? sessions.reduce((sum, s) => sum + s.utentes, 0) / sessions.length : 0;
+
+        return (
+          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+            <div className="bg-white w-full sm:max-w-2xl sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in">
+              <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 shrink-0">
+                <div className="flex-1 min-w-0 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#004D71] flex items-center justify-center shrink-0">
+                    <BookOpen className="text-[#F7B500]" size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-[#004D71] uppercase text-base leading-tight truncate">{selectedProfessorDetail}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{periodLabel}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedProfessorDetail(null)}
+                  className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-y border-slate-100 shrink-0">
+                <div className="shrink-0 text-center leading-none">
+                  <span className="text-2xl font-black text-[#004D71] tabular-nums">{sessions.length}</span>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Aulas</p>
+                </div>
+                <div className="w-px h-8 bg-slate-200 shrink-0" />
+                <div className="shrink-0 text-center leading-none">
+                  <span className="text-2xl font-black text-[#004D71] tabular-nums">{avgUtentes.toFixed(1)}</span>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Média/aula</p>
+                </div>
+                <div className="w-px h-8 bg-slate-200 shrink-0" />
+                <div className="flex-1 flex items-center gap-1.5 flex-wrap min-w-0">
+                  {breakdown.length > 0 ? breakdown.map(([m, c]) => (
+                    <span key={m} className="text-[8px] font-bold text-[#004D71] uppercase bg-white px-2 py-1 rounded-full border border-slate-200">{m} · {c}</span>
+                  )) : (
+                    <span className="text-[9px] font-bold text-slate-300 uppercase">Sem modalidades</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6">
+                {groups.length > 0 ? groups.map(group => (
+                  <div key={group.key}>
+                    <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 flex items-center justify-between py-2">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{monthLabel(group.key)}</span>
+                      <span className="text-[9px] font-black text-slate-300 tabular-nums">{group.items.length}</span>
+                    </div>
+                    {group.items.map((s, idx) => (
+                      <div key={idx} className="flex items-center gap-4 py-2.5 border-b border-slate-100 last:border-0">
+                        <div className="w-20 shrink-0 leading-none whitespace-nowrap">
+                          <span className="text-[10px] font-black text-[#004D71] block">{formatDayLabel(s.date)}</span>
+                          {s.checkIn && <span className="text-[8px] font-bold text-slate-400">{s.checkIn}</span>}
+                        </div>
+                        <span className="flex-1 min-w-0 text-[10px] font-bold text-slate-500 uppercase truncate">{s.turmaNome}</span>
+                        <span className="flex items-center gap-1 text-[9px] font-black text-[#004D71] tabular-nums shrink-0 whitespace-nowrap" title="Utentes presentes">
+                          <Users size={10} className="text-slate-400 shrink-0" />{s.utentes}
+                        </span>
+                        <span className="text-[7px] font-bold text-[#004D71] uppercase bg-[#004D71]/5 px-2 py-1 rounded-full shrink-0 whitespace-nowrap">{s.modalidade}</span>
+                      </div>
+                    ))}
+                  </div>
+                )) : (
+                  <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                    Sem aulas no período
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 shrink-0">
+                <button
+                  onClick={() => downloadProfessorPDF(selectedProfessorDetail)}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+                >
+                  <Printer size={16} /> Imprimir PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {selectedNadadorDetail && (() => {
+        const dias: { date: string; periodo: 'manha' | 'tarde' }[] = nadadorSessionDetails[selectedNadadorDetail] || [];
+        const uniqueDays = new Set(dias.map(d => d.date)).size;
+        const manhaCount = dias.filter(d => d.periodo === 'manha').length;
+        const tardeCount = dias.filter(d => d.periodo === 'tarde').length;
+        const groups = groupByMonth(dias);
+
+        return (
+          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+            <div className="bg-white w-full sm:max-w-2xl sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in">
+              <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 shrink-0">
+                <div className="flex-1 min-w-0 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#004D71] flex items-center justify-center shrink-0">
+                    <Shield className="text-cyan-400" size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-[#004D71] uppercase text-base leading-tight truncate">{selectedNadadorDetail}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{periodLabel}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedNadadorDetail(null)}
+                  className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-y border-slate-100 shrink-0">
+                <div className="shrink-0 text-center leading-none">
+                  <span className="text-2xl font-black text-[#004D71] tabular-nums">{uniqueDays}</span>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Dias</p>
+                </div>
+                <div className="w-px h-8 bg-slate-200 shrink-0" />
+                <div className="flex-1 flex items-center gap-1.5 flex-wrap min-w-0">
+                  <span className="text-[8px] font-bold text-cyan-600 uppercase bg-white px-2 py-1 rounded-full border border-slate-200">Manhã · {manhaCount}</span>
+                  <span className="text-[8px] font-bold text-cyan-600 uppercase bg-white px-2 py-1 rounded-full border border-slate-200">Tarde · {tardeCount}</span>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6">
+                {groups.length > 0 ? groups.map(group => (
+                  <div key={group.key}>
+                    <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 flex items-center justify-between py-2">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{monthLabel(group.key)}</span>
+                      <span className="text-[9px] font-black text-slate-300 tabular-nums">{group.items.length}</span>
+                    </div>
+                    {group.items.map((d, idx) => (
+                      <div key={idx} className="flex items-center gap-4 py-2.5 border-b border-slate-100 last:border-0">
+                        <span className="flex-1 min-w-0 text-[10px] font-black text-[#004D71] whitespace-nowrap">{formatDayLabel(d.date)}</span>
+                        <span className="text-[8px] font-bold text-cyan-600 uppercase bg-cyan-50 px-2 py-1 rounded-full shrink-0 whitespace-nowrap">
+                          {d.periodo === 'manha' ? 'Manhã' : 'Tarde'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )) : (
+                  <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                    Sem registos no período
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 shrink-0">
+                <button
+                  onClick={() => downloadNadadorPDF(selectedNadadorDetail)}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+                >
+                  <Printer size={16} /> Imprimir PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {selectedCoberturaDetail && (() => {
+        const registos: { date: string; checkIn: string; modalidade: string; userName: string; motivo: string }[] = coberturaSessionDetails[selectedCoberturaDetail.toUpperCase()] || [];
+        const groups = groupByMonth(registos);
+
+        return (
+          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+            <div className="bg-white w-full sm:max-w-2xl sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in">
+              <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 shrink-0">
+                <div className="flex-1 min-w-0 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#004D71] flex items-center justify-center shrink-0">
+                    <ShieldAlert className="text-amber-400" size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-[#004D71] uppercase text-base leading-tight truncate">{selectedCoberturaDetail}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Cobertura de receção · {periodLabel}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCoberturaDetail(null)}
+                  className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-y border-slate-100 shrink-0">
+                <div className="shrink-0 text-center leading-none">
+                  <span className="text-2xl font-black text-[#004D71] tabular-nums">{registos.length}</span>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Registos</p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6">
+                {groups.length > 0 ? groups.map(group => (
+                  <div key={group.key}>
+                    <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 flex items-center justify-between py-2">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{monthLabel(group.key)}</span>
+                      <span className="text-[9px] font-black text-slate-300 tabular-nums">{group.items.length}</span>
+                    </div>
+                    {group.items.map((r, idx) => (
+                      <div key={idx} className="flex items-center gap-4 py-2.5 border-b border-slate-100 last:border-0">
+                        <div className="w-20 shrink-0 leading-none whitespace-nowrap">
+                          <span className="text-[10px] font-black text-[#004D71] block">{formatDayLabel(r.date)}</span>
+                          {r.checkIn && <span className="text-[8px] font-bold text-slate-400">{r.checkIn}</span>}
+                        </div>
+                        <span className="flex-1 min-w-0 text-[10px] font-bold text-slate-500 uppercase truncate">{r.userName}</span>
+                        <span className="text-[7px] font-bold text-[#004D71] uppercase bg-[#004D71]/5 px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">{r.modalidade}</span>
+                        {r.motivo && (
+                          <span className="text-[7px] font-bold text-amber-600 uppercase bg-amber-50 px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap" title={r.motivo}>{r.motivo}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )) : (
+                  <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                    Sem registos no período
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 shrink-0">
+                <button
+                  onClick={() => downloadCoberturaPDF(selectedCoberturaDetail)}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+                >
+                  <Printer size={16} /> Imprimir PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showProfOnboarding && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in">
+            <div className="w-16 h-16 bg-[#004D71]/5 rounded-full flex items-center justify-center mb-5">
+              <ShieldAlert size={28} className="text-[#004D71]" />
+            </div>
+            <h3 className="text-lg font-black text-[#004D71] uppercase leading-tight mb-1">Acessos para Professores</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-5">O que precisas de saber</p>
+
+            <ul className="space-y-3 mb-6">
+              {[
+                'Se a receção estiver indisponível (doença, baixa ou greve), liga o "Modo Cobertura" no topo desta página.',
+                'Com o Modo Cobertura ligado, ganhas acesso de leitura a Avisos e Horários, para te orientares.',
+                'Regista entradas e saídas normalmente — por QR, ou manualmente em "Registo Manual".',
+                'Cada registo manual fica associado ao teu nome, para auditoria.',
+                'Desliga o Modo Cobertura quando a receção retomar o serviço.',
+              ].map((step, idx) => (
+                <li key={idx} className="flex items-start gap-3">
+                  <span className="w-5 h-5 rounded-full bg-[#004D71] text-[#F7B500] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                  <span className="text-[11px] font-bold text-slate-600 leading-relaxed">{step}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={() => { localStorage.setItem('cpx_prof_onboarding_seen_v1', 'true'); setShowProfOnboarding(false); }}
+              className="w-full py-4 bg-[#004D71] text-[#F7B500] rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}

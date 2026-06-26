@@ -59,6 +59,10 @@ export function AgendaModule({ userRole, user }: AgendaModuleProps) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAula || saving) return;
+    if (editingAula.horaInicio >= editingAula.horaFim) {
+      alert('A hora de início tem de ser antes da hora de fim.');
+      return;
+    }
     setSaving(true);
     try {
       const path = `artifacts/${APP_ID}/public/data/agenda`;
