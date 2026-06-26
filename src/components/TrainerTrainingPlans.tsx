@@ -725,11 +725,11 @@ function TemplateEditor({ template, onBack }: { template: WorkoutTemplate, onBac
                                        <div className="flex-1 flex gap-2">
                                           <div className="flex-1 flex items-center bg-slate-50 rounded-lg px-3">
                                              <input type="number" value={set.reps || 0} onChange={e => updateSet(sIdx, eIdx, setIdx, 'reps', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center font-black text-[#004D71] text-xs py-2 outline-none" />
-                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Reps</span>
+                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">REPS</span>
                                           </div>
                                           <div className="flex-1 flex items-center bg-slate-50 rounded-lg px-3">
                                              <input type="number" value={set.weight || 0} onChange={e => updateSet(sIdx, eIdx, setIdx, 'weight', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center font-black text-[#004D71] text-xs py-2 outline-none" />
-                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kg</span>
+                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">KG</span>
                                           </div>
                                        </div>
                                        <button onClick={() => removeSet(sIdx, eIdx, setIdx)} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 rounded-lg bg-slate-50"><Trash2 size={14}/></button>

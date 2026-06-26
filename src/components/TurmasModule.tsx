@@ -39,7 +39,6 @@ const MOD_COLORS: Record<string, string> = {
   'Padel':                'bg-lime-600',
   'Pavilhão':             'bg-amber-600',
 };
-const modColor = (m: string) => MOD_COLORS[m] || 'bg-slate-500';
 
 // new Date().toISOString() converte para UTC — perto da meia-noite em horário de
 // verão (UTC+1) isso dava a data de amanhã. Construímos a partir dos
@@ -50,6 +49,11 @@ const localDateStr = (d: Date = new Date()) => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 };
+const modColor = (m: string) => MOD_COLORS[m] || 'bg-slate-500';
+
+// new Date().toISOString() converte para UTC — perto da meia-noite em horário de
+// verão (UTC+1) isso dava a data de amanhã. Construímos a partir dos
+// componentes locais para corresponder sempre ao dia local.
 const todayStr = () => localDateStr();
 const todayDow = () => { const d = new Date().getDay(); return d === 0 ? 7 : d; };
 const makeId   = (s: string) =>
@@ -581,6 +585,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   const [done, setDone]           = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [localAlunos, setLocalAlunos] = useState<TurmaAluno[]>(turma.alunos || []);
+  const [error, setError]         = useState('');
   const [showAddInput, setShowAddInput] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<TurmaAluno | null>(null);
@@ -615,7 +620,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   // Load logs for absence warnings and attendance % (last 60 dias)
   useEffect(() => {
     const limitDate = new Date();
-    limitDate.setDate(limitDate.getDate() - 60);
+    limitDate.setDate(limitDate.getDate() - 30);
     const limitDateStr = localDateStr(limitDate);
 
     getDocs(query(collection(db, LOGS_PATH),
@@ -911,7 +916,7 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
             ].map(s => (
               <div key={s.l} className="bg-white/15 rounded-xl p-2 text-center">
                 <p className="text-lg font-black">{s.v}</p>
-                <p className="text-[7px] font-black uppercase text-white/60">{s.l}</p>
+              <p className="text-[7px] font-black uppercase text-white/60">{s.l === 'Presentes' ? 'Guardadas' : s.l}</p>
               </div>
             ))}
           </div>
@@ -1139,7 +1144,7 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
   useEffect(() => {
     // Carregar logs dos últimos 30 dias para calcular % de assiduidade
     const limitDate = new Date();
-    limitDate.setDate(limitDate.getDate() - 30);
+    limitDate.setDate(limitDate.getDate() - 60);
     const limitDateStr = localDateStr(limitDate);
 
     getDocs(query(collection(db, LOGS_PATH),
@@ -1173,11 +1178,15 @@ function ManageTurma({ turma, onBack }: { turma: Turma; onBack: () => void }) {
     try {
       await updateDoc(doc(db, TURMAS_PATH, turma.id), { alunos });
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       console.error(e);
       setSaveError(true);
-      setTimeout(() => setSaveError(false), 3000);
+      setTimeout(() => {
+        setSaveError(false);
+        // Re-enable button for retry
+        setSaving(false);
+      }, 4000);
     }
     finally { setSaving(false); }
   };

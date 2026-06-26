@@ -583,8 +583,8 @@ export function ProfileViewModule({
                     {[5, 10, 15, 20, 25, 30].map(amount => (
                       <button
                         key={amount}
-                        type="button"
-                        disabled={!isEditing}
+                        type="button" // Staff/Admin can always add entries without full edit mode
+                        disabled={!['admin', 'staff'].includes(currentRole)}
                         onClick={() => set('entradas_disponiveis', (formData.entradas_disponiveis || 0) + amount)}
                         className="bg-[#004D71]/5 hover:bg-[#004D71] hover:text-[#F7B500] text-[#004D71] transition-colors rounded-2xl py-4 font-black text-lg disabled:opacity-50 disabled:hover:bg-[#004D71]/5 disabled:hover:text-[#004D71]"
                       >
@@ -595,14 +595,14 @@ export function ProfileViewModule({
 
                   <div className="pt-2">
                     <FormInput label="Ajuste Manual do Saldo" icon={<CreditCard size={14}/>} type="number"
-                      value={formData.entradas_disponiveis || 0} disabled={!isEditing}
+                      value={formData.entradas_disponiveis || 0} disabled={!['admin', 'staff'].includes(currentRole)}
                       onChange={v => set('entradas_disponiveis', parseInt(v) || 0)} />
                   </div>
                   
                   <div className="pt-4 grid grid-cols-1 md:grid-cols-1 gap-4 border-t border-slate-100">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-2">
-                        <CreditCard size={12}/> Faturação / Acesso
+                        <CreditCard size={12}/> Tipo de Acesso
                       </label>
                       <select
                         value={formData.tipoAcesso || 'Diário'}
@@ -620,32 +620,46 @@ export function ProfileViewModule({
                   <div className="pt-4 mt-4 border-t border-slate-100">
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Simulador de Preço (Venda de Entradas)</h4>
                     <div className="bg-white border-2 border-[#004D71]/10 rounded-2xl p-4 flex flex-col gap-4">
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <select 
                           className="flex-1 border-2 border-slate-100 rounded-xl px-3 py-2 text-xs font-bold text-[#004D71] outline-none focus:border-[#F7B500]"
                           value={calcType}
                           onChange={e => setCalcType(e.target.value as any)}
                         >
-                          <option value="ginasio">Ginásio (Base 15 ent.)</option>
-                          <option value="piscina_adulto">Piscina Adulto (Base 20 ent.)</option>
-                          <option value="piscina_crianca">Piscina Criança (Base 20 ent.)</option>
+                          <option value="ginasio">Ginásio</option>
+                          <option value="piscina_adulto">Piscina (Adulto)</option>
+                          <option value="piscina_crianca">Piscina (Criança)</option>
                         </select>
-                        <input 
-                          type="number" 
-                          className="w-20 border-2 border-slate-100 rounded-xl px-3 py-2 text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500] text-center"
+                        <select 
+                          className="w-full sm:w-28 border-2 border-slate-100 rounded-xl px-3 py-2 text-xs font-black text-[#004D71] outline-none focus:border-[#F7B500] text-center"
                           value={calcEntries}
                           onChange={e => setCalcEntries(parseInt(e.target.value) || 0)}
-                        />
+                        >
+                          {[5, 10, 15, 20, 25, 30].map(n => <option key={n} value={n}>{n} Entradas</option>)}
+                        </select>
                       </div>
                       <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-between">
                         <p className="text-[9px] font-bold text-slate-400 uppercase">Valor a Cobrar:</p>
                         <p className="text-xl font-black text-[#004D71]">
                           {(() => {
-                            let pricePerEntry = 0;
-                            if (calcType === 'ginasio') pricePerEntry = 16.68 / 15;
-                            else if (calcType === 'piscina_adulto') pricePerEntry = 32.01 / 20;
-                            else if (calcType === 'piscina_crianca') pricePerEntry = 22.17 / 20;
-                            return (pricePerEntry * calcEntries).toFixed(2);
+                            // Base prices from AI_BLUEPRINT.md
+                            const prices = {
+                              ginasio: 1.39, // Dias úteis
+                              piscina_adulto: 2.10, // >14 anos, dias úteis
+                              piscina_crianca: 1.09, // 7-14 anos, dias úteis
+                            };
+                            let pricePerEntry = prices[calcType];
+
+                            // Apply discounts based on user's card
+                            let discount = 0;
+                            if (formData.atestado_medico || formData.cartao_tipo?.includes('Universidade Sénior')) discount = 1.0; // 100%
+                            else if (formData.cartao_tipo?.includes('Família Numerosa')) discount = 0.5; // 50%
+                            else if (formData.cartao_tipo) discount = 0.2; // 20% for other cards
+
+                            const discountedPrice = pricePerEntry * (1 - discount);
+                            const total = discountedPrice * calcEntries;
+
+                            return total.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()} €
                         </p>
                       </div>
