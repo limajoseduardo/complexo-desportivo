@@ -3,7 +3,8 @@ import {
   Users, LogIn, LogOut, Calendar, Search,
   Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
-  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target, Shield, Printer, Info, ShieldAlert
+  Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target, Shield, Printer, Info, ShieldAlert,
+  Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudDrizzle, TrendingUp
 } from 'lucide-react';
 import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -49,6 +50,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
   const [searchTerm, setSearchTerm] = useState('');
   const [utentesInside, setUtentesInside] = useState<UserProfile[]>([]);
   const [monthlyLogs, setMonthlyLogs] = useState<AccessLog[]>([]);
+  const [weekdayWindowLogs, setWeekdayWindowLogs] = useState<AccessLog[]>([]);
+  const [weatherByDate, setWeatherByDate] = useState<Record<string, { code: number; max: number; min: number }>>({});
   const [profSessionLogs, setProfSessionLogs] = useState<any[]>([]);
   const [profStatsMode, setProfStatsMode] = useState<'mes' | 'custom'>('mes');
   const [profStatsFrom, setProfStatsFrom] = useState(() => {
@@ -58,6 +61,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
   const [profStatsTo, setProfStatsTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedProfessorDetail, setSelectedProfessorDetail] = useState<string | null>(null);
   const [selectedNadadorDetail, setSelectedNadadorDetail] = useState<string | null>(null);
+  const [selectedZoneDetail, setSelectedZoneDetail] = useState<{ id: string; label: string; mod: string } | null>(null);
   const [selectedCoberturaDetail, setSelectedCoberturaDetail] = useState<string | null>(null);
   const [togglingCobertura, setTogglingCobertura] = useState(false);
   const [showProfOnboarding, setShowProfOnboarding] = useState(() =>
@@ -383,6 +387,44 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     return onSnapshot(q, snap => {
       setMonthlyLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as AccessLog)));
     }, () => { });
+  }, []);
+
+  // Janela de 90 dias usada só para calcular o padrão de afluência por dia da
+  // semana (qual dia costuma ter mais utentes) — período maior que o mês corrente
+  // para a média não ficar enviesada por 1-2 semanas.
+  useEffect(() => {
+    const to = new Date();
+    const toStr = to.toISOString().split('T')[0];
+    const from = new Date(to);
+    from.setDate(from.getDate() - 89);
+    const fromStr = from.toISOString().split('T')[0];
+    const path = `artifacts/${APP_ID}/public/data/logs_acesso`;
+    const q = query(collection(db, path), where('date', '>=', fromStr), where('date', '<=', toStr));
+    return onSnapshot(q, snap => {
+      setWeekdayWindowLogs(snap.docs.map(d => d.data() as AccessLog));
+    }, () => { });
+  }, []);
+
+  // Meteorologia de Vila de Rei (Open-Meteo, sem chave API) — 7 dias passados +
+  // hoje + 7 dias de previsão, para cruzar com a afluência na tira de 15 dias.
+  useEffect(() => {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=39.6667&longitude=-8.1333&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Europe%2FLisbon&past_days=7&forecast_days=8';
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const daily = data?.daily;
+        if (!daily?.time) return;
+        const map: Record<string, { code: number; max: number; min: number }> = {};
+        daily.time.forEach((dateStr: string, i: number) => {
+          map[dateStr] = {
+            code: daily.weathercode[i],
+            max: daily.temperature_2m_max[i],
+            min: daily.temperature_2m_min[i],
+          };
+        });
+        setWeatherByDate(map);
+      })
+      .catch(() => { });
   }, []);
 
   // Presenças marcadas em Turmas (cada registo tem turmaId/professorNome/modalidade
@@ -893,6 +935,89 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
       liveCount: countLive(z.mod),
     })).sort((a, b) => b.monthlyCount - a.monthlyCount);
   }, [allDateLogs, monthlyLogs]);
+
+  // Utentes que passaram hoje na zona selecionada (para o modal de detalhe dos cartões)
+  const zoneDetailLogs = React.useMemo(() => {
+    if (!selectedZoneDetail) return [];
+    return allDateLogs
+      .filter(l => normalizeModality(l.modalidade || '') === selectedZoneDetail.mod)
+      .sort((a, b) => {
+        const ta = a.checkIn instanceof Timestamp ? a.checkIn.toMillis() : 0;
+        const tb = b.checkIn instanceof Timestamp ? b.checkIn.toMillis() : 0;
+        return tb - ta;
+      });
+  }, [allDateLogs, selectedZoneDetail]);
+
+  // Afluência por dia da semana (média de utentes, todas as modalidades) nos
+  // últimos 90 dias — identifica qual o dia da semana mais cheio.
+  const weekdayStats = React.useMemo(() => {
+    const labels = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const shortLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const counts = new Array(7).fill(0);
+    const datesSeen: Set<string>[] = Array.from({ length: 7 }, () => new Set());
+    weekdayWindowLogs.forEach(l => {
+      if (!l.date) return;
+      const wd = new Date(`${l.date}T00:00:00`).getDay();
+      counts[wd]++;
+      datesSeen[wd].add(l.date);
+    });
+    const order = [1, 2, 3, 4, 5, 6, 0]; // Segunda a Domingo
+    const stats = order.map(wd => ({
+      wd,
+      label: labels[wd],
+      shortLabel: shortLabels[wd],
+      avg: datesSeen[wd].size > 0 ? Math.round(counts[wd] / datesSeen[wd].size) : 0,
+    }));
+    const maxAvg = Math.max(...stats.map(s => s.avg));
+    return stats.map(s => ({ ...s, isBusiest: s.avg > 0 && s.avg === maxAvg }));
+  }, [weekdayWindowLogs]);
+
+  // Total real de entradas (todas as modalidades) por data — base para a tira de dias
+  const dailyTotalsByDate = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    weekdayWindowLogs.forEach(l => {
+      if (!l.date) return;
+      map[l.date] = (map[l.date] || 0) + 1;
+    });
+    return map;
+  }, [weekdayWindowLogs]);
+
+  const weatherIconFor = (code: number) => {
+    if (code === 0) return { Icon: Sun, color: 'text-amber-400', label: 'Céu limpo' };
+    if (code <= 3) return { Icon: Cloud, color: 'text-slate-400', label: 'Nublado' };
+    if (code === 45 || code === 48) return { Icon: CloudFog, color: 'text-slate-400', label: 'Nevoeiro' };
+    if ([51, 53, 55, 56, 57].includes(code)) return { Icon: CloudDrizzle, color: 'text-sky-400', label: 'Chuvisco' };
+    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { Icon: CloudRain, color: 'text-sky-500', label: 'Chuva' };
+    if ([71, 73, 75, 77, 85, 86].includes(code)) return { Icon: CloudSnow, color: 'text-sky-300', label: 'Neve' };
+    if ([95, 96, 99].includes(code)) return { Icon: CloudLightning, color: 'text-purple-500', label: 'Trovoada' };
+    return { Icon: Cloud, color: 'text-slate-400', label: 'Nublado' };
+  };
+
+  // Tira de 15 dias: 7 dias passados (afluência real) + hoje + 7 dias seguintes
+  // (previsão pela média desse dia da semana), todos com meteorologia de Vila de Rei.
+  const fifteenDayStrip = React.useMemo(() => {
+    const days = [];
+    const today = new Date();
+    for (let offset = -7; offset <= 7; offset++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + offset);
+      const dateStr = d.toISOString().split('T')[0];
+      const wd = d.getDay();
+      const isFuture = offset > 0;
+      const weekday = weekdayStats.find(w => w.wd === wd);
+      days.push({
+        date: dateStr,
+        dayLabel: d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }),
+        shortLabel: weekday?.shortLabel || '',
+        isToday: offset === 0,
+        isFuture,
+        count: isFuture ? (weekday?.avg ?? 0) : (dailyTotalsByDate[dateStr] ?? 0),
+        isForecastCount: isFuture,
+        weather: weatherByDate[dateStr],
+      });
+    }
+    return days;
+  }, [dailyTotalsByDate, weekdayStats, weatherByDate]);
 
   // Table view — additionally filtered by search and status toggle
   const filteredLogs = React.useMemo(() => allDateLogs.filter(l => {
@@ -1985,7 +2110,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
           {/* Quadrados em tempo real */}
           <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2">
             {dailyStats.map(z => (
-              <div key={z.id} className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm border border-white/10 transition-transform hover:scale-[1.02] flex flex-col gap-2`}>
+              <button
+                key={z.id}
+                type="button"
+                onClick={() => setSelectedZoneDetail({ id: z.id, label: z.label, mod: z.mod })}
+                className={`${z.bg} rounded-xl p-2.5 text-white shadow-sm border border-white/10 transition-transform hover:scale-[1.02] hover:brightness-110 flex flex-col gap-2 text-left cursor-pointer`}
+                title={`Ver utentes de ${z.label} hoje`}
+              >
                 {/* Topo: ícone + nome — largura toda, nunca compete com os números */}
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className={`${z.color} bg-white/10 p-1.5 rounded-lg shrink-0`}>
@@ -2010,7 +2141,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                     <span className="text-sm font-black text-white tabular-nums">{z.liveCount}</span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -2258,6 +2389,86 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
 
       {activeTab === 'estatisticas' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+          {/* Afluência por Dia da Semana */}
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                  <TrendingUp className="text-[#F7B500]" size={14} /> Afluência por Dia da Semana
+                </h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  Média de utentes (todas as modalidades) — últimos 90 dias
+                </p>
+              </div>
+            </div>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weekdayStats} margin={{ top: 6, right: 6, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="shortLabel" tick={{ fontSize: 10, fontWeight: 700 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 9, fontWeight: 700 }} />
+                  <Tooltip formatter={(v: number) => [`${v} utentes`, 'Média']} labelFormatter={(_, p) => p?.[0]?.payload?.label || ''} />
+                  <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
+                    {weekdayStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.isBusiest ? '#F7B500' : '#004D71'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Tira de 15 dias: passado + hoje + previsão, com meteorologia de Vila de Rei */}
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                  <Cloud className="text-[#F7B500]" size={14} /> Meteorologia & Afluência — Vila de Rei
+                </h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  7 dias passados (real) · hoje · 7 dias seguintes (previsão pela média do dia da semana)
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+              {fifteenDayStrip.map(day => {
+                const w = day.weather ? weatherIconFor(day.weather.code) : null;
+                return (
+                  <div
+                    key={day.date}
+                    className={`shrink-0 w-[88px] rounded-xl p-2.5 flex flex-col items-center gap-1.5 border-2 ${
+                      day.isToday ? 'bg-[#004D71] border-[#004D71]' : day.isFuture ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-100'
+                    }`}
+                  >
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${day.isToday ? 'text-[#F7B500]' : 'text-slate-400'}`}>
+                      {day.isToday ? 'Hoje' : day.shortLabel}
+                    </span>
+                    <span className={`text-[9px] font-bold ${day.isToday ? 'text-white/70' : 'text-slate-300'}`}>{day.dayLabel}</span>
+                    {w ? (
+                      <w.Icon size={20} className={day.isToday ? 'text-[#F7B500]' : w.color} />
+                    ) : (
+                      <Cloud size={20} className={day.isToday ? 'text-white/30' : 'text-slate-200'} />
+                    )}
+                    {day.weather ? (
+                      <span className={`text-[9px] font-black tabular-nums ${day.isToday ? 'text-white' : 'text-slate-500'}`}>
+                        {Math.round(day.weather.max)}° / {Math.round(day.weather.min)}°
+                      </span>
+                    ) : (
+                      <span className={`text-[9px] font-bold ${day.isToday ? 'text-white/40' : 'text-slate-300'}`}>--°</span>
+                    )}
+                    <div className={`w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded-lg mt-0.5 ${day.isToday ? 'bg-white/10' : 'bg-slate-50'}`}>
+                      <Users size={10} className={day.isToday ? 'text-[#F7B500]' : 'text-slate-400'} />
+                      <span className={`text-[10px] font-black tabular-nums ${day.isToday ? 'text-white' : 'text-[#004D71]'}`}>{day.count}</span>
+                    </div>
+                    {day.isForecastCount && (
+                      <span className="text-[6px] font-black text-slate-300 uppercase tracking-widest">Previsto</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Visual Podium Section */}
           {Object.keys(leaderboardByModality).length > 0 && (
             <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
@@ -2749,6 +2960,92 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                 >
                   <Printer size={16} /> Imprimir PDF
                 </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {selectedZoneDetail && (() => {
+        const zoneStat = dailyStats.find(z => z.id === selectedZoneDetail.id);
+        return (
+          <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+            <div className="bg-white w-full sm:max-w-lg sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in">
+              <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 shrink-0">
+                <div className="flex-1 min-w-0 flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-2xl ${zoneStat?.bg || 'bg-[#004D71]'} flex items-center justify-center shrink-0`}>
+                    <span className={zoneStat?.color || 'text-[#F7B500]'}>{zoneStat?.icon}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-[#004D71] uppercase text-base leading-tight truncate">{selectedZoneDetail.label}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Utentes de hoje</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedZoneDetail(null)}
+                  className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 px-6 py-3 bg-slate-50 border-y border-slate-100 shrink-0">
+                <div className="shrink-0 text-center leading-none">
+                  <span className="text-2xl font-black text-[#004D71] tabular-nums">{zoneDetailLogs.length}</span>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Hoje</p>
+                </div>
+                <div className="w-px h-8 bg-slate-200 shrink-0" />
+                <div className="shrink-0 text-center leading-none">
+                  <span className="text-2xl font-black text-[#004D71] tabular-nums">{zoneDetailLogs.filter(l => !l.checkOut).length}</span>
+                  <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">No Recinto</p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-2 custom-scrollbar">
+                {zoneDetailLogs.length > 0 ? zoneDetailLogs.map(log => {
+                  const profile = usersMap[log.userId];
+                  return (
+                    <div key={log.id} className="flex items-center gap-3 py-2.5 border-b border-slate-100 last:border-0">
+                      <AvatarImage
+                        src={profile?.img}
+                        alt={log.userName}
+                        className="w-9 h-9 rounded-xl border border-slate-100 shadow-sm shrink-0 object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-[11px] font-black text-[#004D71] uppercase leading-tight truncate cursor-pointer hover:underline"
+                          onClick={() => onUserClick && profile && onUserClick(profile)}
+                          title="Ver Perfil"
+                        >
+                          {log.userName || '---'}
+                        </p>
+                        {log.registadoPorNome && (
+                          <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wide truncate mt-0.5">
+                            via {log.registadoPorNome}{log.registadoPorRole === 'professor' ? ' · prof.' : ''}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-lg font-black text-[9px]">
+                          <LogIn size={10} />
+                          {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkIn}
+                        </span>
+                        {log.checkOut ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-lg font-black text-[9px]">
+                            <LogOut size={10} />
+                            {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : log.checkOut}
+                          </span>
+                        ) : (
+                          <span className="text-[8px] font-black text-[#F7B500] uppercase animate-pulse">No Recinto</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="h-32 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                    Sem entradas hoje
+                  </div>
+                )}
               </div>
             </div>
           </div>

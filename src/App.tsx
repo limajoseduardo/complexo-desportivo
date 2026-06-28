@@ -1045,7 +1045,7 @@ export default function App() {
                         utentes={utentes}
                       />
                     )}
-                    {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'professor'].includes(user.role)} />}
+                    {activeTab === 'utentes' && <UtentesList onUserClick={setViewingProfile} utentes={utentes} canAdd={['admin', 'staff', 'professor'].includes(user.role)} currentUser={user} />}
                     {activeTab === 'alunos' && (
                       ['professor', 'admin'].includes(user.role) ? (
                         <SwimmingTeacherPortal user={user} utentes={utentes} />

@@ -11,6 +11,7 @@ import { handleCheckIn, handleCheckOut } from '../lib/access';
 import { normalizeSearchString } from '../lib/logic';
 
 function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void, key?: any }) {
+  const autor = u.editadoPorNome || u.criadoPorNome;
   return (
     <button onClick={onClick} className={`w-full p-5 flex items-center justify-between hover:bg-slate-50 active:bg-blue-50 transition-all text-left ${u.isInside ? 'bg-green-50/20' : ''}`}>
       <div className="flex items-center gap-4">
@@ -33,6 +34,9 @@ function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void, key?: 
             <span className="w-1 h-1 rounded-full bg-slate-200" />
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest line-clamp-1">{u.location || u.modalidade || 'Utente Geral'}</span>
           </div>
+          {autor && (
+            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest mt-1">Registado por {autor}</p>
+          )}
         </div>
       </div>
       <div className="p-3 bg-slate-50 rounded-xl text-slate-300">
@@ -42,16 +46,18 @@ function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void, key?: 
   );
 }
 
-export function UtentesList({ 
-  onUserClick, 
-  utentes, 
+export function UtentesList({
+  onUserClick,
+  utentes,
   title = "Registos Municipais",
-  canAdd = false 
-}: { 
-  onUserClick: (u: UserProfile) => void, 
-  utentes: UserProfile[], 
+  canAdd = false,
+  currentUser
+}: {
+  onUserClick: (u: UserProfile) => void,
+  utentes: UserProfile[],
   title?: string,
-  canAdd?: boolean 
+  canAdd?: boolean,
+  currentUser?: UserProfile
 }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<'all' | 'at_risk'>('all');
@@ -188,7 +194,8 @@ export function UtentesList({
         img: '',
         cartao_municipal: formData.cartao_numero || '',
         municipio_cartao: formData.cartao_tipo ? `${formData.cartao_tipo} - Nº ${formData.cartao_numero || ''}` : '',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        ...(currentUser && { criadoPorNome: currentUser.nome || currentUser.n || 'Staff' }),
       };
 
       await setDoc(userRef, newUser, { merge: true });

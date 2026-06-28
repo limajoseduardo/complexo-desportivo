@@ -234,6 +234,10 @@ export function ProfileViewModule({
         updatedAt: now,
         ...(formData.termo_imagens && !user.termo_imagens_data && { termo_imagens_data: now }),
         ...(formData.termo_responsabilidade && !user.termo_responsabilidade_data && { termo_responsabilidade_data: now }),
+        ...(isStaff && staffUser?.id !== id && {
+          editadoPorNome: staffUser?.nome || staffUser?.n || 'Staff',
+          editadoEm: now,
+        }),
       };
       const saved = { ...formData, ...updateData };
       // Save locally first so it always persists even when cloud is unavailable.

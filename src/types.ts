@@ -88,6 +88,11 @@ export interface UserProfile {
   email_verified?: boolean;
   qrToken?: string;
   rfidUid?: string;
+
+  // Auditoria — quem criou/editou os dados deste utente (apenas informativo)
+  criadoPorNome?: string;
+  editadoPorNome?: string;
+  editadoEm?: string;
 }
 
 export interface AccessLog {
