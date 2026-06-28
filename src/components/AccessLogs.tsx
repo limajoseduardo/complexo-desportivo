@@ -4,7 +4,7 @@ import {
   Download, BookOpen,
   FileText, Plus, X, Edit2, Save, Trash2, QrCode, Key,
   Dumbbell, Waves, Activity, Flame, Sun, Star, Users2, Droplets, CreditCard, Building2, Target, Shield, Printer, Info, ShieldAlert,
-  Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudDrizzle, TrendingUp
+  Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, CloudDrizzle, TrendingUp, Check
 } from 'lucide-react';
 import { AvatarImage, PicotoIcon } from './Common';
 import { db, handleFirestoreError, OperationType, APP_ID } from '../lib/firebase';
@@ -18,8 +18,8 @@ import { TurmasModule } from './TurmasModule';
 import { isUserInZone, normalizeSearchString } from '../lib/logic';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { BarChart, Bar, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, Cell, LabelList } from 'recharts';
 import { GlobalErrorBoundary as ErrorBoundary } from './ErrorBoundary';
 
 export const getBasePrice = (age: number | null, modality: string, isWeekend: boolean) => {
@@ -39,6 +39,19 @@ export const getBasePrice = (age: number | null, modality: string, isWeekend: bo
   }
   return basePrice;
 };
+
+// Mesmas modalidades/cores dos cartões do dashboard diário, usadas para colorir
+// as fatias do gráfico de afluência semanal (stacked bar) e a sua legenda.
+const MODALITY_BREAKDOWN = [
+  { mod: 'Piscina Regime Livre', label: 'Piscina Livre', color: '#0284c7' },
+  { mod: 'Piscina Exterior', label: 'Piscina Exterior', color: '#06b6d4' },
+  { mod: 'Natação', label: 'Natação', color: '#2563eb' },
+  { mod: 'Hidroginástica', label: 'Hidroginástica', color: '#14b8a6' },
+  { mod: 'Bebés/AMA', label: 'Bebés/AMA', color: '#6366f1' },
+  { mod: 'Aulas Fitness', label: 'Aulas Fitness', color: '#9333ea' },
+  { mod: 'Ginásio', label: 'Ginásio', color: '#004D71' },
+  { mod: 'Sauna', label: 'Sauna', color: '#f97316' },
+];
 
 function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick, coberturaInfo, onToggleCobertura }: { onScan?: () => void; currentUser?: UserProfile; utentes?: UserProfile[]; onUserClick?: (u: UserProfile) => void; coberturaInfo?: { ativa: boolean; professorId?: string; professorNome?: string; ativadoEm?: any } | null; onToggleCobertura?: (ativar: boolean) => Promise<void> } = {}) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -122,6 +135,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
   const [nadadorNomeSel, setNadadorNomeSel] = useState('');
   const [novoNadadorNome, setNovoNadadorNome] = useState('');
   const [savingNadador, setSavingNadador] = useState(false);
+  const [showAddNadador, setShowAddNadador] = useState(false);
 
   // CORREÇÃO E AUTO-CHECKOUT (19h)
   useEffect(() => {
@@ -954,20 +968,30 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     const labels = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const shortLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const counts = new Array(7).fill(0);
+    const modCounts: Record<string, number[]> = {};
+    MODALITY_BREAKDOWN.forEach(m => { modCounts[m.mod] = new Array(7).fill(0); });
     const datesSeen: Set<string>[] = Array.from({ length: 7 }, () => new Set());
     weekdayWindowLogs.forEach(l => {
       if (!l.date) return;
       const wd = new Date(`${l.date}T00:00:00`).getDay();
       counts[wd]++;
       datesSeen[wd].add(l.date);
+      const mod = normalizeModality(l.modalidade || '');
+      if (modCounts[mod]) modCounts[mod][wd]++;
     });
     const order = [1, 2, 3, 4, 5, 6, 0]; // Segunda a Domingo
-    const stats = order.map(wd => ({
-      wd,
-      label: labels[wd],
-      shortLabel: shortLabels[wd],
-      avg: datesSeen[wd].size > 0 ? Math.round(counts[wd] / datesSeen[wd].size) : 0,
-    }));
+    const stats = order.map(wd => {
+      const entry: any = {
+        wd,
+        label: labels[wd],
+        shortLabel: shortLabels[wd],
+        avg: datesSeen[wd].size > 0 ? Math.round(counts[wd] / datesSeen[wd].size) : 0,
+      };
+      MODALITY_BREAKDOWN.forEach(m => {
+        entry[m.mod] = datesSeen[wd].size > 0 ? Math.round(modCounts[m.mod][wd] / datesSeen[wd].size) : 0;
+      });
+      return entry;
+    });
     const maxAvg = Math.max(...stats.map(s => s.avg));
     return stats.map(s => ({ ...s, isBusiest: s.avg > 0 && s.avg === maxAvg }));
   }, [weekdayWindowLogs]);
@@ -1031,6 +1055,27 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     }
     return matchSearch && matchStatus;
   }), [allDateLogs, searchTerm, filterStatus]);
+
+  // Mesma lista, mas agrupada por modalidade (ordem dos cartões do dashboard) e,
+  // dentro de cada modalidade, ordenada por horário de entrada.
+  const groupedFilteredLogs = React.useMemo(() => {
+    const groups: Record<string, AccessLog[]> = {};
+    filteredLogs.forEach(l => {
+      const mod = normalizeModality(l.modalidade || '') || 'Outro';
+      if (!groups[mod]) groups[mod] = [];
+      groups[mod].push(l);
+    });
+    const preferredOrder = MODALITY_BREAKDOWN.map(m => m.mod);
+    const orderedMods = [
+      ...preferredOrder.filter(m => groups[m]),
+      ...Object.keys(groups).filter(m => !preferredOrder.includes(m)),
+    ];
+    const getTime = (l: AccessLog) => l.checkIn instanceof Timestamp ? l.checkIn.toMillis() : 0;
+    return orderedMods.map(mod => ({
+      mod,
+      logs: [...groups[mod]].sort((a, b) => getTime(a) - getTime(b)),
+    }));
+  }, [filteredLogs]);
 
   const statsByModality = React.useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1219,6 +1264,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     if (nadadoresBase.some(n => n.toLowerCase() === nome.toLowerCase())) {
       setNadadorNomeSel(nome);
       setNovoNadadorNome('');
+      setShowAddNadador(false);
       return;
     }
     try {
@@ -1226,6 +1272,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
       await setDoc(doc(db, path, 'nadadores_salvadores'), { nomes: [...nadadoresBase, nome] }, { merge: true });
       setNadadorNomeSel(nome);
       setNovoNadadorNome('');
+      setShowAddNadador(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'nadadores_salvadores');
     }
@@ -1566,14 +1613,6 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
               >
                 <Key size={14} /> Gerar Convite
-              </button>
-            )}
-            {!readOnly && onScan && (
-              <button
-                onClick={onScan}
-                className="px-4 py-2 bg-[#004D71] text-[#F7B500] rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1.5 font-black uppercase text-[10px] tracking-wide"
-              >
-                <PicotoIcon size={14} /> Ler QR
               </button>
             )}
             {!readOnly && (
@@ -2051,40 +2090,63 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                 </button>
               ))}
             </div>
-            <select
-              value={nadadorNomeSel}
-              onChange={e => setNadadorNomeSel(e.target.value)}
-              className="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-[#004D71] outline-none flex-1 min-w-[110px]"
-            >
-              <option value="">Selecionar nome...</option>
-              {nadadoresBase.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-            <button
-              type="button"
-              disabled={!nadadorNomeSel || savingNadador}
-              onClick={handleRegistarNadador}
-              className="px-3 py-1.5 rounded-lg font-black uppercase text-[9px] bg-[#004D71] text-[#F7B500] active:scale-95 transition-all disabled:opacity-40 shrink-0"
-            >
-              {savingNadador ? '...' : 'Registar'}
-            </button>
-
-            <div className="flex items-center gap-1.5 w-full pt-2 mt-1 border-t border-slate-50">
-              <input
-                type="text"
-                value={novoNadadorNome}
-                onChange={e => setNovoNadadorNome(e.target.value)}
-                placeholder="Novo nome para a base..."
-                className="flex-1 px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-[#004D71] outline-none placeholder:text-slate-300"
-              />
-              <button
-                type="button"
-                disabled={!novoNadadorNome.trim()}
-                onClick={handleAddNadadorNome}
-                className="p-1.5 bg-slate-50 text-slate-400 hover:text-[#004D71] rounded-lg transition-colors disabled:opacity-40"
-              >
-                <Plus size={13} />
-              </button>
-            </div>
+            {showAddNadador ? (
+              <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+                <input
+                  type="text"
+                  autoFocus
+                  value={novoNadadorNome}
+                  onChange={e => setNovoNadadorNome(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddNadadorNome(); if (e.key === 'Escape') { setShowAddNadador(false); setNovoNadadorNome(''); } }}
+                  placeholder="Novo nome para a base..."
+                  className="flex-1 px-2 py-1.5 bg-slate-50 border border-[#004D71]/20 rounded-lg text-[10px] font-bold text-[#004D71] outline-none placeholder:text-slate-300"
+                />
+                <button
+                  type="button"
+                  disabled={!novoNadadorNome.trim()}
+                  onClick={handleAddNadadorNome}
+                  title="Adicionar nome"
+                  className="p-1.5 bg-[#004D71] text-[#F7B500] rounded-lg transition-colors disabled:opacity-40 shrink-0"
+                >
+                  <Check size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddNadador(false); setNovoNadadorNome(''); }}
+                  title="Cancelar"
+                  className="p-1.5 bg-slate-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors shrink-0"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={nadadorNomeSel}
+                  onChange={e => setNadadorNomeSel(e.target.value)}
+                  className="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-[#004D71] outline-none flex-1 min-w-[110px]"
+                >
+                  <option value="">Selecionar nome...</option>
+                  {nadadoresBase.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowAddNadador(true)}
+                  title="Adicionar novo nome à base"
+                  className="p-1.5 bg-slate-50 text-slate-400 hover:text-[#004D71] hover:bg-[#004D71]/10 rounded-lg transition-colors shrink-0"
+                >
+                  <Plus size={13} />
+                </button>
+                <button
+                  type="button"
+                  disabled={!nadadorNomeSel || savingNadador}
+                  onClick={handleRegistarNadador}
+                  className="px-3 py-1.5 rounded-lg font-black uppercase text-[9px] bg-[#004D71] text-[#F7B500] active:scale-95 transition-all disabled:opacity-40 shrink-0"
+                >
+                  {savingNadador ? '...' : 'Registar'}
+                </button>
+              </>
+            )}
           </>
         )}
       </div>
@@ -2209,7 +2271,14 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {filteredLogs.map(log => {
+                      {groupedFilteredLogs.map(group => (
+                        <React.Fragment key={group.mod}>
+                          <tr className="bg-[#004D71]/5">
+                            <td colSpan={readOnly ? 6 : 7} className="px-3 py-1.5 text-[9px] font-black text-[#004D71] uppercase tracking-widest">
+                              {group.mod} <span className="text-[#004D71]/40">· {group.logs.length}</span>
+                            </td>
+                          </tr>
+                      {group.logs.map(log => {
                         const profile = usersMap[log.userId];
                         return (
                           <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
@@ -2373,6 +2442,8 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                           </tr>
                         );
                       })}
+                        </React.Fragment>
+                      ))}
                       {filteredLogs.length === 0 && !loading && (
                         <tr>
                           <td colSpan={readOnly ? 6 : 7} className="px-6 py-12 text-center text-slate-300 font-black text-[10px] uppercase tracking-widest">Sem registos para este dia</td>
@@ -2388,102 +2459,233 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
       )}
 
       {activeTab === 'estatisticas' && (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+          {/* Afluência do Mês por Local — visão geral primeiro */}
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest">Afluência do Mês por Local</h3>
+              <span className="text-[8px] font-black text-slate-400 uppercase">{new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</span>
+            </div>
+            {todayAffluenceByLocation.length > 0 ? (
+              <div className="h-36">
+                <ErrorBoundary>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={todayAffluenceByLocation} margin={{ top: 20, right: 6, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="local" tick={{ fontSize: 8, fontWeight: 700 }} interval={0} angle={-12} textAnchor="end" height={32} />
+                    <YAxis allowDecimals={false} domain={[0, (max: number) => Math.ceil(max * 1.2)]} tick={{ fontSize: 8, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10 }} />
+                    <Bar dataKey="entradas" fill="#004D71" radius={[6, 6, 0, 0]}>
+                      <LabelList dataKey="entradas" position="top" fontSize={10} fontWeight={900} fill="#004D71" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                </ErrorBoundary>
+              </div>
+            ) : (
+              <div className="h-16 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+                Sem registos de hoje
+              </div>
+            )}
+          </div>
+
           {/* Afluência por Dia da Semana */}
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
                   <TrendingUp className="text-[#F7B500]" size={14} /> Afluência por Dia da Semana
                 </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                  Média de utentes (todas as modalidades) — últimos 90 dias
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  Média por modalidade — últimos 90 dias
                 </p>
               </div>
             </div>
-            <div className="h-48">
+            <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekdayStats} margin={{ top: 6, right: 6, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="shortLabel" tick={{ fontSize: 10, fontWeight: 700 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 9, fontWeight: 700 }} />
-                  <Tooltip formatter={(v: number) => [`${v} utentes`, 'Média']} labelFormatter={(_, p) => p?.[0]?.payload?.label || ''} />
-                  <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
-                    {weekdayStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.isBusiest ? '#F7B500' : '#004D71'} />
-                    ))}
-                  </Bar>
+                <BarChart data={weekdayStats} margin={{ top: 24, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="shortLabel" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} domain={[0, (max: number) => Math.ceil(max * 1.25)]} tick={{ fontSize: 8, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [`${v} utentes`, name]}
+                    labelFormatter={(_, p: any) => p?.[0]?.payload?.label || ''}
+                    contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  {MODALITY_BREAKDOWN.map(m => (
+                    <Bar key={m.mod} dataKey={m.mod} name={m.label} stackId="dia" fill={m.color}>
+                      {/* O Recharts só desenha a LabelList de uma série quando o valor nesse
+                          dia é > 0 — por isso não a presa a uma modalidade fixa (ex: Sauna,
+                          que falha em dias sem sauna). Em vez disso, cada Bar verifica se É
+                          a modalidade mais "acima" com valor > 0 nesse dia, e só essa desenha
+                          o total — garante que o número aparece em todos os dias com afluência. */}
+                      <LabelList
+                        dataKey={m.mod}
+                        position="top"
+                        content={(props: any) => {
+                          const { x, y, width, index } = props;
+                          const stat = weekdayStats[index];
+                          if (!stat) return null;
+                          const topMod = [...MODALITY_BREAKDOWN].reverse().find(mm => stat[mm.mod] > 0);
+                          if (!topMod || topMod.mod !== m.mod) return null;
+                          return (
+                            <text x={x + width / 2} y={y - 4} textAnchor="middle" fontSize={10} fontWeight={900} fill={stat.isBusiest ? '#F7B500' : '#004D71'}>
+                              {stat.avg}
+                            </text>
+                          );
+                        }}
+                      />
+                    </Bar>
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+            <div className="flex items-center flex-wrap gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100">
+              {MODALITY_BREAKDOWN.map(m => (
+                <span key={m.mod} className="flex items-center gap-1 text-[7px] font-bold text-slate-500 uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+                  {m.label}
+                </span>
+              ))}
             </div>
           </div>
 
           {/* Tira de 15 dias: passado + hoje + previsão, com meteorologia de Vila de Rei */}
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
                   <Cloud className="text-[#F7B500]" size={14} /> Meteorologia & Afluência — Vila de Rei
                 </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                  7 dias passados (real) · hoje · 7 dias seguintes (previsão pela média do dia da semana)
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  7 dias passados · hoje · 7 dias de previsão
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
               {fifteenDayStrip.map(day => {
                 const w = day.weather ? weatherIconFor(day.weather.code) : null;
+                const statusLabel = day.isForecastCount ? 'Previsto' : day.isToday ? 'Agora' : 'Real';
                 return (
                   <div
                     key={day.date}
-                    className={`shrink-0 w-[88px] rounded-xl p-2.5 flex flex-col items-center gap-1.5 border-2 ${
+                    className={`shrink-0 w-[68px] rounded-lg p-1.5 flex flex-col items-center gap-0.5 border ${
                       day.isToday ? 'bg-[#004D71] border-[#004D71]' : day.isFuture ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-100'
                     }`}
                   >
-                    <span className={`text-[8px] font-black uppercase tracking-widest ${day.isToday ? 'text-[#F7B500]' : 'text-slate-400'}`}>
-                      {day.isToday ? 'Hoje' : day.shortLabel}
+                    <span className={`text-[7px] font-black uppercase tracking-wide leading-none ${day.isToday ? 'text-[#F7B500]' : 'text-slate-400'}`}>
+                      {day.isToday ? 'Hoje' : day.shortLabel} <span className="opacity-60">{day.dayLabel}</span>
                     </span>
-                    <span className={`text-[9px] font-bold ${day.isToday ? 'text-white/70' : 'text-slate-300'}`}>{day.dayLabel}</span>
                     {w ? (
-                      <w.Icon size={20} className={day.isToday ? 'text-[#F7B500]' : w.color} />
+                      <w.Icon size={16} className={day.isToday ? 'text-[#F7B500]' : w.color} />
                     ) : (
-                      <Cloud size={20} className={day.isToday ? 'text-white/30' : 'text-slate-200'} />
+                      <Cloud size={16} className={day.isToday ? 'text-white/30' : 'text-slate-200'} />
                     )}
                     {day.weather ? (
-                      <span className={`text-[9px] font-black tabular-nums ${day.isToday ? 'text-white' : 'text-slate-500'}`}>
-                        {Math.round(day.weather.max)}° / {Math.round(day.weather.min)}°
+                      <span className={`text-[8px] font-black tabular-nums leading-none ${day.isToday ? 'text-white' : 'text-slate-500'}`}>
+                        {Math.round(day.weather.max)}°/{Math.round(day.weather.min)}°
                       </span>
                     ) : (
-                      <span className={`text-[9px] font-bold ${day.isToday ? 'text-white/40' : 'text-slate-300'}`}>--°</span>
+                      <span className={`text-[8px] font-bold leading-none ${day.isToday ? 'text-white/40' : 'text-slate-300'}`}>--°</span>
                     )}
-                    <div className={`w-full flex items-center justify-center gap-1 px-1.5 py-1 rounded-lg mt-0.5 ${day.isToday ? 'bg-white/10' : 'bg-slate-50'}`}>
-                      <Users size={10} className={day.isToday ? 'text-[#F7B500]' : 'text-slate-400'} />
-                      <span className={`text-[10px] font-black tabular-nums ${day.isToday ? 'text-white' : 'text-[#004D71]'}`}>{day.count}</span>
+                    <div className={`w-full flex items-center justify-center gap-1 px-1 py-0.5 rounded mt-0.5 ${
+                      day.isForecastCount ? 'bg-amber-50 border border-dashed border-amber-300' : day.isToday ? 'bg-white/10' : 'bg-emerald-50'
+                    }`}>
+                      <Users size={9} className={day.isToday ? 'text-[#F7B500]' : day.isForecastCount ? 'text-amber-500' : 'text-emerald-600'} />
+                      <span className={`text-[10px] font-black tabular-nums leading-none ${day.isToday ? 'text-white' : 'text-[#004D71]'}`}>{day.count}</span>
                     </div>
-                    {day.isForecastCount && (
-                      <span className="text-[6px] font-black text-slate-300 uppercase tracking-widest">Previsto</span>
-                    )}
+                    <span className={`text-[6.5px] font-black uppercase tracking-wide leading-none ${
+                      day.isForecastCount ? 'text-amber-500' : day.isToday ? 'text-white/60' : 'text-emerald-600'
+                    }`}>
+                      {statusLabel}
+                    </span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Visual Podium Section */}
-          {Object.keys(leaderboardByModality).length > 0 && (
-            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div>
+          {/* Demografia + Cartões — quem são os utentes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+              <div className="mb-2">
+                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                  <Users className="text-[#F7B500]" size={14} /> Demografia de Assiduidade
+                </h3>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  Faixas etárias dos utentes únicos ({demographicsStats.totalUsers}) neste período
+                </p>
+              </div>
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={demographicsStats.ageGroups} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold', fill: '#64748b' }} width={46} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: 11 }} />
+                    <Bar dataKey="count" fill="#004D71" radius={[0, 4, 4, 0]} barSize={18}>
+                      {demographicsStats.ageGroups.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#38bdf8', '#818cf8', '#c084fc', '#f472b6'][index % 4]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="mb-2">
                   <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                    <Star className="text-[#F7B500]" size={14} /> Pódio de Assiduidade por Modalidade
+                    <CreditCard className="text-[#F7B500]" size={14} /> Tipos de Cartões & Atestados
                   </h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                    Top 3 utentes mais assíduos no mês corrente
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                    Distribuição dos utentes com presenças
                   </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  {demographicsStats.cards.map(c => (
+                    <div key={c.label} className="flex items-center justify-between bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                      <span className="text-[9px] font-black uppercase text-slate-600">{c.label}</span>
+                      <span className="text-[11px] font-black text-[#004D71] bg-white px-1.5 py-0.5 rounded-md shadow-sm border border-slate-200">{c.count}</span>
+                    </div>
+                  ))}
+                  {demographicsStats.cards.length === 0 && (
+                    <div className="text-center p-3 text-slate-400 text-[9px] font-black uppercase">
+                      Nenhum cartão registado nestas presenças
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <div className="mt-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-2.5 py-2 rounded-lg">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className="text-emerald-500" size={13} />
+                    <span className="text-[9px] font-black uppercase text-emerald-700 tracking-widest">Atestado Médico</span>
+                  </div>
+                  <span className="text-xs font-black text-emerald-600 bg-white px-2 py-0.5 rounded-md shadow-sm border border-emerald-200">
+                    {demographicsStats.atestado}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Visual Podium Section */}
+          {Object.keys(leaderboardByModality).length > 0 && (
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+              <div className="mb-2">
+                <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
+                  <Star className="text-[#F7B500]" size={14} /> Pódio de Assiduidade por Modalidade
+                </h3>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  Top 3 utentes mais assíduos no mês corrente
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {Object.entries(leaderboardByModality).map(([modality, users]) => {
                   const first = users[0];
                   const second = users[1] || null;
@@ -2494,13 +2696,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                     const firstName = parts[0] || '';
                     const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
                     return (
-                      <div className="flex flex-col items-center justify-end min-w-0 w-full mb-0.5 h-6" title={userName}>
-                        <span className="text-[8px] font-black text-[#004D71] truncate max-w-full text-center flex items-center justify-center gap-0.5 leading-tight">
+                      <div className="flex flex-col items-center justify-end min-w-0 w-full mb-0.5 h-5" title={userName}>
+                        <span className="text-[7px] font-black text-[#004D71] truncate max-w-full text-center flex items-center justify-center gap-0.5 leading-tight">
                           {place === 1 && "👑 "}
                           {firstName}
                         </span>
                         {lastName && (
-                          <span className="text-[7.5px] font-bold text-[#004D71] truncate max-w-full text-center leading-tight">
+                          <span className="text-[6.5px] font-bold text-[#004D71] truncate max-w-full text-center leading-tight">
                             {lastName}
                           </span>
                         )}
@@ -2509,33 +2711,33 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                   };
 
                   return (
-                    <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex flex-col justify-between">
-                      <h4 className="text-[9px] font-black text-[#004D71] uppercase tracking-wider mb-3 text-center border-b pb-2 border-slate-100">
+                    <div key={modality} className="bg-slate-50/50 border border-slate-100 rounded-lg p-2 flex flex-col justify-between">
+                      <h4 className="text-[8px] font-black text-[#004D71] uppercase tracking-wider mb-1.5 text-center border-b pb-1 border-slate-100">
                         {modality}
                       </h4>
 
                       {/* Visual Podium */}
-                      <div className="flex items-end justify-center gap-2 h-20">
+                      <div className="flex items-end justify-center gap-1.5 h-16">
                         {/* 2nd Place */}
                         <div className="flex-1 flex flex-col items-center">
                           {second ? (
                             <>
                               {renderPodiumName(second.userName, 2)}
-                              <span className="text-[7px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
-                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-[8px] rounded-t-lg h-8 flex items-center justify-center border-t border-slate-300">
+                              <span className="text-[6.5px] font-bold text-slate-400 mb-0.5">{second.count}p</span>
+                              <div className="w-full bg-slate-200 text-[#004D71] font-black text-[7px] rounded-t-md h-6 flex items-center justify-center border-t border-slate-300">
                                 2º
                               </div>
                             </>
                           ) : (
-                            <div className="w-full bg-slate-100 rounded-t-lg h-4" />
+                            <div className="w-full bg-slate-100 rounded-t-md h-3" />
                           )}
                         </div>
 
                         {/* 1st Place */}
                         <div className="flex-1 flex flex-col items-center">
                           {renderPodiumName(first.userName, 1)}
-                          <span className="text-[8px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
-                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[9px] rounded-t-xl h-12 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
+                          <span className="text-[7px] font-black text-[#F7B500] mb-0.5">{first.count}p</span>
+                          <div className="w-full bg-[#004D71] text-[#F7B500] font-black text-[8px] rounded-t-lg h-9 flex items-center justify-center border-t-2 border-[#F7B500] shadow-md">
                             1º
                           </div>
                         </div>
@@ -2545,13 +2747,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                           {third ? (
                             <>
                               {renderPodiumName(third.userName, 3)}
-                              <span className="text-[7px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
-                              <div className="w-full bg-orange-100 text-orange-800 font-black text-[8px] rounded-t-lg h-5 flex items-center justify-center border-t border-orange-200">
+                              <span className="text-[6.5px] font-bold text-slate-400 mb-0.5">{third.count}p</span>
+                              <div className="w-full bg-orange-100 text-orange-800 font-black text-[7px] rounded-t-md h-4 flex items-center justify-center border-t border-orange-200">
                                 3º
                               </div>
                             </>
                           ) : (
-                            <div className="w-full bg-slate-100 rounded-t-lg h-4" />
+                            <div className="w-full bg-slate-100 rounded-t-md h-3" />
                           )}
                         </div>
                       </div>
@@ -2561,241 +2763,147 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
               </div>
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                    <Users className="text-[#F7B500]" size={14} /> Demografia de Assiduidade
-                  </h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                    Faixas etárias dos utentes únicos ({demographicsStats.totalUsers}) neste período
-                  </p>
-                </div>
-              </div>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={demographicsStats.ageGroups} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} width={50} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="count" fill="#004D71" radius={[0, 4, 4, 0]} barSize={24}>
-                      {demographicsStats.ageGroups.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#38bdf8', '#818cf8', '#c084fc', '#f472b6'][index % 4]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
-                      <CreditCard className="text-[#F7B500]" size={14} /> Tipos de Cartões & Atestados
-                    </h3>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                      Distribuição dos utentes com presenças
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {demographicsStats.cards.map(c => (
-                    <div key={c.label} className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
-                      <span className="text-[10px] font-black uppercase text-slate-600">{c.label}</span>
-                      <span className="text-xs font-black text-[#004D71] bg-white px-2 py-1 rounded-lg shadow-sm border border-slate-200">{c.count}</span>
-                    </div>
-                  ))}
-                  {demographicsStats.cards.length === 0 && (
-                    <div className="text-center p-4 text-slate-400 text-[10px] font-black uppercase">
-                      Nenhum cartão registado nestas presenças
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <Activity className="text-emerald-500" size={16} />
-                    <span className="text-[10px] font-black uppercase text-emerald-700 tracking-widest">Atestado Médico Entregue</span>
-                  </div>
-                  <span className="text-sm font-black text-emerald-600 bg-white px-3 py-1 rounded-lg shadow-sm border border-emerald-200">
-                    {demographicsStats.atestado} utentes
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest">Afluência do Mês por Local</h3>
-              <span className="text-[9px] font-black text-slate-400 uppercase">{new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</span>
-            </div>
-            {todayAffluenceByLocation.length > 0 ? (
-              <div className="h-52">
-                <ErrorBoundary>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={todayAffluenceByLocation} margin={{ top: 6, right: 6, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="local" tick={{ fontSize: 9, fontWeight: 700 }} interval={0} angle={-12} textAnchor="end" height={48} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 9, fontWeight: 700 }} />
-                    <Tooltip />
-                    <Bar dataKey="entradas" fill="#004D71" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-                </ErrorBoundary>
-              </div>
-            ) : (
-              <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
-                Sem registos de hoje
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <div>
                 <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5">
                   <BookOpen className="text-[#F7B500]" size={14} /> Estatística de Professores
                 </h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
                   Total de aulas dadas e modalidades por professor
                 </p>
               </div>
-              <div className="flex gap-1.5 p-1 bg-slate-50 rounded-xl border border-slate-100">
-                <button onClick={() => setProfStatsMode('mes')} className={`px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${profStatsMode === 'mes' ? 'bg-[#004D71] text-[#F7B500] shadow' : 'text-slate-400'}`}>Mês Atual</button>
-                <button onClick={() => setProfStatsMode('custom')} className={`px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${profStatsMode === 'custom' ? 'bg-[#004D71] text-[#F7B500] shadow' : 'text-slate-400'}`}>Período</button>
+              <div className="flex gap-1 p-0.5 bg-slate-50 rounded-lg border border-slate-100">
+                <button onClick={() => setProfStatsMode('mes')} className={`px-2.5 py-1 rounded-md font-black text-[8px] uppercase tracking-widest transition-all ${profStatsMode === 'mes' ? 'bg-[#004D71] text-[#F7B500] shadow' : 'text-slate-400'}`}>Mês Atual</button>
+                <button onClick={() => setProfStatsMode('custom')} className={`px-2.5 py-1 rounded-md font-black text-[8px] uppercase tracking-widest transition-all ${profStatsMode === 'custom' ? 'bg-[#004D71] text-[#F7B500] shadow' : 'text-slate-400'}`}>Período</button>
               </div>
             </div>
 
             {profStatsMode === 'custom' && (
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-2">
                 <input type="date" value={profStatsFrom} onChange={e => setProfStatsFrom(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl text-[11px] font-black text-[#004D71] outline-none focus:border-[#004D71]/20" />
-                <span className="text-[9px] font-black text-slate-400 uppercase">a</span>
+                  className="flex-1 px-2.5 py-1.5 bg-slate-50 border-2 border-slate-100 rounded-lg text-[10px] font-black text-[#004D71] outline-none focus:border-[#004D71]/20" />
+                <span className="text-[8px] font-black text-slate-400 uppercase">a</span>
                 <input type="date" value={profStatsTo} onChange={e => setProfStatsTo(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl text-[11px] font-black text-[#004D71] outline-none focus:border-[#004D71]/20" />
+                  className="flex-1 px-2.5 py-1.5 bg-slate-50 border-2 border-slate-100 rounded-lg text-[10px] font-black text-[#004D71] outline-none focus:border-[#004D71]/20" />
               </div>
             )}
 
             {professorStats.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {professorStats.map(p => (
                   <button
                     key={p.professor}
                     onClick={() => setSelectedProfessorDetail(p.professor)}
-                    className="w-full flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
+                    className="w-full flex items-center gap-3 bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
                   >
                     <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-black text-[#004D71] uppercase truncate block underline decoration-dotted decoration-[#004D71]/40">{p.professor}</span>
-                      <div className="flex items-center gap-1 flex-wrap mt-1">
+                      <span className="text-[10px] font-black text-[#004D71] uppercase truncate block underline decoration-dotted decoration-[#004D71]/40">{p.professor}</span>
+                      <div className="flex items-center gap-1 flex-wrap mt-0.5">
                         {p.modalidades.length > 0 ? p.modalidades.map(m => (
-                          <span key={m} className="text-[8px] font-bold text-slate-500 uppercase bg-white px-1.5 py-0.5 rounded-full border border-slate-200">{m}</span>
+                          <span key={m} className="text-[7px] font-bold text-slate-500 uppercase bg-white px-1.5 py-0.5 rounded-full border border-slate-200">{m}</span>
                         )) : (
-                          <span className="text-[8px] font-bold text-slate-300 uppercase">Sem modalidade</span>
+                          <span className="text-[7px] font-bold text-slate-300 uppercase">Sem modalidade</span>
                         )}
                       </div>
                     </div>
                     <div className="flex flex-col items-center shrink-0">
-                      <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dadas</span>
-                      <span className="text-sm font-black text-[#004D71] tabular-nums">{p.dadas}</span>
+                      <span className="text-[6.5px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dadas</span>
+                      <span className="text-xs font-black text-[#004D71] tabular-nums">{p.dadas}</span>
                     </div>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="h-24 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
+              <div className="h-16 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
                 Sem aulas atribuídas a professores
               </div>
             )}
 
-            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-3 leading-relaxed">
+            <p className="text-[7px] font-bold text-slate-300 uppercase tracking-wider mt-2 leading-relaxed">
               Aulas dadas no período selecionado, por modalidade. Aulas canceladas não são contadas.
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5 mb-3">
-              <Shield className="text-cyan-500" size={14} /> Estatística de Nadadores-Salvadores
-            </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                <Shield className="text-cyan-500" size={14} /> Nadadores-Salvadores
+              </h3>
 
-            {nadadorStats.length > 0 ? (
-              <div className="space-y-2">
-                {nadadorStats.map(n => (
-                  <button
-                    key={n.nome}
-                    onClick={() => setSelectedNadadorDetail(n.nome)}
-                    className="w-full flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
-                  >
-                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate underline decoration-dotted decoration-[#004D71]/40">{n.nome}</span>
-                    <div className="flex flex-col items-center shrink-0">
-                      <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dias</span>
-                      <span className="text-sm font-black text-[#004D71] tabular-nums">{n.dias}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="h-16 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
-                Sem registos no período
-              </div>
-            )}
+              {nadadorStats.length > 0 ? (
+                <div className="space-y-1.5">
+                  {nadadorStats.map(n => (
+                    <button
+                      key={n.nome}
+                      onClick={() => setSelectedNadadorDetail(n.nome)}
+                      className="w-full flex items-center gap-3 bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
+                    >
+                      <span className="flex-1 min-w-0 text-[10px] font-black text-[#004D71] uppercase truncate underline decoration-dotted decoration-[#004D71]/40">{n.nome}</span>
+                      <div className="flex flex-col items-center shrink-0">
+                        <span className="text-[6.5px] font-bold text-slate-400 uppercase leading-none mb-0.5">Dias</span>
+                        <span className="text-xs font-black text-[#004D71] tabular-nums">{n.dias}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-14 flex items-center justify-center text-slate-300 font-black text-[9px] uppercase tracking-widest">
+                  Sem registos no período
+                </div>
+              )}
 
-            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mt-3 leading-relaxed">
-              Dias trabalhados no período selecionado (manhã + tarde no mesmo dia conta como 1 dia).
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border-2 border-slate-100 p-4 shadow-sm">
-            <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5 mb-1">
-              <ShieldAlert className="text-amber-500" size={14} /> Estatística de Cobertura
-            </h3>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-              Registos manuais (contingência) por quem os fez
-            </p>
-
-            <div className="flex items-center gap-4 bg-slate-50 rounded-xl px-3 py-3 border border-slate-100 mb-3">
-              <div className="text-center leading-none shrink-0">
-                <span className="text-xl font-black text-[#004D71] tabular-nums">{coberturaStats.staffCount}</span>
-                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Equipa</p>
-              </div>
-              <div className="w-px h-8 bg-slate-200 shrink-0" />
-              <div className="text-center leading-none shrink-0">
-                <span className="text-xl font-black text-amber-600 tabular-nums">{coberturaStats.profCount}</span>
-                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Professores</p>
-              </div>
-              <p className="text-[8px] font-bold text-slate-400 leading-relaxed flex-1">
-                Total de entradas/saídas registadas manualmente neste período, em vez de check-in por QR.
+              <p className="text-[7px] font-bold text-slate-300 uppercase tracking-wider mt-2 leading-relaxed">
+                Dias trabalhados (manhã + tarde no mesmo dia conta como 1).
               </p>
             </div>
 
-            {coberturaStats.porProfessor.length > 0 ? (
-              <div className="space-y-2">
-                {coberturaStats.porProfessor.map(p => (
-                  <button
-                    key={p.nome}
-                    onClick={() => setSelectedCoberturaDetail(p.nome)}
-                    className="w-full flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
-                  >
-                    <span className="flex-1 min-w-0 text-[11px] font-black text-[#004D71] uppercase truncate underline decoration-dotted decoration-[#004D71]/40">{p.nome}</span>
-                    <div className="flex flex-col items-center shrink-0">
-                      <span className="text-[7px] font-bold text-slate-400 uppercase leading-none mb-0.5">Registos</span>
-                      <span className="text-sm font-black text-[#004D71] tabular-nums">{p.total}</span>
-                    </div>
-                  </button>
-                ))}
+            <div className="bg-white rounded-2xl border-2 border-slate-100 p-3 shadow-sm">
+              <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-1.5 mb-0.5">
+                <ShieldAlert className="text-amber-500" size={14} /> Estatística de Cobertura
+              </h3>
+              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Registos manuais (contingência) por quem os fez
+              </p>
+
+              <div className="flex items-center gap-3 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100 mb-2">
+                <div className="text-center leading-none shrink-0">
+                  <span className="text-base font-black text-[#004D71] tabular-nums">{coberturaStats.staffCount}</span>
+                  <p className="text-[6.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Equipa</p>
+                </div>
+                <div className="w-px h-7 bg-slate-200 shrink-0" />
+                <div className="text-center leading-none shrink-0">
+                  <span className="text-base font-black text-amber-600 tabular-nums">{coberturaStats.profCount}</span>
+                  <p className="text-[6.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Professores</p>
+                </div>
+                <p className="text-[7px] font-bold text-slate-400 leading-relaxed flex-1">
+                  Entradas/saídas registadas manualmente, em vez de check-in por QR.
+                </p>
               </div>
-            ) : (
-              <div className="h-16 flex items-center justify-center text-slate-300 font-black text-[10px] uppercase tracking-widest">
-                Nenhum professor cobriu a receção neste período
-              </div>
-            )}
+
+              {coberturaStats.porProfessor.length > 0 ? (
+                <div className="space-y-1.5">
+                  {coberturaStats.porProfessor.map(p => (
+                    <button
+                      key={p.nome}
+                      onClick={() => setSelectedCoberturaDetail(p.nome)}
+                      className="w-full flex items-center gap-3 bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100 text-left hover:border-[#004D71]/20 active:scale-[0.99] transition-all"
+                    >
+                      <span className="flex-1 min-w-0 text-[10px] font-black text-[#004D71] uppercase truncate underline decoration-dotted decoration-[#004D71]/40">{p.nome}</span>
+                      <div className="flex flex-col items-center shrink-0">
+                        <span className="text-[6.5px] font-bold text-slate-400 uppercase leading-none mb-0.5">Registos</span>
+                        <span className="text-xs font-black text-[#004D71] tabular-nums">{p.total}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-14 flex items-center justify-center text-slate-300 font-black text-[9px] uppercase tracking-widest">
+                  Nenhum professor cobriu a receção neste período
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

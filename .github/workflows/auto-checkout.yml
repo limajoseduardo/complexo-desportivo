@@ -1,4 +1,4 @@
-name: Auto Checkout 20h00
+name: Auto Checkout (20h00 + Fecho de Almoço 13h-15h Verão)
 
 on:
   schedule:
@@ -6,12 +6,21 @@ on:
     # como em hora de inverno (WET, UTC+0) — o script só atua na corrida certa.
     - cron: '0 19 * * *'
     - cron: '0 20 * * *'
+    # 12:00 e 13:00 UTC cobrem as 13h00 de Lisboa (fecho de almoço, só ativo na
+    # temporada de Verão). A Piscina Exterior não é afetada (bilhete de dia inteiro).
+    - cron: '0 12 * * *'
+    - cron: '0 13 * * *'
   workflow_dispatch:
     inputs:
       force:
         description: 'Forçar checkout imediato (ignora verificação de hora)'
         type: boolean
         default: false
+      mode:
+        description: 'Modo a forçar quando "force" está ativo'
+        type: choice
+        options: [night, lunch]
+        default: night
 
 jobs:
   checkout:
@@ -25,3 +34,4 @@ jobs:
       - run: npx tsx scripts/auto-checkout.ts
         env:
           FORCE_CHECKOUT: ${{ inputs.force }}
+          CHECKOUT_MODE: ${{ inputs.mode }}

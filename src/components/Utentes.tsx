@@ -9,38 +9,49 @@ import { Html5Qrcode } from 'html5-qrcode';
 
 import { handleCheckIn, handleCheckOut } from '../lib/access';
 import { normalizeSearchString } from '../lib/logic';
+import { logProfileAudit } from '../lib/audit';
 
 function UtenteRow({ u, onClick }: { u: UserProfile, onClick: () => void, key?: any }) {
   const autor = u.editadoPorNome || u.criadoPorNome;
+  const temAtestado = u.atestado_medico === true || u.cartao_tipo === 'Atestado Médico';
+  const infoParts = [
+    `${u.idade || '—'} Anos`,
+    u.nif ? `Nº Sócio ${u.nif}` : 'Sem nº de sócio',
+    u.cartao_tipo || null,
+  ].filter(Boolean) as string[];
+
   return (
-    <button onClick={onClick} className={`w-full p-5 flex items-center justify-between hover:bg-slate-50 active:bg-blue-50 transition-all text-left ${u.isInside ? 'bg-green-50/20' : ''}`}>
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <AvatarImage src={u.img} alt={u.n || u.nome} className={`w-14 h-14 rounded-[1.25rem] border-2 shadow-md ${u.isInside ? 'border-green-400' : 'border-white'}`} />
+    <button onClick={onClick} className={`w-full px-3 py-2 flex items-center justify-between hover:bg-slate-50 active:bg-blue-50 transition-all text-left ${u.isInside ? 'bg-green-50/20' : ''}`}>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="relative shrink-0">
+          <AvatarImage src={u.img} alt={u.n || u.nome} className={`w-9 h-9 rounded-lg border shadow-sm ${u.isInside ? 'border-green-400' : 'border-white'}`} />
           {u.isInside && (
-            <>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-4 border-white shadow-lg z-10" />
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full animate-ping opacity-40" />
-            </>
+            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow z-10" />
           )}
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className="font-black text-sm text-[#004D71] uppercase leading-none">{u.n || u.nome}</h4>
-            {u.isInside && <span className="bg-green-500 text-white text-[7px] font-black px-2 py-0.5 rounded-full uppercase">No Recinto</span>}
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h4 className="font-black text-[11px] text-[#004D71] uppercase leading-tight">{u.n || u.nome}</h4>
+            {u.isInside && <span className="bg-green-500 text-white text-[6.5px] font-black px-1.5 py-0.5 rounded-full uppercase shrink-0">No Recinto</span>}
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{u.idade || '—'} Anos</span>
-            <span className="w-1 h-1 rounded-full bg-slate-200" />
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest line-clamp-1">{u.location || u.modalidade || 'Utente Geral'}</span>
+          <div className="flex items-center flex-wrap gap-1 mt-0.5">
+            {infoParts.map((part, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span className="w-1 h-1 rounded-full bg-slate-200 shrink-0" />}
+                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{part}</span>
+              </React.Fragment>
+            ))}
+            {temAtestado && (
+              <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full uppercase shrink-0">Atestado</span>
+            )}
           </div>
           {autor && (
-            <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest mt-1">Registado por {autor}</p>
+            <p className="text-[7px] font-bold text-slate-300 uppercase tracking-widest mt-0.5 truncate">Registado por {autor}</p>
           )}
         </div>
       </div>
-      <div className="p-3 bg-slate-50 rounded-xl text-slate-300">
-        <ChevronRight size={18} />
+      <div className="p-1.5 bg-slate-50 rounded-lg text-slate-300 shrink-0">
+        <ChevronRight size={14} />
       </div>
     </button>
   );
@@ -165,7 +176,12 @@ export function UtentesList({
     const inside = filtered.filter(u => u.isInside);
     const byLetter: Record<string, typeof filtered> = {};
     filtered.forEach(u => {
-      const letter = (u.n || u.nome || '?')[0].toUpperCase();
+      // Normaliza acentos (Â, À, Á → A) para não criar grupos à parte por causa do acento
+      const raw = (u.n || u.nome || '?')[0].toUpperCase();
+      const letter = Array.from(raw.normalize('NFD')).filter(ch => {
+        const code = ch.codePointAt(0) || 0;
+        return code < 0x0300 || code > 0x036f; // remove marcas de acentuação combinadas
+      }).join('') || raw;
       if (!byLetter[letter]) byLetter[letter] = [];
       byLetter[letter].push(u);
     });
@@ -199,6 +215,15 @@ export function UtentesList({
       };
 
       await setDoc(userRef, newUser, { merge: true });
+      logProfileAudit({
+        utenteId: userId,
+        utenteNome: newUser.n || newUser.nome,
+        action: 'criação',
+        campos: ['Registo inicial'],
+        autorId: currentUser?.id,
+        autorNome: currentUser?.nome || currentUser?.n || 'Staff',
+        autorRole: currentUser?.role,
+      });
       alert(`Utente "${formData.nome.toUpperCase()}" registado no sistema municipal.`);
       setShowAddModal(false);
       setFormData({ 
@@ -313,27 +338,27 @@ export function UtentesList({
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
 
         {search.trim().length > 0 ? (
-          <div className="bg-white rounded-[2rem] border-4 border-[#004D71]/5 overflow-hidden shadow-sm divide-y divide-[#004D71]/5">
+          <div className="bg-white rounded-2xl border-2 border-[#004D71]/5 overflow-hidden shadow-sm divide-y divide-[#004D71]/5">
             {filtered.map(u => <UtenteRow key={u.id} u={u} onClick={() => onUserClick(u)} />)}
           </div>
         ) : (
           <>
         {/* Grupo: No Recinto */}
         {groups.inside.length > 0 && (
-          <div className="bg-white rounded-[2rem] border-4 border-green-200/60 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border-2 border-green-200/60 overflow-hidden shadow-sm">
             <button
               onClick={() => toggleGroup('__inside__')}
-              className="w-full flex items-center justify-between px-5 py-3 bg-green-50/80"
+              className="w-full flex items-center justify-between px-3 py-2 bg-green-50/80"
             >
-              <span className="flex items-center gap-2 text-[10px] font-black text-green-700 uppercase tracking-widest">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> No Recinto
+              <span className="flex items-center gap-1.5 text-[9px] font-black text-green-700 uppercase tracking-widest">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> No Recinto
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-green-600 bg-white px-3 py-1 rounded-full shadow-sm border border-green-100">{groups.inside.length} PRESENTES</span>
-                <ChevronDown size={16} className={`text-green-500 transition-transform ${openGroup !== '__inside__' ? '-rotate-90' : ''}`} />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[8px] font-black text-green-600 bg-white px-2 py-0.5 rounded-full shadow-sm border border-green-100">{groups.inside.length} PRESENTES</span>
+                <ChevronDown size={14} className={`text-green-500 transition-transform ${openGroup !== '__inside__' ? '-rotate-90' : ''}`} />
               </div>
             </button>
             {openGroup === '__inside__' && (
@@ -346,16 +371,16 @@ export function UtentesList({
 
         {/* Grupos alfabéticos */}
         {groups.letterGroups.map(g => (
-          <div key={g.key} className="bg-white rounded-[2rem] border-4 border-[#004D71]/5 overflow-hidden shadow-sm">
+          <div key={g.key} className="bg-white rounded-2xl border-2 border-[#004D71]/5 overflow-hidden shadow-sm">
             <button
               onClick={() => toggleGroup(g.key)}
-              className="w-full flex items-center justify-between px-5 py-3 bg-[#004D71]/3 hover:bg-[#004D71]/5 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2 bg-[#004D71]/3 hover:bg-[#004D71]/5 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-xl bg-[#004D71] text-[#F7B500] font-black text-sm flex items-center justify-center">{g.label}</span>
-                <span className="text-[10px] font-black text-[#004D71] uppercase tracking-widest">{g.users.length} utente{g.users.length !== 1 ? 's' : ''}</span>
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-[#004D71] text-[#F7B500] font-black text-[11px] flex items-center justify-center">{g.label}</span>
+                <span className="text-[9px] font-black text-[#004D71] uppercase tracking-widest">{g.users.length} utente{g.users.length !== 1 ? 's' : ''}</span>
               </div>
-              <ChevronDown size={16} className={`text-[#004D71]/40 transition-transform ${openGroup !== g.key ? '-rotate-90' : ''}`} />
+              <ChevronDown size={14} className={`text-[#004D71]/40 transition-transform ${openGroup !== g.key ? '-rotate-90' : ''}`} />
             </button>
             {openGroup === g.key && (
               <div className="divide-y divide-[#004D71]/5">

@@ -4,16 +4,30 @@ import {
   Phone, Mail, FileText, ArrowLeft, Briefcase, Trophy, Target,
   AlertCircle, MapPin, Activity, LogIn, Calendar, TrendingUp, History,
   Dumbbell, Shield, CreditCard, Heart, CheckSquare, Square, Users, X, Plus, Edit2, Check,
-  ArrowUp, ArrowDown, Youtube, Search, ChevronDown
+  ArrowUp, ArrowDown, Youtube, Search, ChevronDown, Trash2
 } from 'lucide-react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { UserProfile } from '../types';
 import { CVCard, FormInput, PicotoIcon, AvatarImage } from './Common';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { APP_ID } from '../App';
-import { doc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, Timestamp, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc, query, where, getDocs, orderBy, limit, Timestamp, onSnapshot, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { handleCheckIn, handleCheckOut } from '../lib/access';
 import { QRCodeCanvas } from 'qrcode.react';
+import { logProfileAudit } from '../lib/audit';
+
+// Campos de ficha cuja alteração fica registada no histórico de auditoria —
+// rótulos legíveis para mostrar "Nome alterou: X, Y" em vez dos nomes técnicos.
+const AUDIT_FIELD_LABELS: Record<string, string> = {
+  nome: 'Nome', email: 'Email', telemovel: 'Telemóvel', phone: 'Telefone',
+  endereco: 'Morada', cod_postal: 'Código Postal', localidade: 'Localidade',
+  nif: 'NIF', cc: 'Cartão de Cidadão', cc_validade: 'Validade CC',
+  data_nasc: 'Data de Nascimento', num_utente: 'Número de Utente',
+  cartao_tipo: 'Tipo de Cartão', cartao_numero: 'Número de Cartão', cartao_validade: 'Validade do Cartão',
+  modalidade: 'Modalidade', role: 'Perfil/Role', restricoes_medicas: 'Restrições Médicas',
+  atestado_medico: 'Atestado Médico', entradas_disponiveis: 'Saldo de Entradas',
+  encarregado_nome: 'Encarregado - Nome', encarregado_email: 'Encarregado - Email', encarregado_cc: 'Encarregado - CC',
+};
 
 const TERMO_IMAGENS =
   'Declaro que autorizo a utilização de imagens (fotos e vídeos) do próprio/meu educando para a utilização eventual em ações de divulgação de carácter diverso promovidos pelo Município de Vila de Rei.';
@@ -47,7 +61,7 @@ function calcAge(dataNasc?: string): number | null {
 
 function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <h3 className="text-xs font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-50 pb-4">
+    <h3 className="text-[11px] font-black text-[#004D71] uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-50 pb-2.5">
       {icon} {label}
     </h3>
   );
@@ -97,12 +111,15 @@ export function ProfileViewModule({
   const [accessLoading, setAccessLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'geral' | 'contactos' | 'atividade' | 'termos'>('geral');
   const isStaff = ['admin', 'staff', 'professor'].includes(currentRole);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Simulador de Pacotes
   const [calcEntries, setCalcEntries] = useState<number>(15);
   const [calcType, setCalcType] = useState<'ginasio' | 'piscina_adulto' | 'piscina_crianca'>('ginasio');
   const [logs, setLogs] = useState<any[]>([]);
   const [recibos, setRecibos] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [durationText, setDurationText] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -184,6 +201,18 @@ export function ProfileViewModule({
     return () => unsub();
   }, [user.id, user.role, currentRole]);
 
+  // Histórico de quem criou/alterou esta ficha e que campos mudaram (auditoria).
+  useEffect(() => {
+    if (!user.id || !['admin', 'staff'].includes(currentRole)) return;
+    const path = `artifacts/${APP_ID}/public/data/audit_logs`;
+    const unsub = onSnapshot(
+      query(collection(db, path), where('utenteId', '==', user.id), orderBy('data', 'desc'), limit(15)),
+      snap => setAuditLogs(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      () => {}
+    );
+    return () => unsub();
+  }, [user.id, currentRole]);
+
   useEffect(() => {
     if (!user.isInside || !user.updatedAt) { setDurationText(''); return; }
     const update = () => {
@@ -244,6 +273,21 @@ export function ProfileViewModule({
       writeLocalOverride(saved);
       try {
         await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, id), updateData);
+        const changedFields = Object.keys(AUDIT_FIELD_LABELS).filter(
+          k => JSON.stringify((user as any)[k] ?? null) !== JSON.stringify((formData as any)[k] ?? null)
+        );
+        if (changedFields.length > 0) {
+          const editingSomeoneElse = isStaff && staffUser?.id !== id;
+          logProfileAudit({
+            utenteId: id,
+            utenteNome: formData.nome || formData.n || '',
+            action: 'edição',
+            campos: changedFields.map(k => AUDIT_FIELD_LABELS[k]),
+            autorId: editingSomeoneElse ? staffUser?.id : id,
+            autorNome: editingSomeoneElse ? (staffUser?.nome || staffUser?.n || 'Staff') : 'O próprio',
+            autorRole: editingSomeoneElse ? staffUser?.role : 'utente',
+          });
+        }
         if (carregamento > 0 && carregamento % 5 === 0) {
           await addDoc(collection(db, `artifacts/${APP_ID}/public/data/recibos_carregamento`), {
             utenteId: id,
@@ -286,10 +330,33 @@ export function ProfileViewModule({
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, `artifacts/${APP_ID}/public/data/users`, user.id));
+      logProfileAudit({
+        utenteId: user.id,
+        utenteNome: user.nome || user.n || '',
+        action: 'edição',
+        campos: ['Conta eliminada'],
+        autorId: staffUser?.id,
+        autorNome: staffUser?.nome || staffUser?.n || 'Staff',
+        autorRole: staffUser?.role,
+      });
+      setShowDeleteConfirm(false);
+      if (isExternalView) onLogout();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${user.id}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const termsOk = formData.termo_imagens && formData.termo_responsabilidade;
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 text-left px-2 pb-24 max-w-4xl mx-auto">
+    <div className="space-y-3 animate-in slide-in-from-bottom-4 text-left px-2 pb-24 max-w-4xl mx-auto">
 
       {/* ID CARD — visível para todos (foto, nome, role, etc.) */}
       <div className="bg-[#004D71] rounded-[2.5rem] shadow-2xl overflow-hidden relative">
@@ -329,35 +396,41 @@ export function ProfileViewModule({
             <button onClick={() => window.print()} className="bg-white/10 text-white/70 p-2 rounded-xl hover:bg-white/20 transition-colors">
               <FileText size={16}/>
             </button>
+            {['admin', 'staff'].includes(currentRole) && isExternalView && (
+              <button onClick={() => setShowDeleteConfirm(true)} title="Eliminar Utente"
+                className="bg-red-500/20 text-red-300 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
+                <Trash2 size={16}/>
+              </button>
+            )}
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-0">
-          <div className="flex flex-col items-center justify-center px-6 py-4 sm:px-8 sm:py-6 sm:border-r border-white/10 shrink-0">
+          <div className="flex flex-col items-center justify-center px-4 py-3 sm:px-6 sm:py-4 sm:border-r border-white/10 shrink-0">
             <div className="relative">
-              <div className="w-20 h-20 sm:w-36 sm:h-36 rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden border-4 border-[#F7B500] shadow-2xl bg-white">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-4 border-[#F7B500] shadow-2xl bg-white">
                 <AvatarImage src={formData.img || ''} alt="Avatar" className="w-full h-full object-cover"/>
                 {isEditing && (
-                  <button onClick={() => fileRef.current?.click()} className="absolute inset-0 bg-black/50 flex items-center justify-center text-white backdrop-blur-sm rounded-[1.5rem] sm:rounded-[2rem]">
-                    <Camera size={22}/>
+                  <button onClick={() => fileRef.current?.click()} className="absolute inset-0 bg-black/50 flex items-center justify-center text-white backdrop-blur-sm rounded-2xl">
+                    <Camera size={18}/>
                   </button>
                 )}
               </div>
               {user.isInside && (
-                <div className="absolute -bottom-2 -right-2 bg-emerald-400 text-white p-1.5 sm:p-2 rounded-xl shadow-lg border-2 border-[#004D71]">
-                  <MapPin size={12}/>
+                <div className="absolute -bottom-1.5 -right-1.5 bg-emerald-400 text-white p-1.5 rounded-lg shadow-lg border-2 border-[#004D71]">
+                  <MapPin size={10}/>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex-1 px-5 sm:px-8 py-4 sm:py-6 flex flex-col justify-between">
+          <div className="flex-1 px-4 sm:px-6 py-3 sm:py-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <PicotoIcon size={18} className="text-[#F7B500] opacity-60 shrink-0"/>
-                <p className="text-[9px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo · Vila de Rei</p>
+              <div className="flex items-center gap-2 mb-0.5">
+                <PicotoIcon size={15} className="text-[#F7B500] opacity-60 shrink-0"/>
+                <p className="text-[8px] font-black text-[#F7B500]/60 uppercase tracking-[0.2em]">Complexo Desportivo · Vila de Rei</p>
               </div>
-              <h2 className="text-lg sm:text-3xl font-black text-white uppercase leading-tight mt-1 mb-2">
+              <h2 className="text-base sm:text-xl font-black text-white uppercase leading-tight mt-1 mb-1.5">
                 {formData.nome || formData.n}
               </h2>
               <div className="flex flex-wrap gap-2 items-center">
@@ -409,7 +482,7 @@ export function ProfileViewModule({
 
       {/* Barra de edição — visível para todos na vista própria */}
       {!isExternalView && (
-        <div className="flex flex-col sm:flex-row items-center justify-between bg-white rounded-[2rem] px-5 py-3 border-2 border-slate-100 shadow-sm gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between bg-white rounded-2xl px-3 py-2 border-2 border-slate-100 shadow-sm gap-2">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             {isEditing ? 'Modo de edição activo' : 'Dados do perfil'}
           </p>
@@ -451,15 +524,15 @@ export function ProfileViewModule({
       )}
 
       {/* Tabs — grelha 2x2 no telemóvel (cabem sempre os 4, sem cortar nem precisar de arrastar), uma linha a partir de sm: */}
-      <div className="grid grid-cols-2 sm:flex p-2 bg-slate-200/50 backdrop-blur rounded-[2rem] sm:rounded-[2.5rem] gap-1 sticky top-0 z-20">
+      <div className="grid grid-cols-2 sm:flex p-1.5 bg-slate-200/50 backdrop-blur rounded-2xl gap-1 sticky top-0 z-20">
         {[
-          { id: 'geral',      label: 'Dados',   icon: <User size={15}/> },
-          { id: 'contactos',  label: 'Contactos',        icon: <Phone size={15}/> },
-          ...(formData.role === 'utente' ? [{ id: 'atividade',  label: 'Atividade',        icon: <History size={15}/> }] : []),
-          ...(formData.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={15}/> }] : [])
+          { id: 'geral',      label: 'Dados',   icon: <User size={13}/> },
+          { id: 'contactos',  label: 'Contactos',        icon: <Phone size={13}/> },
+          ...(formData.role === 'utente' ? [{ id: 'atividade',  label: 'Atividade',        icon: <History size={13}/> }] : []),
+          ...(formData.role === 'utente' ? [{ id: 'termos', label: 'Termos', icon: <FileText size={13}/> }] : [])
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-            className={`sm:flex-1 flex items-center justify-center gap-1.5 py-3 px-2 rounded-[1.5rem] sm:rounded-[2rem] text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
+            className={`sm:flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-[#004D71] text-[#F7B500] shadow-lg scale-[1.02]' : 'text-slate-500 hover:bg-slate-100'}`}>
             {t.icon} <span>{t.label}</span>
           </button>
         ))}
@@ -467,14 +540,14 @@ export function ProfileViewModule({
 
       {/* TAB: Identificação */}
       {activeTab === 'geral' && (
-        <div className="space-y-6 animate-in fade-in">
+        <div className="space-y-3 animate-in fade-in">
 
 
 
           {/* Dados Pessoais */}
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
             <SectionTitle icon={<User size={16}/>} label="Dados Pessoais" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <FormInput label="Nome Completo" icon={<User size={14}/>}
                 value={formData.nome || formData.n || ''} disabled={!isEditing}
                 onChange={v => set('nome', v)} />
@@ -519,9 +592,9 @@ export function ProfileViewModule({
 
           {/* Cartão Municipal */}
           {formData.role === 'utente' && (
-            <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
               <SectionTitle icon={<CreditCard size={16}/>} label="Cartão Municipal" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-1.5 text-left w-full">
                   <div className="flex items-center gap-2 ml-1 text-[#004D71]">
                     <CreditCard size={14}/> <label className="text-[10px] font-black uppercase tracking-widest">Tipo de Cartão</label>
@@ -562,35 +635,49 @@ export function ProfileViewModule({
                   value={formData.cartao_validade || ''} disabled={!isEditing || !isStaff}
                   onChange={v => set('cartao_validade', v)} />
               </div>
+
+              <div className="pt-2 flex items-center gap-3 border-t border-slate-100">
+                <input
+                  type="checkbox"
+                  id="profile_atestado"
+                  checked={!!formData.atestado_medico}
+                  disabled={!isEditing || !isStaff}
+                  onChange={e => set('atestado_medico', e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-200 text-[#004D71] focus:ring-[#004D71] cursor-pointer disabled:cursor-not-allowed"
+                />
+                <label htmlFor="profile_atestado" className="text-[10px] font-black text-[#004D71] uppercase tracking-widest cursor-pointer select-none">
+                  Atestado Médico Entregue
+                </label>
+              </div>
             </div>
           )}
 
           {/* Financeiro (Gestão de Entradas) */}
           {['admin', 'staff'].includes(currentRole) && formData.role === 'utente' && (
-            <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
               <SectionTitle icon={<CreditCard size={16}/>} label="Gestão de Entradas (Carregamentos)" />
               
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-full md:w-1/3 bg-slate-50 p-6 rounded-[2rem] text-center border-2 border-slate-100 flex flex-col items-center justify-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Saldo Atual</p>
-                  <h3 className={`text-6xl font-black tracking-tighter ${
+              <div className="flex flex-col md:flex-row items-center gap-3">
+                <div className="w-full md:w-1/3 bg-slate-50 p-4 rounded-2xl text-center border-2 border-slate-100 flex flex-col items-center justify-center">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Atual</p>
+                  <h3 className={`text-4xl font-black tracking-tighter ${
                     (formData.entradas_disponiveis || 0) > 0 ? 'text-emerald-500' : 'text-red-500'
                   }`}>
                     {formData.entradas_disponiveis || 0}
                   </h3>
-                  <p className="text-xs font-bold text-slate-400 mt-2">entradas</p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1">entradas</p>
                 </div>
 
-                <div className="w-full md:w-2/3 space-y-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregamento Rápido (pacotes de 5)</p>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                <div className="w-full md:w-2/3 space-y-2">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Carregamento Rápido (pacotes de 5)</p>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                     {[5, 10, 15, 20, 25, 30].map(amount => (
                       <button
                         key={amount}
                         type="button" // Staff/Admin can always add entries without full edit mode
                         disabled={!['admin', 'staff'].includes(currentRole)}
                         onClick={() => set('entradas_disponiveis', (formData.entradas_disponiveis || 0) + amount)}
-                        className="bg-[#004D71]/5 hover:bg-[#004D71] hover:text-[#F7B500] text-[#004D71] transition-colors rounded-2xl py-4 font-black text-lg disabled:opacity-50 disabled:hover:bg-[#004D71]/5 disabled:hover:text-[#004D71]"
+                        className="bg-[#004D71]/5 hover:bg-[#004D71] hover:text-[#F7B500] text-[#004D71] transition-colors rounded-xl py-2.5 font-black text-sm disabled:opacity-50 disabled:hover:bg-[#004D71]/5 disabled:hover:text-[#004D71]"
                       >
                         +{amount}
                       </button>
@@ -697,14 +784,41 @@ export function ProfileViewModule({
             </div>
           )}
 
+          {/* Histórico de Alterações (auditoria) — quem criou/editou esta ficha e o quê */}
+          {['admin', 'staff'].includes(currentRole) && auditLogs.length > 0 && (
+            <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-4">
+              <SectionTitle icon={<History size={16}/>} label="Histórico de Alterações" />
+              <div className="space-y-2">
+                {auditLogs.map(a => (
+                  <div key={a.id} className="flex items-start gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-[#004D71]">
+                        {a.data?.toDate ? a.data.toDate().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        <span className="text-slate-400 font-bold"> · {a.action === 'criação' ? 'Criação' : 'Edição'}</span>
+                      </p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Por {a.autorNome || 'Staff'}</p>
+                      {Array.isArray(a.campos) && a.campos.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap mt-1">
+                          {a.campos.map((c: string) => (
+                            <span key={c} className="text-[7px] font-bold text-slate-500 uppercase bg-white px-1.5 py-0.5 rounded-full border border-slate-200">{c}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Encarregado de Educação (apenas menores) */}
           {(isMinor || formData.encarregado_email) && (
-            <div className="bg-orange-50 rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 border-2 border-orange-200 space-y-4 sm:space-y-6">
+            <div className="bg-orange-50 rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 border-2 border-orange-200 space-y-3 sm:space-y-4">
               <SectionTitle icon={<Users size={16}/>} label="Encarregado de Educação" />
               <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest -mt-2">
                 Obrigatório para menores de 16 anos
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <FormInput label="Nome do Encarregado" icon={<User size={14}/>}
                   value={formData.encarregado_nome || ''} disabled={!isEditing}
                   onChange={v => set('encarregado_nome', v)} />
@@ -740,9 +854,9 @@ export function ProfileViewModule({
 
           {/* Segurança */}
           {(user.id === formData.id || currentRole === 'admin') && (
-            <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
               <SectionTitle icon={<Shield size={16}/>} label="Segurança da Conta" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <FormInput label="Palavra-passe (Login)" icon={<Shield size={14}/>}
                   value={formData.password || '123456'} disabled={!isEditing}
                   onChange={v => set('password', v)} type={isEditing ? 'text' : 'password'} />
@@ -755,10 +869,10 @@ export function ProfileViewModule({
 
       {/* TAB: Contactos */}
       {activeTab === 'contactos' && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+        <div className="space-y-3 animate-in fade-in">
+          <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
             <SectionTitle icon={<Phone size={16}/>} label="Contactos" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <FormInput label="Telefone Fixo" icon={<Phone size={14}/>}
                 value={formData.telefone || ''} disabled={!isEditing}
                 onChange={v => set('telefone', v)} />
@@ -768,9 +882,9 @@ export function ProfileViewModule({
             </div>
           </div>
 
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
             <SectionTitle icon={<MapPin size={16}/>} label="Morada" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div className="md:col-span-2">
                 <FormInput label="Morada Completa" icon={<MapPin size={14}/>}
                   value={formData.endereco || ''} disabled={!isEditing}
@@ -785,9 +899,9 @@ export function ProfileViewModule({
             </div>
           </div>
 
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
             <SectionTitle icon={<AlertCircle size={16}/>} label="Contacto de Emergência" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <FormInput label="Nome Completo" icon={<User size={14}/>}
                 value={formData.nome_emergencia || ''} disabled={!isEditing}
                 onChange={v => set('nome_emergencia', v)} />
@@ -801,34 +915,34 @@ export function ProfileViewModule({
 
       {/* TAB: Atividade */}
       {activeTab === 'atividade' && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50">
+        <div className="space-y-3 animate-in fade-in">
+          <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border-2 border-slate-50">
             <SectionTitle icon={<History size={16}/>} label="Histórico de Acessos" />
-            <div className="space-y-3 mt-6">
+            <div className="space-y-1.5 mt-3">
               {logs.map(log => (
-                <div key={log.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-[2rem] border border-slate-100 hover:bg-white hover:shadow-xl transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#004D71] shadow-sm">
-                      <Calendar size={20}/>
+                <div key={log.id} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl border border-slate-100 hover:bg-white hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#004D71] shadow-sm shrink-0">
+                      <Calendar size={14}/>
                     </div>
                     <div>
-                      <p className="text-xs font-black text-[#004D71] uppercase">{log.date} — {log.zone || 'Complexo'}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-2">
-                        <LogIn size={10}/> {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}
+                      <p className="text-[10px] font-black text-[#004D71] uppercase">{log.date} — {log.zone || 'Complexo'}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                        <LogIn size={9}/> {log.checkIn instanceof Timestamp ? log.checkIn.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}
                         <span className="opacity-30">|</span>
-                        <LogOut size={10}/> {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}
+                        <LogOut size={9}/> {log.checkOut instanceof Timestamp ? log.checkOut.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-[#004D71]">{log.durationMinutes || '--'} <small className="text-[8px] uppercase opacity-40">min</small></p>
+                  <div className="text-right shrink-0">
+                    <p className="text-[11px] font-black text-[#004D71]">{log.durationMinutes || '--'} <small className="text-[7px] uppercase opacity-40">min</small></p>
                   </div>
                 </div>
               ))}
               {logs.length === 0 && (
-                <div className="py-20 text-center text-slate-300">
-                  <History size={40} className="mx-auto mb-4 opacity-20"/>
-                  <p className="uppercase font-black text-[9px] tracking-[0.2em]">Sem registos de atividade</p>
+                <div className="py-10 text-center text-slate-300">
+                  <History size={28} className="mx-auto mb-2 opacity-20"/>
+                  <p className="uppercase font-black text-[8px] tracking-[0.2em]">Sem registos de atividade</p>
                 </div>
               )}
             </div>
@@ -838,8 +952,8 @@ export function ProfileViewModule({
 
       {/* TAB: Termos */}
       {activeTab === 'termos' && formData.role === 'utente' && (
-        <div className="space-y-6 animate-in fade-in">
-          <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-8 shadow-sm border-2 border-slate-50 space-y-4 sm:space-y-6">
+        <div className="space-y-3 animate-in fade-in">
+          <div className="bg-white rounded-2xl sm:rounded-[1.75rem] p-4 sm:p-5 shadow-sm border-2 border-slate-50 space-y-3 sm:space-y-4">
             <SectionTitle icon={<FileText size={16}/>} label="Termos de Responsabilidade" />
             {!isEditing && !termsOk && (
               <div className="flex items-center gap-3 p-4 bg-red-50 rounded-2xl border border-red-100">
@@ -878,6 +992,30 @@ export function ProfileViewModule({
                   if (v) set('termo_responsabilidade_data', new Date().toISOString());
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[10000] bg-[#004D71]/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in zoom-in">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+              <Trash2 className="text-red-500" size={20} />
+            </div>
+            <h3 className="font-black text-[#004D71] uppercase text-sm leading-tight mb-2">Eliminar Utente</h3>
+            <p className="text-[11px] font-bold text-slate-500 leading-relaxed mb-5">
+              Tem a certeza que quer eliminar permanentemente a ficha de <span className="text-[#004D71]">{user.nome || user.n}</span>? Esta ação não pode ser desfeita — os registos de acesso já feitos não são apagados.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+                className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all">
+                Cancelar
+              </button>
+              <button onClick={handleDeleteUser} disabled={deleting}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] active:scale-95 transition-all disabled:opacity-50">
+                {deleting ? 'A eliminar...' : 'Eliminar'}
+              </button>
             </div>
           </div>
         </div>

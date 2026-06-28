@@ -59,13 +59,13 @@ export const FormInput = React.memo(({ label, icon, value, onChange, type = "tex
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full border-2 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 font-bold text-sm sm:text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all"
+          className="w-full border-2 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all"
         />
       ) : type === 'date' && disabled ? (
         // Em modo só-leitura evitamos o <input type="date"> nativo: no iOS/Safari
         // o controlo de calendário do sistema desenha por cima mesmo desativado,
         // ignora os cantos arredondados e sobrepõe elementos vizinhos.
-        <div className="w-full border-2 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 font-bold text-sm sm:text-base bg-slate-50 border-slate-200 text-slate-500">
+        <div className="w-full border-2 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm bg-slate-50 border-slate-200 text-slate-500">
           {formatDateDisplay(String(value || '')) || '—'}
         </div>
       ) : (
@@ -75,7 +75,7 @@ export const FormInput = React.memo(({ label, icon, value, onChange, type = "tex
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border-2 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 font-bold text-sm sm:text-base outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all"
+          className="w-full border-2 rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 font-bold text-xs sm:text-sm outline-none bg-white border-slate-200 focus:border-[#004D71] transition-all"
         />
       )}
     </div>
@@ -84,11 +84,11 @@ export const FormInput = React.memo(({ label, icon, value, onChange, type = "tex
 
 export function CVCard({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
   return (
-    <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-4">
-      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 text-[#004D71]">{icon}</div>
+    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+      <div className="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center shrink-0 text-[#004D71]">{icon}</div>
       <div className="text-left font-sans">
         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className="text-xs font-bold text-slate-800 uppercase">{value}</p>
+        <p className="text-[11px] font-bold text-slate-800 uppercase">{value}</p>
       </div>
     </div>
   );

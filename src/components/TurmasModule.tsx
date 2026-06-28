@@ -585,7 +585,6 @@ function AttendanceSheet({ turma, turmas, markerUserId, markerUserName, onBack }
   const [done, setDone]           = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [localAlunos, setLocalAlunos] = useState<TurmaAluno[]>(turma.alunos || []);
-  const [error, setError]         = useState('');
   const [showAddInput, setShowAddInput] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<TurmaAluno | null>(null);

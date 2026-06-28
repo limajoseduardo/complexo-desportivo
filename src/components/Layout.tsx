@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Users, User, Calendar, LogOut,
   Shield, Briefcase, Settings, AlertTriangle, ClipboardList,
-  ChevronRight, Monitor, Radio, BookOpen, Trophy, Waves,
+  ChevronRight, ChevronLeft, Monitor, Radio, BookOpen, Trophy, Waves,
   Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer, Gauge, QrCode, RefreshCw, Megaphone, Clock, MoreHorizontal,
   Download, Share, X as XIcon, QrCode as QrCodeIcon
 } from 'lucide-react';
@@ -385,17 +385,37 @@ const MENU_ITEMS = () => [
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
+const SIDEBAR_COLLAPSED_KEY = 'cpx_sidebar_collapsed_v1';
+
 export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimularRfid, onKioskMode, coberturaAtiva }: { activeTab: string, setActiveTab: (t: string) => void, onLogout: () => void, user: UserProfile, onSimularRfid?: () => void, onKioskMode?: () => void, coberturaAtiva?: boolean }) => {
   const menu = MENU_ITEMS().filter(item => item.roles.includes(user.role) || (coberturaAtiva && item.coverageRoles?.includes(user.role)));
+  const [collapsed, setCollapsed] = React.useState(() => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true');
+
+  React.useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
+
+  const showReceção = (onKioskMode && ['admin', 'chefia', 'staff', 'professor'].includes(user.role)) ||
+    (onSimularRfid && ['admin', 'chefia', 'staff'].includes(user.role));
 
   return (
-    <aside className="hidden lg:flex flex-col w-48 bg-[#004D71] p-3 text-white relative shrink-0">
+    <aside className={`hidden lg:flex flex-col bg-[#004D71] p-3 text-white relative shrink-0 transition-[width] duration-200 ${collapsed ? 'w-[68px]' : 'w-48'}`}>
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        title={collapsed ? 'Expandir menu' : 'Encolher menu'}
+        className={`w-full flex items-center gap-2 mb-3 px-2.5 py-2 rounded-xl bg-white/10 text-[#F7B500] hover:bg-[#F7B500] hover:text-[#004D71] active:scale-95 transition-all ${collapsed ? 'justify-center' : 'justify-between'}`}
+      >
+        {!collapsed && <span className="text-[9px] font-black uppercase tracking-widest">Encolher</span>}
+        {collapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
+      </button>
+
       <nav className="flex-1 space-y-1">
         {menu.map(item => (
-          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl font-black transition-all ${activeTab === item.id ? 'bg-[#F7B500] text-[#004D71] shadow-xl translate-x-2' : 'text-blue-100/40 hover:bg-white/5 hover:text-white'}`}>
-            <div className="flex items-center gap-3">
+          <button key={item.id} onClick={() => setActiveTab(item.id)} title={collapsed ? item.label : undefined}
+            className={`w-full flex items-center px-3 py-3 rounded-2xl font-black transition-all ${collapsed ? 'justify-center' : 'justify-between'} ${activeTab === item.id ? `bg-[#F7B500] text-[#004D71] shadow-xl ${collapsed ? '' : 'translate-x-2'}` : 'text-blue-100/40 hover:bg-white/5 hover:text-white'}`}>
+            <div className={`flex items-center ${collapsed ? '' : 'gap-3'}`}>
               {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
-              <span className="uppercase text-[10px] tracking-widest">{item.label}</span>
+              {!collapsed && <span className="uppercase text-[10px] tracking-widest">{item.label}</span>}
             </div>
           </button>
         ))}
@@ -404,18 +424,19 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimu
       <div className="mb-6 space-y-2 border-t border-white/10 pt-6">
         {/* Quiosque Ecrã também fica disponível a professores: em caso de ausência da
             receção (doença, baixa, greve), são eles que cobrem o registo de entradas. */}
-        {((onKioskMode && ['admin', 'chefia', 'staff', 'professor'].includes(user.role)) ||
-          (onSimularRfid && ['admin', 'chefia', 'staff'].includes(user.role))) && (
+        {showReceção && (
           <>
-            <p className="text-[9px] font-black uppercase tracking-widest text-white/40 px-3 mb-3">Receção</p>
+            {!collapsed && <p className="text-[9px] font-black uppercase tracking-widest text-white/40 px-3 mb-3">Receção</p>}
             {onKioskMode && ['admin', 'chefia', 'staff', 'professor'].includes(user.role) && (
-              <button onClick={onKioskMode} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-sky-200 hover:bg-sky-500/20 hover:text-white uppercase text-[9px] tracking-widest">
-                <Monitor size={14}/> Quiosque Ecrã
+              <button onClick={onKioskMode} title={collapsed ? 'Quiosque Ecrã' : undefined}
+                className={`w-full flex items-center px-3 py-2.5 rounded-xl font-black transition-all text-sky-200 hover:bg-sky-500/20 hover:text-white uppercase text-[9px] tracking-widest ${collapsed ? 'justify-center' : 'gap-2'}`}>
+                <Monitor size={14}/> {!collapsed && 'Quiosque Ecrã'}
               </button>
             )}
             {onSimularRfid && ['admin', 'chefia', 'staff'].includes(user.role) && (
-              <button onClick={onSimularRfid} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl font-black transition-all text-yellow-200 hover:bg-yellow-500/20 hover:text-white uppercase text-[9px] tracking-widest">
-                <Radio size={14}/> Teste RFID
+              <button onClick={onSimularRfid} title={collapsed ? 'Teste RFID' : undefined}
+                className={`w-full flex items-center px-3 py-2.5 rounded-xl font-black transition-all text-yellow-200 hover:bg-yellow-500/20 hover:text-white uppercase text-[9px] tracking-widest ${collapsed ? 'justify-center' : 'gap-2'}`}>
+                <Radio size={14}/> {!collapsed && 'Teste RFID'}
               </button>
             )}
           </>
@@ -423,8 +444,9 @@ export const DesktopSidebar = ({ activeTab, setActiveTab, onLogout, user, onSimu
 
       </div>
 
-      <button onClick={onLogout} className="mt-auto flex items-center gap-3 px-3 py-3 rounded-2xl font-black text-blue-300 hover:bg-white/5 hover:text-red-400 transition-all uppercase text-[10px] tracking-widest">
-        <LogOut size={16}/> Terminar Sessão
+      <button onClick={onLogout} title={collapsed ? 'Terminar Sessão' : undefined}
+        className={`mt-auto flex items-center px-3 py-3 rounded-2xl font-black text-blue-300 hover:bg-white/5 hover:text-red-400 transition-all uppercase text-[10px] tracking-widest ${collapsed ? 'justify-center' : 'gap-3'}`}>
+        <LogOut size={16}/> {!collapsed && 'Terminar Sessão'}
       </button>
     </aside>
   );
