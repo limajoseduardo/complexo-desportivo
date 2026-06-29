@@ -30,6 +30,7 @@ const KioskMode = React.lazy(() => import('./components/KioskMode').then(m => ({
 const SwimmingTeacherPortal = React.lazy(() => import('./components/SwimmingModule').then(m => ({ default: m.SwimmingTeacherPortal })));
 const EventsModule = React.lazy(() => import('./components/Events').then(m => ({ default: m.EventsModule })));
 const UtenteQRCard = React.lazy(() => import('./components/UtenteQRCard').then(m => ({ default: m.UtenteQRCard })));
+const TeamManagementModule = React.lazy(() => import('./components/TeamManagement').then(m => ({ default: m.TeamManagementModule })));
 import { seedUtentesTestData } from './lib/seedUtentes';
 import { seedExerciseLibrary } from './lib/seedExercises';
 import { seedWorkoutTemplates } from './lib/seedTemplates';
@@ -71,8 +72,8 @@ const normalizeRole = (role?: string, email?: string): UserProfile['role'] => {
 };
 
 const TABS_BY_ROLE: Record<string, string[]> = {
-  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'sincronizar', 'perfil'],
-  chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
+  admin: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'sincronizar', 'equipa', 'perfil'],
+  chefia: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'equipa', 'perfil'],
   staff: ['inicio', 'utentes', 'acessos', 'mapas', 'eventos', 'agenda', 'avisos', 'horarios', 'perfil'],
   professor: ['inicio', 'utentes', 'acessos', 'alunos', 'planos', 'eventos', 'agenda', 'perfil'],
   utente: ['inicio', 'eventos', 'agenda', 'perfil'],
@@ -1066,6 +1067,7 @@ export default function App() {
                     {activeTab === 'eventos' && <EventsModule user={user} utentes={utentes} />}
                     {activeTab === 'agenda' && <AgendaModule userRole={user.role} user={user} />}
                     {activeTab === 'sincronizar' && user.role === 'admin' && <SyncPortalMunicipal utentes={utentes} />}
+                    {activeTab === 'equipa' && ['admin', 'chefia'].includes(user.role) && <TeamManagementModule currentUser={user} utentes={utentes} />}
                     {activeTab === 'avisos' && getAllowedTabs(user.role, coberturaAtiva).includes('avisos') && <AvisosModule user={user} utentes={utentes} readOnly={user.role === 'chefia' || (user.role === 'professor' && coberturaAtiva)} />}
                     {activeTab === 'horarios' && getAllowedTabs(user.role, coberturaAtiva).includes('horarios') && ((user.role === 'chefia' || (user.role === 'professor' && coberturaAtiva)) ? <HorariosCard /> : <HorariosManager />)}
                     {activeTab === 'perfil' && (

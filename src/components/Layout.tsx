@@ -382,6 +382,7 @@ const MENU_ITEMS = () => [
   { id: 'avisos',       icon: <Megaphone />,     label: 'Avisos',       mobileLabel: 'AVISOS', roles: ['admin', 'staff', 'chefia'], coverageRoles: ['professor'] },
   { id: 'horarios',     icon: <Clock />,         label: 'Horários',     mobileLabel: 'HORAS', roles: ['admin', 'staff', 'chefia'], coverageRoles: ['professor'] },
   { id: 'sincronizar',  icon: <RefreshCw />,     label: 'Sincronizar',  mobileLabel: 'SYNC',   roles: ['admin'] },
+  { id: 'equipa',       icon: <Briefcase />,     label: 'Equipa',       mobileLabel: 'EQUIPA', roles: ['admin', 'chefia'] },
   { id: 'perfil',       icon: <User />,          label: 'Perfil',       mobileLabel: 'EU', roles: ['admin', 'staff', 'chefia', 'professor', 'utente'] },
 ];
 
