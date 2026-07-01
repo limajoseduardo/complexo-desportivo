@@ -926,14 +926,24 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
   }), [logs, startDate, endDate]);
 
   const dailyStats = React.useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    // Usar sempre monthlyLogs como fonte única — evita inconsistências entre dois listeners do Firestore
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    // Normaliza o campo date independentemente do formato guardado (string curta, ISO completo, Timestamp)
+    const getDate = (l: AccessLog): string => {
+      if (typeof l.date === 'string') return l.date.slice(0, 10);
+      if (l.date && typeof (l.date as any).toDate === 'function') return (l.date as any).toDate().toISOString().slice(0, 10);
+      return '';
+    };
     const countMod = (mod: string) => monthlyLogs.filter(l =>
-      l.date === todayStr && normalizeModality(l.modalidade || '') === mod
+      getDate(l) === todayStr && normalizeModality(l.modalidade || '') === mod
     ).length;
-    const countMonthly = (mod: string) => monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
+    const countMonthly = (mod: string) => monthlyLogs.filter(l => {
+      const d = getDate(l);
+      return d >= monthStart && d <= todayStr && normalizeModality(l.modalidade || '') === mod;
+    }).length;
     const countLive = (mod: string) => monthlyLogs.filter(l =>
-      l.date === todayStr && !l.checkOut && normalizeModality(l.modalidade || '') === mod
+      getDate(l) === todayStr && !l.checkOut && normalizeModality(l.modalidade || '') === mod
     ).length;
     return [
       { id: 'livre', label: 'Piscina Livre', icon: <Star size={14} />, color: 'text-sky-300', bg: 'bg-sky-600', mod: 'Piscina Regime Livre' },
@@ -1114,8 +1124,13 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
   }, [allDateLogs]);
 
   const todayAffluenceByLocation = React.useMemo(() => {
+    const now2 = new Date();
+    const ms = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}-01`;
+    const ts = now2.toISOString().slice(0, 10);
     const counts: Record<string, number> = {};
     monthlyLogs.forEach((r) => {
+      const d = typeof r.date === 'string' ? r.date.slice(0, 10) : '';
+      if (!d || d < ms || d > ts) return;
       const key = (r.modalidade || 'Outro / Geral').trim() || 'Outro / Geral';
       counts[key] = (counts[key] || 0) + 1;
     });
@@ -1343,13 +1358,19 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
 
   const leaderboardByModality = React.useMemo(() => {
     const ranking: Record<string, Array<{ userId: string; userName: string; count: number }>> = {};
+    const _lbNow = new Date();
+    const _lbMs = `${_lbNow.getFullYear()}-${String(_lbNow.getMonth() + 1).padStart(2, '0')}-01`;
+    const _lbTs = _lbNow.toISOString().slice(0, 10);
 
     modalities.forEach(m => {
       // Piscina Exterior é sobretudo bilhete anónimo (Adulto/Criança, sem identidade)
       // — não faz sentido um pódio individual para esta modalidade.
       if (m === 'Piscina Exterior') return;
 
-      const modalityLogs = monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === m);
+      const modalityLogs = monthlyLogs.filter(l => {
+        const d = typeof l.date === 'string' ? l.date.slice(0, 10) : '';
+        return d >= _lbMs && d <= _lbTs && normalizeModality(l.modalidade || '') === m;
+      });
       const userCounts: Record<string, { userName: string; count: number }> = {};
 
       modalityLogs.forEach(l => {
