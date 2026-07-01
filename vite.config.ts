@@ -35,13 +35,19 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-            'charts':   ['recharts'],
-            'pdf':      ['jspdf', 'jspdf-autotable'],
-            'motion':   ['motion/react'],
+          manualChunks: (id) => {
+            if (id.includes('node_modules/firebase/auth')) return 'firebase-auth';
+            if (id.includes('node_modules/firebase/firestore')) return 'firebase-firestore';
+            if (id.includes('node_modules/firebase/app')) return 'firebase-app';
+            if (id.includes('node_modules/firebase/')) return 'firebase-misc';
+            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react-vendor';
+            if (id.includes('node_modules/recharts')) return 'charts';
+            if (id.includes('node_modules/jspdf')) return 'pdf';
+            if (id.includes('node_modules/motion')) return 'motion';
+            if (id.includes('node_modules/lucide-react')) return 'lucide';
           },
         },
       },

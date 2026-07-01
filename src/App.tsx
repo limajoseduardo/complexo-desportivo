@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { seedSwimmingData } from './components/SwimmingModule';
+import { seedSwimmingData } from './lib/seedSwimmingData';
 
 const ModalitiesDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.ModalitiesDashboard })));
 const UtenteDashboard = React.lazy(() => import('./components/Dashboards').then(m => ({ default: m.UtenteDashboard })));
