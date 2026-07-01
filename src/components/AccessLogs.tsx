@@ -1343,11 +1343,15 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     const ranking: Record<string, Array<{ userId: string; userName: string; count: number }>> = {};
 
     modalities.forEach(m => {
+      // Piscina Exterior é sobretudo bilhete anónimo (Adulto/Criança, sem identidade)
+      // — não faz sentido um pódio individual para esta modalidade.
+      if (m === 'Piscina Exterior') return;
+
       const modalityLogs = monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === m);
       const userCounts: Record<string, { userName: string; count: number }> = {};
 
       modalityLogs.forEach(l => {
-        if (!l.userId) return;
+        if (!l.userId || l.userId === 'ext_entrada') return;
         if (!userCounts[l.userId]) {
           userCounts[l.userId] = { userName: l.userName || 'Utente', count: 0 };
         }
