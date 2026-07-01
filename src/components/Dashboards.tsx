@@ -322,9 +322,14 @@ export const MonthlyAffluenceCard = React.memo(({ utentes = [], onUserClick }: {
   // Real-time monthly totals — auto-resets when month changes
   useEffect(() => {
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay  = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    const monthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    // Usar partes locais da data — evita que toISOString() converta para UTC
+    // e inclua o mês anterior (ex: 1 jul 00:00 Portugal = 30 jun UTC)
+    const firstDay = `${y}-${m}-01`;
+    const lastDayNum = new Date(y, now.getMonth() + 1, 0).getDate();
+    const lastDay = `${y}-${m}-${String(lastDayNum).padStart(2, '0')}`;
+    const monthKey = `${y}-${now.getMonth() + 1}`;
 
     const unsub = onSnapshot(
       query(collection(db, `artifacts/${APP_ID}/public/data/logs_acesso`),
@@ -333,20 +338,24 @@ export const MonthlyAffluenceCard = React.memo(({ utentes = [], onUserClick }: {
         const byModality: Record<string, number> = {};
         const byUserMap: Record<string, { count: number; mods: Set<string> }> = {};
         snap.forEach(d => {
-          const { modalidade, userId } = d.data();
-          const mod = normalizeModality(modalidade || '') || 'Outros';
+          const data = d.data();
+          // Validar formato de data: só aceitar 'YYYY-MM-DD' (10 chars)
+          const date = typeof data.date === 'string' && data.date.length === 10 ? data.date : '';
+          if (!date || date < firstDay || date > lastDay) return;
+          const mod = normalizeModality(data.modalidade || '') || 'Outros';
           byModality[mod] = (byModality[mod] || 0) + 1;
-          if (userId) {
-            if (!byUserMap[userId]) byUserMap[userId] = { count: 0, mods: new Set() };
-            byUserMap[userId].count++;
-            byUserMap[userId].mods.add(mod);
+          if (data.userId) {
+            if (!byUserMap[data.userId]) byUserMap[data.userId] = { count: 0, mods: new Set() };
+            byUserMap[data.userId].count++;
+            byUserMap[data.userId].mods.add(mod);
           }
         });
         const byUser: Record<string, { count: number; modalities: string[] }> = {};
         Object.entries(byUserMap).forEach(([id, v]) => {
           byUser[id] = { count: v.count, modalities: Array.from(v.mods) };
         });
-        setMonthlyStats({ byModality, byUser, total: snap.size, monthKey });
+        const total = Object.values(byModality).reduce((s, n) => s + n, 0);
+        setMonthlyStats({ byModality, byUser, total, monthKey });
       },
       console.error
     );

@@ -1,12 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, signInAnonymously, signOut } from 'firebase/auth';
-import { connectFirestoreEmulator, getFirestore, doc, getDocFromServer, enableIndexedDbPersistence } from 'firebase/firestore';
+import { connectFirestoreEmulator, initializeFirestore, memoryLocalCache, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export const APP_ID = 'cpx-vila-rei-main';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+// Cache em memória — sem IndexedDB persistente que contamina listeners com dados stale
+export const db = initializeFirestore(app, {
+  localCache: memoryLocalCache(),
+}, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
 const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
@@ -25,16 +28,6 @@ if (useEmulator && typeof window !== 'undefined') {
   }
 }
 
-// enableIndexedDbPersistence deve correr depois de ligar ao emulador — caso contrário
-// "arranca" o cliente Firestore com as definições de produção e o connectFirestoreEmulator
-// seguinte falha com "Firestore has already been started and its settings can no longer be changed".
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Persistence failed: Multiple tabs open.');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Persistence failed: Browser not supported.');
-  }
-});
 
 const testConnection = async () => {
   try {

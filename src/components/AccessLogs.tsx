@@ -929,10 +929,10 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    // Normaliza o campo date independentemente do formato guardado (string curta, ISO completo, Timestamp)
+    // Aceita apenas datas no formato exacto 'YYYY-MM-DD' (10 chars) — entradas
+    // com ISO completo ('2026-07-01T...') ou Timestamp são inválidas e excluídas.
     const getDate = (l: AccessLog): string => {
-      if (typeof l.date === 'string') return l.date.slice(0, 10);
-      if (l.date && typeof (l.date as any).toDate === 'function') return (l.date as any).toDate().toISOString().slice(0, 10);
+      if (typeof l.date === 'string' && l.date.length === 10) return l.date;
       return '';
     };
     const countMod = (mod: string) => monthlyLogs.filter(l =>
@@ -1129,7 +1129,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
     const ts = now2.toISOString().slice(0, 10);
     const counts: Record<string, number> = {};
     monthlyLogs.forEach((r) => {
-      const d = typeof r.date === 'string' ? r.date.slice(0, 10) : '';
+      const d = typeof r.date === 'string' && r.date.length === 10 ? r.date : '';
       if (!d || d < ms || d > ts) return;
       const key = (r.modalidade || 'Outro / Geral').trim() || 'Outro / Geral';
       counts[key] = (counts[key] || 0) + 1;
@@ -1368,7 +1368,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
       if (m === 'Piscina Exterior') return;
 
       const modalityLogs = monthlyLogs.filter(l => {
-        const d = typeof l.date === 'string' ? l.date.slice(0, 10) : '';
+        const d = typeof l.date === 'string' && l.date.length === 10 ? l.date : '';
         return d >= _lbMs && d <= _lbTs && normalizeModality(l.modalidade || '') === m;
       });
       const userCounts: Record<string, { userName: string; count: number }> = {};
@@ -2322,11 +2322,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
                                     onClick={() => onUserClick && profile && onUserClick(profile)}
                                     title="Ver Perfil"
                                   >
-                                    {(() => {
-                                      const parts = (log.userName || '').trim().split(/\s+/);
-                                      if (parts.length > 1) return `${parts[0]} ${parts[parts.length - 1]}`;
-                                      return parts[0] || '---';
-                                    })()}
+                                    {(log.userName || '').trim() || '---'}
                                   </span>
                                   <span className="text-[8px] font-bold text-slate-400 mt-0.5 tracking-widest">
                                     UTENTE: {profile?.nif || '---'}
