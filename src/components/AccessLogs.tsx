@@ -927,9 +927,11 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
 
   const dailyStats = React.useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const countMod = (mod: string) => allDateLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
+    // Usar sempre monthlyLogs como fonte única — evita inconsistências entre dois listeners do Firestore
+    const countMod = (mod: string) => monthlyLogs.filter(l =>
+      l.date === todayStr && normalizeModality(l.modalidade || '') === mod
+    ).length;
     const countMonthly = (mod: string) => monthlyLogs.filter(l => normalizeModality(l.modalidade || '') === mod).length;
-    // Count today's logs without checkout — direct modality match, no isUserInZone needed
     const countLive = (mod: string) => monthlyLogs.filter(l =>
       l.date === todayStr && !l.checkOut && normalizeModality(l.modalidade || '') === mod
     ).length;
@@ -948,7 +950,7 @@ function AccessLogsModuleInner({ onScan, currentUser, utentes = [], onUserClick,
       monthlyCount: countMonthly(z.mod),
       liveCount: countLive(z.mod),
     })).sort((a, b) => b.monthlyCount - a.monthlyCount);
-  }, [allDateLogs, monthlyLogs]);
+  }, [monthlyLogs]);
 
   // Utentes que passaram hoje na zona selecionada (para o modal de detalhe dos cartões)
   const zoneDetailLogs = React.useMemo(() => {
